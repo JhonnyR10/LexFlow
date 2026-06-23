@@ -1,0 +1,18 @@
+node_modules/
+dist/
+dist-electron/
+out/
+build/
+release/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+# dati locali, DB e backup dell'app: non devono finire su Git
+data/
+backups/
+documenti/
+*.sqlite
+*.sqlite3
+*.db

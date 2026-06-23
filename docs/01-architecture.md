@@ -1,0 +1,118 @@
+# 01 — Architettura
+
+Tipologia: applicazione **desktop locale mono-utente** (Electron). Greenfield.
+
+## Scelta del tipo di app (motivazione)
+
+L'app gira su un solo PC, offline, con dati locali e un unico amministratore. Una web app introdurrebbe server, hosting, autenticazione e concorrenza senza alcun beneficio per questo caso d'uso. Quindi: **desktop Electron**. La condivisione multi-PC è esplicitamente fuori MVP; se servirà, si valuterà allora una variante con percorso dati su cartella di rete (con gestione conflitti) o un backend server.
+
+## Stack
+
+| Strato | Tecnologia |
+|---|---|
+| Renderer (UI) | React + TypeScript + Vite |
+| Stato server (cache richieste IPC) | TanStack Query |
+| Stato UI globale | Zustand |
+| Validazione | zod (renderer e main) |
+| Main process (logica) | TypeScript |
+| Persistenza | SQLite via **better-sqlite3-multiple-ciphers** (drop-in di better-sqlite3, supporta cifratura) |
+| Query/migrazioni | **Drizzle ORM** |
+| Backup | archivio (copia file DB + cartella documenti), automatico periodico + manuale |
+| Packaging | electron-builder |
+
+### Multipiattaforma (macOS + Windows)
+
+Un solo codice gira su macOS e Windows; lo sviluppo avviene su Mac senza differenze. Accorgimenti obbligatori:
+
+- **Percorsi**: mai hardcodati. Percorso dati = `app.getPath('userData')`; documenti in `<userData>/documenti/<codiceIstanza>/`. Costruisci i percorsi solo con il modulo `path` di Node (gestisce i separatori `/` vs `\`).
+- **Modulo nativo**: better-sqlite3 va ricompilato per Electron (electron-rebuild) e per ciascuna piattaforma target.
+- **Build dell'installer**: il `.exe`/installer Windows conviene generarlo **su una macchina Windows o via CI** (es. GitHub Actions con matrice `macos-latest` + `windows-latest`). Compilare il binario nativo Windows da macOS è inaffidabile. Output: `.dmg`/`.app` su Mac, installer `.exe` su Windows.
+
+### Perché better-sqlite3(-multiple-ciphers) + Drizzle e non Prisma
+
+[INFERITO, alta confidenza] Prisma usa un query engine nativo (binario Rust) che in un'app Electron impacchettata va localizzato e distribuito correttamente, e le migrazioni a runtime sono macchinose. better-sqlite3 è sincrono, veloce, si ricompila per Electron con electron-rebuild e si bundla in modo prevedibile. Drizzle è TypeScript-native, leggero, con migrazioni semplici. Il layer repository isola comunque l'ORM: se un domani si cambia motore, l'impatto resta confinato. Se il committente impone Prisma e accetta il lavoro di packaging, si sostituisce solo lo strato `database/` e i repository.
+
+**Variante cifrabile fin da subito.** La cifratura del DB è post-MVP, ma per evitare una futura migrazione di driver si usa già ora `better-sqlite3-multiple-ciphers` (API identica a better-sqlite3) con cifratura **disattivata**. Abilitarla in seguito sarà un cambio di configurazione (apertura del DB con chiave) nello strato `database/`, non un trapianto. Nell'MVP il DB resta in chiaro.
+
+### Backup [MVP]
+
+Il backup è un archivio che contiene la copia del file DB SQLite + la cartella `documenti/` + un export JSON di sicurezza, con timestamp nel nome. Due modalità: manuale (su richiesta) e **automatico periodico** (alla chiusura dell'app e/o a intervallo configurabile), con rotazione delle ultime N copie per non riempire il disco. Lo scheduler vive nel main process. Il backup automatico preventivo prima del reset resta obbligatorio. Configurazione in `AppSettings` (vedi `02-data-model.md`).
+
+## Confine renderer ↔ main: bridge IPC tipizzato
+
+Non si usa un server HTTP/Express interno. Il renderer comunica con il main tramite IPC esposto in modo sicuro dal preload con `contextBridge` (mai `nodeIntegration` nel renderer). Il bridge è la versione desktop dello strato "API" previsto dalle regole: stessa separazione di responsabilità, zero rete.
+
+Flusso completo di una operazione:
+
+```
+React component
+  → hook (TanStack Query)
+    → client IPC tipizzato (renderer/api)
+      → preload contextBridge
+        → ipcMain handler = controller (main/modules/<dominio>/controller)
+          → validazione zod (dto)
+          → service (business logic)
+            → repository (Drizzle)
+              → better-sqlite3 → SQLite
+```
+
+La risposta torna tipizzata fino al componente. Errori del main vengono normalizzati (vedi `errors/`) e gestiti dal renderer con stati error/loading.
+
+## Struttura cartelle
+
+### Renderer (`src/`)
+```
+src/
+├── api/          # client IPC tipizzato (un metodo per canale)
+├── assets/
+├── components/
+│   ├── layout/
+│   └── ui/
+├── features/     # pratiche, dashboard, report, cestino, impostazioni, anagrafiche, workflow
+├── pages/
+├── routes/
+├── hooks/        # incl. hook TanStack Query
+├── store/        # Zustand (stato UI)
+├── context/
+├── services/     # logica di presentazione (non business)
+├── types/        # tipi condivisi nel renderer
+├── utils/
+└── validations/  # schemi zod lato UI
+```
+
+### Main process (`electron/` o `main/`)
+```
+main/
+├── app.ts            # creazione app/finestra
+├── server.ts         # bootstrap: registra gli ipcMain handler
+├── preload.ts        # contextBridge
+├── config/           # config validata con zod all'avvio
+├── database/         # connessione better-sqlite3, schema Drizzle, migrazioni, seed
+├── modules/
+│   └── <dominio>/    # pratiche, fasi, anagrafiche, documenti, report, cestino, settings
+│       ├── controller.ts   # handler IPC
+│       ├── service.ts      # business logic (DI via costruttore)
+│       ├── repository.ts   # accesso DB
+│       ├── dto.ts          # zod input/output
+│       ├── validation.ts
+│       └── types.ts
+├── middlewares/      # wrapping validazione/error per handler
+├── errors/           # AppError tipizzati + normalizzazione
+├── jobs/             # eventuali task (es. backup pre-reset)
+├── integrations/     # eventuale provider AI (post-MVP)
+└── utils/
+```
+
+### `shared/`
+Tipi e costanti condivisi tra renderer e main (es. enum categorie fase, contratti IPC). **Flusso di dipendenze unidirezionale:** `shared` non importa da `renderer` né da `main`.
+
+## Pratiche elite adottate (sottoinsieme)
+
+- Config/percorso dati validati con zod all'avvio: se manca qualcosa di essenziale, l'app non parte in silenzio, mostra errore chiaro.
+- Logging strutturato nel main (level, timestamp, action) per operazioni critiche.
+- Dependency injection via costruttore nei service (testabilità con repository mockati).
+- Audit trail = `HistoryEvent` (già nel dominio).
+
+## Pratiche elite scartate (mismatch con mono-utente locale)
+
+OpenAPI contract-first, migrazioni expand-contract zero-downtime, feature flags, caching con invalidazione, optimistic locking, audit event-driven separato. Si reintroducono solo se l'app diventa multi-utente/web.
