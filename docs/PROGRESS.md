@@ -10,7 +10,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 
 | Storia | Descrizione | Stato | Note |
 |---|---|---|---|
-| S0.1 | Scaffolding Electron+React+TS+Vite+better-sqlite3+Drizzle | TODO | |
+| S0.1 | Scaffolding Electron+React+TS+Vite (struttura e placeholder) | FATTO | Senza DB (aggiunto in S0.4). Bridge IPC app:getVersion incluso. |
 | S0.2 | Bridge IPC tipizzato | TODO | |
 | S0.3 | Config zod + logging strutturato | TODO | |
 | S0.4 | Migrazioni Drizzle + seed (fasi/menu standard) | TODO | |
@@ -79,4 +79,30 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
-- (vuoto — il progetto non è ancora iniziato)
+### 2026-06-23 — S0.1: Scaffolding Electron + React + TypeScript + electron-vite
+
+**File e cartelle create:**
+- `package.json` — dipendenze e script npm (electron-vite, React 19, TypeScript 5.9, ESLint 9)
+- `electron.vite.config.ts` — configurazione electron-vite con path custom (main/ e src/)
+- `tsconfig.json` / `tsconfig.node.json` / `tsconfig.web.json` — TypeScript strict con project references
+- `eslint.config.mjs` — ESLint 9 flat config con @electron-toolkit/eslint-config-ts + react plugins
+- `electron-builder.yml` — configurazione packaging macOS/Windows
+- `shared/ipc.ts` — contratto IPC tipizzato (LexFlowApi, IPC_CHANNELS)
+- `main/app.ts` — creazione BrowserWindow (contextIsolation on, nodeIntegration off)
+- `main/server.ts` — bootstrap IPC handlers
+- `main/preload.ts` — contextBridge che espone window.api
+- `main/preload.d.ts` — estensione Window per il renderer
+- `main/modules/app/controller.ts` — handler IPC app:getVersion
+- `src/index.html`, `src/main.tsx`, `src/App.tsx`, `src/env.d.ts` — entry renderer
+- `src/api/app.ts` — client IPC tipizzato per il renderer
+- `src/pages/PlaceholderPage.tsx` — UI placeholder con "LexFlow" + versione via IPC
+- Directory stub con `.gitkeep`: `main/{config,database,middlewares,errors,utils,jobs}`, `src/{components/{layout,ui},features,routes,hooks,store,context,services,types,utils,validations,assets}`
+
+**Decisioni:**
+- DB (better-sqlite3-multiple-ciphers + drizzle) non installato: rinviato a S0.4 come da istruzione.
+- electron-vite usa path custom via `rollupOptions.input` con `{ index: ... }` per garantire output `out/{main,preload}/index.js`.
+- Renderer root = `src/`, entry HTML = `src/index.html` (non `src/renderer/` come nel template default).
+- Typecheck splittato: `typecheck:node` + `typecheck:web` con `--composite false` (consente shared/ in entrambi i tsconfig senza conflitti).
+- CLAUDE.md aggiornato: descrizioni script allineate alla realtà di electron-vite (dev/desktop avviano l'intera app, non solo il renderer).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓ (finestra aperta con placeholder "LexFlow" e versione via IPC)

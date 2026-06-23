@@ -1,0 +1,20 @@
+appId: it.lexflow.app
+productName: LexFlow
+directories:
+  buildResources: resources
+  output: release/${version}
+files:
+  - out/**
+mac:
+  target:
+    - dmg
+  artifactName: ${productName}-Mac-${version}.${ext}
+win:
+  target:
+    - nsis
+  artifactName: ${productName}-Windows-${version}-Setup.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false

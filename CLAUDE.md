@@ -44,17 +44,19 @@ Gestionale desktop per la tracciabilità delle istanze di liquidazione e notule 
 - A fine di ogni storia: aggiorna `docs/PROGRESS.md` (stato della storia, modifiche fatte, eventuali decisioni). All'inizio di ogni sessione leggi `docs/PROGRESS.md` per sapere a che punto sei.
 - Commit Git per ogni storia completata con messaggio chiaro.
 
-## Comandi (script previsti da E0; non ancora esistenti in greenfield)
+## Comandi
 
 ```
-npm run dev          # vite dev server (renderer)
-npm run desktop      # avvia Electron in sviluppo
-npm run build        # build renderer + main
-npm run typecheck    # tsc --noEmit
-npm run lint         # eslint
-npm run db:generate  # drizzle: genera migrazioni
-npm run db:migrate   # applica migrazioni
+npm run dev          # alias di desktop: avvia l'intera app Electron in sviluppo (main + renderer con HMR)
+npm run desktop      # avvia l'intera app Electron in sviluppo (main + renderer con HMR) — usa electron-vite dev
+npm run build        # build di produzione: main + preload + renderer via electron-vite build
+npm run typecheck    # tsc --noEmit su entrambi i tsconfig (node e web) — non emette file
+npm run lint         # eslint (flat config ESLint 9)
+npm run db:generate  # drizzle: genera migrazioni — disponibile da S0.4
+npm run db:migrate   # applica migrazioni — disponibile da S0.4
 ```
+
+Note: con electron-vite, `dev`/`desktop` avviano **sia** il main process Electron **sia** il dev server Vite del renderer. Non è un semplice dev server web.
 
 ## Indice della documentazione (`docs/`)
 
