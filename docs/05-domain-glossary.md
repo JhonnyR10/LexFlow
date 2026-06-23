@@ -30,9 +30,14 @@ Nessun calcolo fiscale automatico. Calcolate solo le differenze (vedi data-model
 
 ## Stati/fasi standard (categorie logiche)
 
-`Depositata, In attesa di decreto, Sollecito effettuato, Integrazione richiesta, Integrazione inviata, Rifiutata, Decreto ricevuto, Decreto inviato a SCP, In attesa di liquidazione SCP, Liquidata, Chiusa, Sospesa, Annullata`.
+`Depositata, In attesa di decreto, Sollecito effettuato, Integrazione richiesta, Integrazione inviata, Rifiutata, Decreto ricevuto, Correzione decreto richiesta, Impugnazione decreto depositata, Invio a SCP, In attesa di liquidazione SCP, Liquidata, Chiusa, Sospesa, Annullata`.
 
-Iter tipico: creazione → Depositata → In attesa di decreto → (sollecito / integrazione / rifiuto) → Decreto ricevuto → Invio SCP → In attesa di liquidazione SCP → Liquidata → Chiusa. Nella versione configurabile questi sono `Phase` con `category` stabile e `displayName` rinominabile.
+**Rami post-decreto** (category `custom`, configurabili, NON compaiono nel form Nuova pratica, solo come pulsanti nel dettaglio quando la fase corrente è `Decreto ricevuto`):
+
+- **Correzione decreto richiesta** — richiesta di correzione del decreto; rientra nel flusso (nuovo decreto / attesa decreto / sollecito).
+- **Impugnazione decreto depositata** — reclamo/impugnazione del decreto; rientra nel flusso analogamente. Può partire anche da `Rifiutata` se questa è trattata come non terminale (decisione di prodotto, vedi PROGRESS).
+
+Iter tipico: creazione → Depositata → In attesa di decreto → (sollecito / integrazione / rifiuto) → Decreto ricevuto → (eventuale correzione/impugnazione) → Invio SCP → In attesa di liquidazione SCP → Liquidata → Chiusa. Nella versione configurabile questi sono `Phase` con `category` stabile e `displayName` rinominabile.
 
 ## Vincolo di coerenza chiave
 

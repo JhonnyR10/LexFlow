@@ -2,6 +2,11 @@ import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { bootstrap } from './server'
+import { validateStartupConfig } from './config/startup'
+import { initDatabase } from './database/connection'
+import { runMigrations } from './database/migrations'
+import { runSeed } from './database/seed'
+import { logger } from './utils/logger'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -35,8 +40,21 @@ function createWindow(): void {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   electronApp.setAppUserModelId('it.lexflow.app')
+
+  logger.info('APP_START', `v${app.getVersion()}`)
+
+  try {
+    await validateStartupConfig()
+    initDatabase()
+    runMigrations()
+    runSeed()
+  } catch (err) {
+    logger.error('APP_INIT_FAILED', err instanceof Error ? err.message : String(err))
+    app.quit()
+    return
+  }
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
