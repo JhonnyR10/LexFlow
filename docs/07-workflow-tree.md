@@ -613,7 +613,7 @@ WorkflowTransition
 = definisce la (T) azione disponibile,
   la fase di partenza e la fase di destinazione.
 
-PracticeHistory
+HistoryEvent
 = conserva ogni (TL) evento.
 
 previousPhaseId oppure dato equivalente

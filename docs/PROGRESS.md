@@ -71,18 +71,83 @@ Ogni riga: data — decisione — motivo.
 - 2026-06-24 — **Impugnazione solo da Decreto ricevuto; Rifiutata terminale** (opzione A). — Definito dal file canonico. PASSO 5b superato/annullato.
 - 2026-06-24 — **Campi configurabili legati alle transizioni, non alle fasi** (FieldDef.scope general|transition, transitionId). — Più transizioni entrano nella stessa fase con dati diversi; lo scoping per fase era insufficiente. PhaseRecord sostituito da TransitionRecord (consolidamento in E5).
 - 2026-06-24 — **Regola PEC come visibilità condizionale generica** (FieldDef.conditionalOnFieldId/conditionalValue + tipo campo `pec`). — Nessun hardcoding: PEC = campo `pec` condizionato al campo modalità=PEC. Vincolato a una sola condizione su campo menu dello stesso contenitore.
+- 2026-06-24 — **Validazione zod inline nel controller; service importa repository direttamente (no DI formale).** — Scelta deliberata di semplicità per app desktop mono-utente. Non esistono file `dto.ts`/`validation.ts`/`types.ts` per modulo. La DI formale si introduce solo se serviranno test unitari estesi dei service.
 
 ## Decisioni aperte / da confermare
 
 - Sigla codice fissa o configurabile (assunta configurabile).
 - Documenti su filesystem vs blob in DB (assunto filesystem).
-- PhaseRecord vs HistoryEvent per i dati di fase: da consolidare quando si costruirà E5 (timeline = HistoryEvent; valori chiave denormalizzati sulla pratica).
+- TransitionRecord vs HistoryEvent: la relazione è 1:1 (da consolidare in E5). La timeline usa HistoryEvent; i valori chiave compilati nella transizione vivono in TransitionRecord e vengono denormalizzati sulla pratica per filtri/riepiloghi.
 
 ---
 
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-24 — Riconciliazione documentale post-audit (nessuna modifica al codice applicativo)
+
+**Obiettivo:** chiudere le 10 divergenze emerse nell'audit con il principio "una informazione in un posto solo".
+
+**A — Backlog (`00-backlog-mvp.md`):**
+- Rimossa intera §2 (ridescriveva il modello dati): sostituita con rimando a `02-data-model.md` e `07-workflow-tree.md`
+- Rimossa §1: eliminato riferimento a `modules/{dto,validation,types}` e a "DI via costruttore"; struttura modulo ridotta al reale `{controller,service,repository}`
+- S1.1 AC: rimosso `pecEnabled` dalla lista campi (rimosso in S0.4)
+- S1.3 AC: aggiornato `scope='general'|'transition'` (era `'phase'`); aggiunta lista tipi incluso `pec`
+- UC4: `PhaseRecord` → `TransitionRecord`; testo allineato al modello corrente
+- S5.3: `PhaseRecord` → `TransitionRecord`
+
+**B — Architettura (`01-architecture.md`):**
+- Struttura `modules/<dominio>/`: rimosso `dto.ts`, `validation.ts`, `types.ts`; aggiornata a `{controller.ts, service.ts, repository.ts}` con note reali
+- Flusso IPC: "validazione zod (dto)" → "validazione zod (inline nel controller)"
+- §"Pratiche elite adottate": "DI via costruttore" → descrizione reale (import diretti del repository)
+
+**C — Convenzioni (`04-conventions.md`):**
+- Service: rimossa "DI via costruttore"; sostituita con "import diretto funzioni repository" e nota deliberata di semplicità
+- Controller: "valida con dto/zod" → "valida con zod (inline nel controller)"
+- Tipi espliciti: `PhaseRecord` → `TransitionRecord`
+
+**D — Workflow tree (`07-workflow-tree.md`):**
+- §RIASSUNTO TECNICO: `PracticeHistory` → `HistoryEvent`
+
+**E — Verifica anti-duplicazione:**
+- Nessun residuo attivo di `pecEnabled`, `PhaseRecord` (come termine in uso), `scope='phase'`, `dto.ts/validation.ts` come struttura, `DI via costruttore` in documenti normativi. Solo presenze storiche in PROGRESS.md e ways-of-working.md (appropriate come log/esempi).
+- Decisione aperta `PhaseRecord vs HistoryEvent` in PROGRESS.md: aggiornata a `TransitionRecord vs HistoryEvent` con descrizione corretta.
+
+---
+
+### 2026-06-24 — Intervento di documentazione e istituzionalizzazione processo (nessuna modifica al codice applicativo)
+
+**Obiettivo:** rendere il repository l'unica fonte di verità e formalizzare il metodo di lavoro.
+
+**File creati:**
+
+| File | Contenuto |
+| ---- | --------- |
+| `docs/ways-of-working.md` | Metodo di lavoro: principio fonte di verità, processo storia-per-storia (7 passi), DoD completa, euristiche operative, policy audit di coerenza (con esempi storici), uso Plan Mode, policy revisione esterna |
+| `SETUP.md` | Guida riproduzione ambiente: prerequisiti (Node 22/npm 10), npm global prefix, Claude Code CLI, GitHub CLI, clone+install, rebuild nativo (sintomo NODE_MODULE_VERSION e fix), HashRouter note, alias Drizzle→driver cifrabile, reset DB dev, percorsi userData macOS/Windows, tabella script npm |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `CLAUDE.md` | Aggiunta regola 13 (repository = unica fonte di verità; Claude Code = autore doc tecnica); aggiunta regola 14 (gate PROGRESS.md obbligatorio); aggiunto `ways-of-working.md` all'indice doc; aggiunta sezione "Documenti radice del repository" con `SETUP.md` |
+
+**Audit di coerenza eseguito** (vedere sezione Audit nel log del giorno):
+
+Divergenze rilevate tra `docs/00-backlog-mvp.md` e il codice/doc aggiornati:
+1. `FieldDef.scope` — backlog dice `general|phase`; codice usa `general|transition` (corretto da S1.3)
+2. `Phase.pecEnabled` — backlog cita la colonna; rimossa in S0.4 (PEC guidata dai campi)
+3. `Transition` — backlog non include `isRepeatable`/`isAutomatic`/`isResume`; presenti nello schema reale
+4. `PhaseRecord` — backlog usa questo nome; codice e `02-data-model.md` usano `TransitionRecord`
+5. `FieldDef.type` — backlog non include `pec`; aggiunto in S1.5
+6. `01-architecture.md` struttura cartelle — cita `dto.ts`/`validation.ts`/`types.ts` per modulo; non esistono nel codice (validazione inline nel controller)
+7. `04-conventions.md` — cita dependency injection via costruttore nei service; non implementata (service importano le funzioni repository direttamente)
+8. `07-workflow-tree.md` — usa `PracticeHistory` come nome entità; codice e `02-data-model.md` usano `HistoryEvent`
+
+**Nota:** le divergenze sono state rilevate e documentate. Nessuna corretta in questo intervento — l'utente decide cosa aggiornare e quando.
+
+---
 
 ### 2026-06-24 — S1.5: Regola PEC condizionale — **E1 (Configurazione workflow) COMPLETATA**
 

@@ -50,7 +50,7 @@ React component
     → client IPC tipizzato (renderer/api)
       → preload contextBridge
         → ipcMain handler = controller (main/modules/<dominio>/controller)
-          → validazione zod (dto)
+          → validazione zod (inline nel controller)
           → service (business logic)
             → repository (Drizzle)
               → better-sqlite3 → SQLite
@@ -90,12 +90,9 @@ main/
 ├── database/         # connessione better-sqlite3, schema Drizzle, migrazioni, seed
 ├── modules/
 │   └── <dominio>/    # pratiche, fasi, anagrafiche, documenti, report, cestino, settings
-│       ├── controller.ts   # handler IPC
-│       ├── service.ts      # business logic (DI via costruttore)
-│       ├── repository.ts   # accesso DB
-│       ├── dto.ts          # zod input/output
-│       ├── validation.ts
-│       └── types.ts
+│       ├── controller.ts   # handler IPC; validazione zod inline
+│       ├── service.ts      # business logic; importa funzioni repository direttamente
+│       └── repository.ts   # accesso DB (unico punto Drizzle/SQLite)
 ├── middlewares/      # wrapping validazione/error per handler
 ├── errors/           # AppError tipizzati + normalizzazione
 ├── jobs/             # eventuali task (es. backup pre-reset)
@@ -110,7 +107,7 @@ Tipi e costanti condivisi tra renderer e main (es. enum categorie fase, contratt
 
 - Config/percorso dati validati con zod all'avvio: se manca qualcosa di essenziale, l'app non parte in silenzio, mostra errore chiaro.
 - Logging strutturato nel main (level, timestamp, action) per operazioni critiche.
-- Dependency injection via costruttore nei service (testabilità con repository mockati).
+- I service importano le funzioni del repository direttamente (nessuna DI formale via costruttore). Scelta deliberata di semplicità per un'app desktop mono-utente; si introduce DI solo se serviranno test unitari estesi dei service.
 - Audit trail = `HistoryEvent` (già nel dominio).
 
 ## Pratiche elite scartate (mismatch con mono-utente locale)

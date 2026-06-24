@@ -27,36 +27,16 @@ Documento destinato all'AI di sviluppo (Codex). Linguaggio operativo. Ogni claim
 
 [INFERITO] Stack coerente con i documenti, adattato al desktop mono-utente:
 
-- **Renderer (frontend):** React + TypeScript + Vite. Struttura cartelle come da regole: `api` (qui = client del bridge IPC), `components/{layout,ui}`, `features`, `pages`, `routes`, `hooks`, `store` (Zustand per stato UI), `services`, `types`, `utils`, `validations` (zod). Dati server-side via TanStack Query sopra il bridge IPC.
-- **Main process (backend):** TypeScript. Layer `config`, `database` (better-sqlite3-multiple-ciphers + Drizzle), `modules/<dominio>/{controller,service,repository,dto,validation,types}`, `middlewares` (validazione/error), `errors`, `utils`. Il controller riceve la chiamata IPC, valida (zod), chiama il service; il service contiene la business logic; il repository parla con Drizzle.
-- **Confine renderer↔main:** **bridge IPC tipizzato** (preload + `contextBridge`), NON un server HTTP. Stessa separazione di responsabilità imposta dai documenti, senza porte/CORS/processo extra. Questo è il punto in cui correggo la regola `Frontend → API HTTP → Backend`: su Electron mono-utente l'HTTP è over-engineering.
-- **Sottoinsieme utile da ALTRE_DIRETTIVE [INFERITO]:** validazione `.env`/config con zod all'avvio; logging strutturato (level, timestamp, action); dependency injection via costruttore nei service; audit trail = lo Storico pratica (già previsto). **Scartati per mono-utente locale:** OpenAPI contract-first, migrazioni zero-downtime expand-contract, feature flags, caching con invalidazione, optimistic locking. Si reintroducono solo se l'app diventa multi-utente/web.
+- **Renderer (frontend):** React + TypeScript + Vite. Struttura cartelle: `api` (client bridge IPC), `components/{layout,ui}`, `features`, `pages`, `routes`, `hooks`, `store` (Zustand), `utils`. Dati server-side via TanStack Query sopra il bridge IPC.
+- **Main process (backend):** TypeScript. Layer `config`, `database` (better-sqlite3-multiple-ciphers + Drizzle), `modules/<dominio>/{controller,service,repository}`, `middlewares`, `errors`, `utils`. Validazione zod inline nel controller; service contiene business logic; repository parla con Drizzle. Struttura dettagliata in `docs/01-architecture.md`.
+- **Confine renderer↔main:** **bridge IPC tipizzato** (preload + `contextBridge`), NON un server HTTP. Su Electron mono-utente l'HTTP è over-engineering.
+- **Pratiche scartate per mono-utente locale:** OpenAPI contract-first, migrazioni expand-contract zero-downtime, feature flags, caching con invalidazione, optimistic locking, DI formale via costruttore. Si reintroducono solo se l'app diventa multi-utente/web.
 
 ---
 
-## 2. Modello dati (entità e relazioni)
+## 2. Modello dati
 
-[VERIFICATO] derivato dalle specifiche. Chiavi tecniche stabili; nomi visibili modificabili.
-
-- **Practice** (pratica): id, codiceIstanza (univoco), nomeIstanza, collaboratoreId→Collaboratore, professionistaId→Professionista, tipologiaAttivita (menu), dataUdienza, competenza (menu), autoritaGiudiziaria (menu), dataDeposito, modalitaDeposito (menu), importoRichiesto, note, currentPhaseId→Phase, isTrashed, trashedAt, trashReason, createdAt, updatedAt, version. Valori dei campi generali configurabili in `customValues` (JSON keyed by fieldKey).
-- **Phase** (fase): id, key, displayName, category (enum logica: deposited, awaiting_decree, decree_received, scp_sent, awaiting_liquidation, liquidated, closed, refused, suspended, annulled, custom), isInitial, isFinal, isActive, order, pecEnabled.
-- **Transition:** id, fromPhaseId, toPhaseId, buttonLabel, order, isActive.
-- **FieldDef:** id, scope (`general` | `phase`), phaseId (null se general), key, label, type (testo_breve, testo_lungo, numero, importo, data, menu, si_no, note, file), required, visibleInTable, usableInFilter, includeInExport, order, isActive, menuSetId (null se non menu).
-- **PhaseRecord** (registrazione fase, ripetibile es. solleciti): id, practiceId, phaseId, recordedAt, values (JSON keyed by fieldKey), note.
-- **HistoryEvent** (storico): id, practiceId, timestamp, type, title, fromPhaseId, toPhaseId, note, payload, documentId.
-- **Professionista:** id, nome, cognome, denominazione (usata nei menu), codiceFiscale, email, pec, telefono, ruolo, note, isActive.
-- **Collaboratore:** id, nome, cognome, denominazione, codiceInterno, note, isActive.
-- **NumeroProcedimento:** id, practiceId, tipo (menu, es. R.G.N.R.), valore.
-- **PecRecipient:** id, practiceId, phaseRecordId, contesto (`deposito` | `scp` | altro), indirizzo. PEC deposito e PEC SCP sono distinte per fase.
-- **Document:** id, practiceId, phaseRecordId (null), kind (decreto, fattura, pec, altro), filePath, originalName, metadata (JSON: dataDecreto, numeroDecreto, importo, ecc.), createdAt.
-- **MenuSet / MenuOption:** set di opzioni configurabili; opzione: label, value, order, isActive (soft delete). Le opzioni non si cancellano se usate da pratiche: si disattivano.
-- **AppSettings:** theme, alertsEnabled (per tipo), alertThresholds {giallo:30, arancione:60, rosso:90}, assistant {localEnabled, apiEnabled, provider, model, apiKeyRef, instructions}, dataPath, appVersion.
-
-**Regole di integrità [VERIFICATO]**
-
-- Collaboratore/Professionista collegati per **ID**, mai per stringa. Non eliminabili se hanno pratiche: solo disattivabili; le pratiche esistenti continuano a mostrarli.
-- Cestino = soft delete (`isTrashed`). Le pratiche cestinate sono escluse da Dashboard, Report, filtri ordinari, alert, assistente.
-- Importi mancanti → "Non presente"/"Non calcolabile", mai `NaN`/`undefined`.
+Il modello dati è definito in `docs/02-data-model.md` (fonte unica). Il workflow canonico — fasi, transizioni e timeline — è in `docs/07-workflow-tree.md`. Questo backlog non riduplica lo schema: leggere quei documenti prima di stimare o implementare storie che toccano il modello.
 
 ---
 
@@ -67,7 +47,7 @@ Attore unico: **Amministratore** (mono-utente).
 - **UC1 — Configurare il workflow.** Crea/modifica fasi, transizioni, campi generali, campi fase, menu, regola PEC. Esito: la UI delle pratiche genera pulsanti e form leggendo la config, senza modifiche al codice.
 - **UC2 — Gestire anagrafiche.** Crea/modifica/disattiva professionisti e collaboratori. Eliminazione bloccata se collegati a pratiche.
 - **UC3 — Creare una pratica.** Compila dati generali + campi custom generali; il codice istanza si genera in automatico; PEC deposito se modalità=PEC; numeri procedimento multipli. Pratica nasce nella fase iniziale configurata.
-- **UC4 — Avanzare una pratica (registrare fase).** Dalla fase corrente vede solo le transizioni configurate; clicca il pulsante; compila il form dinamico della fase di destinazione; validazione (incluso blocco PEC condizionale); salvataggio aggiorna `currentPhaseId`, crea `PhaseRecord` e `HistoryEvent`. Fasi ripetibili (sollecito) non cambiano necessariamente la fase logica.
+- **UC4 — Avanzare una pratica (registrare transizione).** Dalla fase corrente vede solo le transizioni configurate; clicca il pulsante; compila il form dinamico della transizione; validazione (incluso blocco PEC condizionale); salvataggio aggiorna `currentPhaseId`, crea `TransitionRecord` e `HistoryEvent`. Transizioni ripetibili (sollecito) non cambiano la fase.
 - **UC5 — Consultare/filtrare pratiche.** Tabella pratiche attive con colonne rispettose della config; ricerca globale; filtri (fase, collaboratore, professionista, date, importi); ordinamento; codice istanza cliccabile = Apri.
 - **UC6 — Gestire documenti.** Carica/sostituisce/elimina decreto e fattura; collegati alla fase; aggiornano i controlli "mancante".
 - **UC7 — Monitorare (Dashboard/alert).** Conteggi per fase (card dinamiche), un solo alert aggregato per pratica con severità massima e soglie 30/60/90, anzianità, documenti mancanti, stato vuoto, "Vedi pratiche" → Pratiche filtrate.
@@ -91,9 +71,9 @@ Priorità MoSCoW. `MVP` = nel primo rilascio usabile end-to-end.
 
 ### E1 — Configurazione istanze (workflow configurabile) `MVP` (Must)
 
-- **S1.1** CRUD fasi (key, displayName, category, isInitial, isFinal, isActive, order, pecEnabled). _AC:_ esattamente una fase iniziale; impedito disattivare una fase usata da pratiche attive.
+- **S1.1** CRUD fasi (key, displayName, category, isInitial, isFinal, isActive, order). _AC:_ esattamente una fase iniziale; impedito disattivare una fase usata da pratiche attive.
 - **S1.2** CRUD transizioni (from/to, buttonLabel, order). _AC:_ niente transizione verso fase inattiva; transizioni mostrate solo dalla fase di partenza.
-- **S1.3** CRUD campi generali e campi transizione (tipo, obbligo, visibilità tabella/filtri/export, ordine). _AC:_ campo transizione non compare in Nuova pratica; campo generale sì.
+- **S1.3** CRUD campi configurabili: `scope=general` (compaiono in Nuova pratica) e `scope=transition` (compaiono solo nel form di quella transizione). Tipi: `testo_breve, testo_lungo, numero, importo, data, menu, si_no, note, file, pec`. _AC:_ campo transizione non compare in Nuova pratica; campo generale sì.
 - **S1.4** CRUD menu a tendina (MenuSet/Option), riordino, soft delete. _AC:_ opzione usata non eliminabile, solo disattivabile.
 - **S1.5** Regola PEC condizionale (semplice/estesa). _AC:_ selezionando modalità=PEC compaiono i campi PEC multi-destinatario; altrimenti restano nascosti e non obbligatori.
 
@@ -119,7 +99,7 @@ Priorità MoSCoW. `MVP` = nel primo rilascio usabile end-to-end.
 
 - **S5.1** Dettaglio pratica: intestazione, dati generali, soggetti, importi, workflow, storico, documenti, controlli.
 - **S5.2** Render dinamico pulsanti = transizioni configurate dalla fase corrente. _AC:_ nessun pulsante hard-coded.
-- **S5.3** Form dinamico della fase + validazione + blocco PEC. _AC:_ salvataggio crea PhaseRecord, aggiorna currentPhaseId, scrive HistoryEvent.
+- **S5.3** Form dinamico della transizione + validazione + blocco PEC. _AC:_ salvataggio crea TransitionRecord, aggiorna currentPhaseId (se cambia fase), scrive HistoryEvent.
 - **S5.4** Coerenza di stato. _AC:_ impedito raggiungere "Liquidata" senza decreto e invio SCP registrati.
 - **S5.5** Storico/timeline consultabile.
 

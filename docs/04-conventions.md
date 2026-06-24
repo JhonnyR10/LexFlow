@@ -9,7 +9,7 @@
 ## TypeScript
 
 - `strict: true`. Vietato `any` (usa `unknown` + narrowing dove serve). Niente `@ts-ignore` senza motivazione scritta.
-- Tipi espliciti per: Practice, Phase, Transition, FieldDef, PhaseRecord, HistoryEvent, anagrafiche, Document, filtri, AppSettings, payload e risposte IPC, errori.
+- Tipi espliciti per: Practice, Phase, Transition, FieldDef, TransitionRecord, HistoryEvent, anagrafiche, Document, filtri, AppSettings, payload e risposte IPC, errori.
 - I contratti IPC (request/response) sono tipi in `shared/`, usati identici da renderer e main.
 
 ## Validazione
@@ -33,8 +33,8 @@ Ogni vista che carica dati gestisce: **loading**, **empty** (con messaggio utile
 
 ## Backend (main)
 
-- Controller (handler IPC): riceve, valida con dto/zod, chiama il service, ritorna. Niente logica.
-- Service: business logic, guard di coerenza, orchestrazione transazioni. Dipendenze (repository) iniettate via costruttore.
+- Controller (handler IPC): riceve, valida con zod (inline nel controller), chiama il service, ritorna. Niente logica.
+- Service: business logic, guard di coerenza, orchestrazione transazioni. Le funzioni del repository del proprio modulo vengono importate e usate direttamente (nessuna dependency injection via costruttore). Scelta deliberata di semplicità per un'app desktop mono-utente; la DI formale si introduce solo se serviranno test unitari estesi dei service.
 - Repository: unico punto d'accesso a Drizzle/SQLite. Se cambia l'ORM, cambia solo qui.
 - Operazioni che scrivono dati rilevanti emettono un `HistoryEvent` nella stessa transazione.
 

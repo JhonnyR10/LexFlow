@@ -35,6 +35,8 @@ Gestionale desktop per la tracciabilità delle istanze di liquidazione e notule 
 10. **Validazione doppia.** zod lato renderer e lato main.
 11. **Multipiattaforma.** L'app gira su macOS e Windows da un solo codice. Mai percorsi hardcoded: usa `app.getPath('userData')` per il percorso dati e il modulo `path` di Node per costruire i percorsi (documenti in `<userData>/documenti/<codiceIstanza>/`). L'installer Windows si produce su Windows o via CI (vedi `01-architecture.md`).
 12. **Documentazione = fonte di verità.** Quando un requisito di funzionalità o UX/UI cambia, aggiorna il doc in `docs/` corrispondente **nello stesso intervento, prima del codice**. Non lasciare mai codice che diverge dalla specifica.
+13. **Il repository è l'unica fonte di verità.** Nessuna decisione esiste finché non è scritta in un file di `docs/` e committata. Claude Code è il solo autore della documentazione tecnica in `docs/`; l'utente approva e corregge. La specifica prevale sempre sul codice: se divergono, il codice è sbagliato.
+14. **Gate PROGRESS.md obbligatorio.** Nessuna storia è FATTA finché `docs/PROGRESS.md` non è aggiornato con stato, file modificati e verifiche. Il gate è parte della Definition of Done: vedi `docs/ways-of-working.md`.
 
 ## Metodo di lavoro
 
@@ -69,6 +71,11 @@ Note: con electron-vite, `dev`/`desktop` avviano **sia** il main process Electro
 - `04-conventions.md` — convenzioni codice, naming, struttura cartelle frontend/backend, Git.
 - `05-domain-glossary.md` — termini del dominio legale.
 - `06-ui-ux.md` — temi, alert, dashboard, stati vuoti, layout responsive.
+- `ways-of-working.md` — metodo di lavoro: processo storia-per-storia, DoD, euristiche, audit, Plan Mode. **Leggi se non sai come procedere o se il processo va calibrato.**
+
+## Documenti radice del repository
+
+- `SETUP.md` — guida riproduzione ambiente (prerequisiti, Node, npm, rebuild, note tecniche HashRouter/Drizzle). **Leggi su macchina nuova o dopo un aggiornamento di dipendenze native.**
 
 ## Ordine di costruzione
 
