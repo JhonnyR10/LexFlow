@@ -3,6 +3,7 @@ import type {
   GenerateCodiceIstanzaResponse,
   CreatePracticeInput,
   CreatePracticeResponse,
+  PracticesListResponse,
 } from '../../shared/ipc'
 
 export const practicesApi = {
@@ -15,4 +16,7 @@ export const practicesApi = {
     input: CreatePracticeInput
   ): Promise<CreatePracticeResponse> =>
     window.api.practices.createPractice(input),
+
+  listPractices: (): Promise<PracticesListResponse> =>
+    window.api.practices.listPractices(),
 }

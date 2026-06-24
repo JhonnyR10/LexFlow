@@ -21,7 +21,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S1.5   | Regola PEC condizionale                                      | FATTO    | Schema migrato: tipo pec + conditionalOnFieldId/conditionalValue. Visibilità condizionale nel form campo, badge nella tabella, pulsante convenience PEC.                                                                  |
 | S2.1   | CRUD Professionisti                                          | FATTO    | Nuovo modulo anagrafiche (IPC namespace `anagrafiche:`), schema Drizzle + migrazione incrementale 0001_*.sql, CRUD completo, denominazione auto-derivata da cognome+nome, validazione CF/email morbida.                  |
 | S2.2   | CRUD Collaboratori                                           | FATTO    | Modulo anagrafiche esteso: schema Drizzle + migrazione incrementale 0002_*.sql, CRUD completo, denominazione auto-derivata da cognome+nome, codiceInterno opzionale.                                                     |
-| S3.1   | Tabella pratiche attive                                      | TODO     |                                                                                                                                                                                                                          |
+| S3.1   | Tabella pratiche attive                                      | FATTO    | IPC practices:listPractices, LEFT JOIN phases/professionisti/collaboratori, PraticheTable con 7 colonne, route /pratiche/:id con DettaglioPraticaPage placeholder.                                                        |
 | S3.2   | Ricerca globale                                              | TODO     |                                                                                                                                                                                                                          |
 | S3.3   | Filtri base                                                  | TODO     |                                                                                                                                                                                                                          |
 | S3.4   | Ordinamento + selezione multipla                             | TODO     |                                                                                                                                                                                                                          |
@@ -591,6 +591,38 @@ Nota: le transizioni → Sospesa e → Annullata dei rami post-decreto usano but
 3. `denominazione` null/vuota → generata da `${cognome} ${nome}`
 4. `codiceInterno`: opzionale, nessun formato imposto (max 50 chars)
 5. Guard pratiche: TODO documentato (E4)
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run build` ✓
+
+---
+
+### 2026-06-25 — S3.1: Tabella pratiche attive
+
+**Nessuna migrazione DB** — schema esistente, solo nuova query con JOIN.
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `src/features/practices/PraticheTable.tsx` | Tabella pratiche: 7 colonne (codice istanza link, nome, fase badge, collaboratore, professionista, data udienza, importo), stati loading/empty/error |
+| `src/pages/DettaglioPraticaPage.tsx` | Placeholder route `/pratiche/:id` — usa `useParams`, mostra ID; sarà implementata in S5.1 |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `shared/ipc.ts` | + `PRACTICES_LIST` channel; + interfaccia `PracticeListItem` (16 campi); + `PracticesListResponse`; + `listPractices()` in `LexFlowApi.practices` |
+| `main/modules/practices/repository.ts` | + import `desc`, `professionisti`, `collaboratori`; + `findAllActivePractices()` con LEFT JOIN a phases/professionisti/collaboratori, filtro `isTrashed=false`, ordine `createdAt DESC` |
+| `main/modules/practices/service.ts` | + import `PracticesListResponse`, `findAllActivePractices`; + `listActivePractices()` |
+| `main/modules/practices/controller.ts` | + import `PracticesListResponse`, `listActivePractices`; + handler IPC `practices:listPractices` |
+| `main/preload.ts` | + `practices.listPractices` nel bridge |
+| `src/api/practices.ts` | + `listPractices()` client IPC |
+| `src/features/practices/usePractices.ts` | + import `useQuery`; + hook `useActivePractices()` con queryKey `['practices']` |
+| `src/pages/PratichePage.tsx` | Placeholder div → `<PraticheTable />`; banner post-creazione rimanente (senza il testo S3.1) |
+| `src/routes/Router.tsx` | + import `DettaglioPraticaPage`; + route `/pratiche/:id` |
+
+**Decisione implementativa:**
+S3.1 anticipata rispetto all'ordine backlog (E4→E5→E3) perché è prerequisito bloccante per S5.1 e S4.3: senza lista non esiste navigazione verso il dettaglio.
 
 **Verifiche:** `npm run typecheck` ✓ · `npm run build` ✓
 

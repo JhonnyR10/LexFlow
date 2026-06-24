@@ -9,7 +9,9 @@ const api: LexFlowApi = {
     generateCodiceIstanza: (input) =>
       ipcRenderer.invoke('practices:generateCodiceIstanza', input),
     createPractice: (input) =>
-      ipcRenderer.invoke('practices:createPractice', input)
+      ipcRenderer.invoke('practices:createPractice', input),
+    listPractices: () =>
+      ipcRenderer.invoke('practices:listPractices')
   },
   config: {
     listPhases: () => ipcRenderer.invoke('config:listPhases'),

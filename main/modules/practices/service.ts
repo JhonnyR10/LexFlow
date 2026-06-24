@@ -3,6 +3,7 @@ import type {
   GenerateCodiceIstanzaResponse,
   CreatePracticeInput,
   CreatePracticeResponse,
+  PracticesListResponse,
 } from '../../../shared/ipc'
 import {
   countPracticesByYear,
@@ -14,6 +15,7 @@ import {
   updatePracticeCurrentPhase,
   insertHistoryEvent,
   insertPecRecipients,
+  findAllActivePractices,
 } from './repository'
 import { getDb } from '../../database/connection'
 import { ValidationError, NotFoundError } from '../../errors/AppError'
@@ -51,6 +53,10 @@ export function generateCodiceIstanza(
 
 function buildCode(dateStr: string, sigla: string, n: number): string {
   return `${dateStr}_${sigla}_${String(n).padStart(3, '0')}`
+}
+
+export function listActivePractices(): PracticesListResponse {
+  return findAllActivePractices()
 }
 
 export function createPractice(input: CreatePracticeInput): CreatePracticeResponse {

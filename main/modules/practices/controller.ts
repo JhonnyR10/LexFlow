@@ -4,8 +4,9 @@ import { IPC_CHANNELS } from '../../../shared/ipc'
 import type {
   GenerateCodiceIstanzaResponse,
   CreatePracticeResponse,
+  PracticesListResponse,
 } from '../../../shared/ipc'
-import { generateCodiceIstanza, createPractice } from './service'
+import { generateCodiceIstanza, createPractice, listActivePractices } from './service'
 import { logger } from '../../utils/logger'
 
 function parseOrThrow<T>(schema: z.ZodType<T>, input: unknown): T {
@@ -42,6 +43,14 @@ const createPracticeSchema = z.object({
 })
 
 export function registerPracticesHandlers(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.PRACTICES_LIST,
+    (): PracticesListResponse => {
+      logger.debug('IPC', IPC_CHANNELS.PRACTICES_LIST)
+      return listActivePractices()
+    }
+  )
+
   ipcMain.handle(
     IPC_CHANNELS.PRACTICES_GENERATE_CODICE,
     (_, input: unknown): GenerateCodiceIstanzaResponse => {

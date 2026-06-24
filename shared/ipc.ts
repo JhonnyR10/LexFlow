@@ -51,7 +51,8 @@ export const IPC_CHANNELS = {
   ANAGRAFICHE_UPDATE_COLLABORATORE: 'anagrafiche:updateCollaboratore',
   ANAGRAFICHE_SET_COLLABORATORE_ACTIVE: 'anagrafiche:setCollaboratoreActive',
   PRACTICES_GENERATE_CODICE: 'practices:generateCodiceIstanza',
-  PRACTICES_CREATE: 'practices:createPractice'
+  PRACTICES_CREATE: 'practices:createPractice',
+  PRACTICES_LIST: 'practices:listPractices'
 } as const
 
 export type AppGetVersionResponse = string
@@ -420,6 +421,27 @@ export interface CreatePracticeResponse {
   currentPhaseId: number
 }
 
+export interface PracticeListItem {
+  id: number
+  codiceIstanza: string
+  nomeIstanza: string
+  dataUdienza: string | null
+  dataDeposito: string | null
+  autoritaGiudiziaria: string | null
+  currentPhaseId: number
+  currentPhaseKey: string | null
+  currentPhaseDisplayName: string | null
+  currentPhaseCategory: string | null
+  collaboratoreId: number | null
+  collaboratoreDenominazione: string | null
+  professionistaId: number | null
+  professionistaDenominazione: string | null
+  importoRichiesto: number | null
+  createdAt: string
+}
+
+export type PracticesListResponse = PracticeListItem[]
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
@@ -452,6 +474,7 @@ export interface LexFlowApi {
   practices: {
     generateCodiceIstanza(input: GenerateCodiceIstanzaInput): Promise<GenerateCodiceIstanzaResponse>
     createPractice(input: CreatePracticeInput): Promise<CreatePracticeResponse>
+    listPractices(): Promise<PracticesListResponse>
   }
   anagrafiche: {
     listProfessionisti(): Promise<AnagraficheListProfessionistiResponse>

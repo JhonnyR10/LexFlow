@@ -1,4 +1,4 @@
-import { count, like, eq } from 'drizzle-orm'
+import { count, like, eq, desc } from 'drizzle-orm'
 import { getDb } from '../../database/connection'
 import {
   practices,
@@ -7,8 +7,11 @@ import {
   transitions,
   historyEvents,
   pecRecipients,
+  professionisti,
+  collaboratori,
 } from '../../database/schema'
 import type { NewHistoryEventRow } from '../../database/schema'
+import type { PracticeListItem } from '../../../shared/ipc'
 
 export function countPracticesByYear(year: number): number {
   const prefix = `${year}%`
@@ -109,4 +112,52 @@ export function insertPecRecipients(
     .insert(pecRecipients)
     .values(indirizzi.map(indirizzo => ({ practiceId, contesto, indirizzo })))
     .run()
+}
+
+export function findAllActivePractices(): PracticeListItem[] {
+  const rows = getDb()
+    .select({
+      id:                        practices.id,
+      codiceIstanza:             practices.codiceIstanza,
+      nomeIstanza:               practices.nomeIstanza,
+      dataUdienza:               practices.dataUdienza,
+      dataDeposito:              practices.dataDeposito,
+      autoritaGiudiziaria:       practices.autoritaGiudiziaria,
+      currentPhaseId:            practices.currentPhaseId,
+      currentPhaseKey:           phases.key,
+      currentPhaseDisplayName:   phases.displayName,
+      currentPhaseCategory:      phases.category,
+      collaboratoreId:           practices.collaboratoreId,
+      collaboratoreDenominazione: collaboratori.denominazione,
+      professionistaId:          practices.professionistaId,
+      professionistaDenominazione: professionisti.denominazione,
+      importoRichiesto:          practices.importoRichiesto,
+      createdAt:                 practices.createdAt,
+    })
+    .from(practices)
+    .leftJoin(phases, eq(practices.currentPhaseId, phases.id))
+    .leftJoin(professionisti, eq(practices.professionistaId, professionisti.id))
+    .leftJoin(collaboratori, eq(practices.collaboratoreId, collaboratori.id))
+    .where(eq(practices.isTrashed, false))
+    .orderBy(desc(practices.createdAt))
+    .all()
+
+  return rows.map(r => ({
+    id:                          r.id,
+    codiceIstanza:               r.codiceIstanza,
+    nomeIstanza:                 r.nomeIstanza,
+    dataUdienza:                 r.dataUdienza ?? null,
+    dataDeposito:                r.dataDeposito ?? null,
+    autoritaGiudiziaria:         r.autoritaGiudiziaria ?? null,
+    currentPhaseId:              r.currentPhaseId,
+    currentPhaseKey:             r.currentPhaseKey ?? null,
+    currentPhaseDisplayName:     r.currentPhaseDisplayName ?? null,
+    currentPhaseCategory:        r.currentPhaseCategory ?? null,
+    collaboratoreId:             r.collaboratoreId ?? null,
+    collaboratoreDenominazione:  r.collaboratoreDenominazione ?? null,
+    professionistaId:            r.professionistaId ?? null,
+    professionistaDenominazione: r.professionistaDenominazione ?? null,
+    importoRichiesto:            r.importoRichiesto ?? null,
+    createdAt:                   r.createdAt,
+  }))
 }

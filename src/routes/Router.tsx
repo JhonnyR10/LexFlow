@@ -2,6 +2,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from '../components/layout/AppLayout'
 import { DashboardPage } from '../pages/DashboardPage'
 import { PratichePage } from '../pages/PratichePage'
+import { DettaglioPraticaPage } from '../pages/DettaglioPraticaPage'
 import { ReportPage } from '../pages/ReportPage'
 import { InstanceSettingsPage } from '../pages/InstanceSettingsPage'
 import { AppSettingsPage } from '../pages/AppSettingsPage'
@@ -16,6 +17,7 @@ export function Router(): React.JSX.Element {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/pratiche" element={<PratichePage />} />
+          <Route path="/pratiche/:id" element={<DettaglioPraticaPage />} />
           <Route path="/report" element={<ReportPage />} />
           <Route path="/impostazioni-istanze" element={<InstanceSettingsPage />} />
           <Route path="/impostazioni-app" element={<AppSettingsPage />} />

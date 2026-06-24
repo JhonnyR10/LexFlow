@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { NuovaPraticaModal } from '../features/practices/NuovaPraticaModal'
+import { PraticheTable } from '../features/practices/PraticheTable'
 
 export function PratichePage(): React.JSX.Element {
   const [modalOpen, setModalOpen] = useState(false)
@@ -33,19 +34,11 @@ export function PratichePage(): React.JSX.Element {
           border: '1px solid var(--color-success-border, #86efac)',
           borderRadius: '8px', fontSize: '13px', color: 'var(--color-text)', marginBottom: '20px'
         }}>
-          Pratica <strong>{lastCreated.codice}</strong> creata con successo.{' '}
-          La lista pratiche sarà disponibile in S3.1.
+          Pratica <strong>{lastCreated.codice}</strong> creata con successo.
         </div>
       )}
 
-      <div style={{
-        padding: '48px', textAlign: 'center',
-        color: 'var(--color-text-muted)', fontSize: '14px',
-        border: '2px dashed var(--color-border)', borderRadius: '10px'
-      }}>
-        <p style={{ margin: '0 0 8px' }}>La tabella pratiche attive sarà disponibile in S3.1.</p>
-        <p style={{ margin: 0 }}>Usa il pulsante "Nuova pratica" per inserire la prima pratica.</p>
-      </div>
+      <PraticheTable />
 
       {modalOpen && (
         <NuovaPraticaModal
