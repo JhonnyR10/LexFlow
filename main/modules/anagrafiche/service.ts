@@ -2,14 +2,23 @@ import type {
   ProfessionistaListItem,
   CreateProfessionistaInput,
   UpdateProfessionistaInput,
-  SetProfessionistaActiveInput
+  SetProfessionistaActiveInput,
+  CollaboratoreListItem,
+  CreateCollaboratoreInput,
+  UpdateCollaboratoreInput,
+  SetCollaboratoreActiveInput
 } from '../../../shared/ipc'
 import {
   findAllProfessionisti,
   findProfessionistaById,
   insertProfessionista,
   updateProfessionistaFields,
-  setProfessionistaIsActive
+  setProfessionistaIsActive,
+  findAllCollaboratori,
+  findCollaboratoreById,
+  insertCollaboratore,
+  updateCollaboratoreFields,
+  setCollaboratoreIsActive
 } from './repository'
 import { NotFoundError, ValidationError } from '../../errors/AppError'
 
@@ -96,5 +105,58 @@ export function setProfessionistaActive(
   // TODO: aggiungere guard "non disattivare se collegato a pratiche attive"
   // quando la tabella practices sarà disponibile (E4).
   setProfessionistaIsActive(input.id, input.isActive)
+  return { success: true }
+}
+
+// ---------- Collaboratori ----------
+
+export function listCollaboratori(): CollaboratoreListItem[] {
+  return findAllCollaboratori()
+}
+
+export function createCollaboratore(input: CreateCollaboratoreInput): CollaboratoreListItem {
+  if (!input.nome.trim()) throw new ValidationError('Il nome è obbligatorio')
+  if (!input.cognome.trim()) throw new ValidationError('Il cognome è obbligatorio')
+
+  const denominazione = buildDenominazione(input.cognome, input.nome, input.denominazione)
+
+  return insertCollaboratore({
+    nome:          input.nome.trim(),
+    cognome:       input.cognome.trim(),
+    denominazione,
+    codiceInterno: input.codiceInterno?.trim() || null,
+    note:          input.note?.trim() || null,
+    isActive:      true
+  })
+}
+
+export function updateCollaboratore(input: UpdateCollaboratoreInput): CollaboratoreListItem {
+  const existing = findCollaboratoreById(input.id)
+  if (!existing) throw new NotFoundError(`Collaboratore ${input.id} non trovato`)
+
+  if (!input.nome.trim()) throw new ValidationError('Il nome è obbligatorio')
+  if (!input.cognome.trim()) throw new ValidationError('Il cognome è obbligatorio')
+
+  const denominazione = buildDenominazione(input.cognome, input.nome, input.denominazione)
+
+  return updateCollaboratoreFields(input.id, {
+    nome:          input.nome.trim(),
+    cognome:       input.cognome.trim(),
+    denominazione,
+    codiceInterno: input.codiceInterno?.trim() || null,
+    note:          input.note?.trim() || null,
+    isActive:      input.isActive
+  })
+}
+
+export function setCollaboratoreActive(
+  input: SetCollaboratoreActiveInput
+): { success: true } {
+  const existing = findCollaboratoreById(input.id)
+  if (!existing) throw new NotFoundError(`Collaboratore ${input.id} non trovato`)
+
+  // TODO: aggiungere guard "non disattivare se collegato a pratiche attive"
+  // quando la tabella practices sarà disponibile (E4).
+  setCollaboratoreIsActive(input.id, input.isActive)
   return { success: true }
 }

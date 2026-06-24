@@ -1,8 +1,9 @@
 import { asc, eq } from 'drizzle-orm'
 import { getDb } from '../../database/connection'
-import { professionisti } from '../../database/schema'
-import type { ProfessionistaListItem } from '../../../shared/ipc'
+import { professionisti, collaboratori } from '../../database/schema'
+import type { ProfessionistaListItem, CollaboratoreListItem } from '../../../shared/ipc'
 import type { NewProfessionistaRow, ProfessionistaRow } from '../../database/schema/professionisti'
+import type { NewCollaboratoreRow, CollaboratoreRow } from '../../database/schema/collaboratori'
 
 function toListItem(row: ProfessionistaRow): ProfessionistaListItem {
   return {
@@ -57,5 +58,59 @@ export function setProfessionistaIsActive(id: number, isActive: boolean): void {
     .update(professionisti)
     .set({ isActive })
     .where(eq(professionisti.id, id))
+    .run()
+}
+
+// ---------- Collaboratori ----------
+
+function toCollaboratoreListItem(row: CollaboratoreRow): CollaboratoreListItem {
+  return {
+    id:            row.id,
+    nome:          row.nome,
+    cognome:       row.cognome,
+    denominazione: row.denominazione,
+    codiceInterno: row.codiceInterno ?? null,
+    note:          row.note ?? null,
+    isActive:      row.isActive
+  }
+}
+
+export function findAllCollaboratori(): CollaboratoreListItem[] {
+  const rows = getDb()
+    .select()
+    .from(collaboratori)
+    .orderBy(asc(collaboratori.denominazione))
+    .all()
+  return rows.map(toCollaboratoreListItem)
+}
+
+export function findCollaboratoreById(id: number): CollaboratoreListItem | undefined {
+  const row = getDb().select().from(collaboratori).where(eq(collaboratori.id, id)).get()
+  return row ? toCollaboratoreListItem(row) : undefined
+}
+
+export function insertCollaboratore(data: NewCollaboratoreRow): CollaboratoreListItem {
+  const [row] = getDb().insert(collaboratori).values(data).returning().all()
+  return toCollaboratoreListItem(row)
+}
+
+export function updateCollaboratoreFields(
+  id: number,
+  data: Omit<NewCollaboratoreRow, 'id'>
+): CollaboratoreListItem {
+  const [row] = getDb()
+    .update(collaboratori)
+    .set(data)
+    .where(eq(collaboratori.id, id))
+    .returning()
+    .all()
+  return toCollaboratoreListItem(row)
+}
+
+export function setCollaboratoreIsActive(id: number, isActive: boolean): void {
+  getDb()
+    .update(collaboratori)
+    .set({ isActive })
+    .where(eq(collaboratori.id, id))
     .run()
 }

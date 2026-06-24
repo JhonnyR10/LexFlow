@@ -5,13 +5,21 @@ import type {
   AnagraficheListProfessionistiResponse,
   AnagraficheCreateProfessionistaResponse,
   AnagraficheUpdateProfessionistaResponse,
-  AnagraficheSetProfessionistaActiveResponse
+  AnagraficheSetProfessionistaActiveResponse,
+  AnagraficheListCollaboratoriResponse,
+  AnagraficheCreateCollaboratoreResponse,
+  AnagraficheUpdateCollaboratoreResponse,
+  AnagraficheSetCollaboratoreActiveResponse
 } from '../../../shared/ipc'
 import {
   listProfessionisti,
   createProfessionista,
   updateProfessionista,
-  setProfessionistaActive
+  setProfessionistaActive,
+  listCollaboratori,
+  createCollaboratore,
+  updateCollaboratore,
+  setCollaboratoreActive
 } from './service'
 import { logger } from '../../utils/logger'
 
@@ -57,6 +65,29 @@ const setProfessionistaActiveSchema = z.object({
   isActive: z.boolean()
 })
 
+const createCollaboratoreSchema = z.object({
+  nome:          z.string().min(1, 'Il nome è obbligatorio').max(100),
+  cognome:       z.string().min(1, 'Il cognome è obbligatorio').max(100),
+  denominazione: z.string().max(200).nullable(),
+  codiceInterno: z.string().max(50).nullable(),
+  note:          z.string().max(2000).nullable()
+})
+
+const updateCollaboratoreSchema = z.object({
+  id:            z.number().int().positive(),
+  nome:          z.string().min(1, 'Il nome è obbligatorio').max(100),
+  cognome:       z.string().min(1, 'Il cognome è obbligatorio').max(100),
+  denominazione: z.string().max(200).nullable(),
+  codiceInterno: z.string().max(50).nullable(),
+  note:          z.string().max(2000).nullable(),
+  isActive:      z.boolean()
+})
+
+const setCollaboratoreActiveSchema = z.object({
+  id:       z.number().int().positive(),
+  isActive: z.boolean()
+})
+
 export function registerAnagraficheHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.ANAGRAFICHE_LIST_PROFESSIONISTI,
@@ -90,6 +121,41 @@ export function registerAnagraficheHandlers(): void {
       logger.debug('IPC', IPC_CHANNELS.ANAGRAFICHE_SET_PROFESSIONISTA_ACTIVE)
       const parsed = parseOrThrow(setProfessionistaActiveSchema, input)
       return setProfessionistaActive(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.ANAGRAFICHE_LIST_COLLABORATORI,
+    (): AnagraficheListCollaboratoriResponse => {
+      logger.debug('IPC', IPC_CHANNELS.ANAGRAFICHE_LIST_COLLABORATORI)
+      return listCollaboratori()
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.ANAGRAFICHE_CREATE_COLLABORATORE,
+    (_, input: unknown): AnagraficheCreateCollaboratoreResponse => {
+      logger.debug('IPC', IPC_CHANNELS.ANAGRAFICHE_CREATE_COLLABORATORE)
+      const parsed = parseOrThrow(createCollaboratoreSchema, input)
+      return createCollaboratore(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.ANAGRAFICHE_UPDATE_COLLABORATORE,
+    (_, input: unknown): AnagraficheUpdateCollaboratoreResponse => {
+      logger.debug('IPC', IPC_CHANNELS.ANAGRAFICHE_UPDATE_COLLABORATORE)
+      const parsed = parseOrThrow(updateCollaboratoreSchema, input)
+      return updateCollaboratore(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.ANAGRAFICHE_SET_COLLABORATORE_ACTIVE,
+    (_, input: unknown): AnagraficheSetCollaboratoreActiveResponse => {
+      logger.debug('IPC', IPC_CHANNELS.ANAGRAFICHE_SET_COLLABORATORE_ACTIVE)
+      const parsed = parseOrThrow(setCollaboratoreActiveSchema, input)
+      return setCollaboratoreActive(parsed)
     }
   )
 }

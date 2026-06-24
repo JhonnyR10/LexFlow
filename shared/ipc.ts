@@ -45,7 +45,11 @@ export const IPC_CHANNELS = {
   ANAGRAFICHE_LIST_PROFESSIONISTI: 'anagrafiche:listProfessionisti',
   ANAGRAFICHE_CREATE_PROFESSIONISTA: 'anagrafiche:createProfessionista',
   ANAGRAFICHE_UPDATE_PROFESSIONISTA: 'anagrafiche:updateProfessionista',
-  ANAGRAFICHE_SET_PROFESSIONISTA_ACTIVE: 'anagrafiche:setProfessionistaActive'
+  ANAGRAFICHE_SET_PROFESSIONISTA_ACTIVE: 'anagrafiche:setProfessionistaActive',
+  ANAGRAFICHE_LIST_COLLABORATORI: 'anagrafiche:listCollaboratori',
+  ANAGRAFICHE_CREATE_COLLABORATORE: 'anagrafiche:createCollaboratore',
+  ANAGRAFICHE_UPDATE_COLLABORATORE: 'anagrafiche:updateCollaboratore',
+  ANAGRAFICHE_SET_COLLABORATORE_ACTIVE: 'anagrafiche:setCollaboratoreActive'
 } as const
 
 export type AppGetVersionResponse = string
@@ -341,6 +345,46 @@ export type AnagraficheCreateProfessionistaResponse = ProfessionistaListItem
 export type AnagraficheUpdateProfessionistaResponse = ProfessionistaListItem
 export type AnagraficheSetProfessionistaActiveResponse = { success: true }
 
+// ---------- Anagrafiche — Collaboratori ----------
+
+export interface CollaboratoreListItem {
+  id: number
+  nome: string
+  cognome: string
+  denominazione: string
+  codiceInterno: string | null
+  note: string | null
+  isActive: boolean
+}
+
+export interface CreateCollaboratoreInput {
+  nome: string
+  cognome: string
+  denominazione: string | null
+  codiceInterno: string | null
+  note: string | null
+}
+
+export interface UpdateCollaboratoreInput {
+  id: number
+  nome: string
+  cognome: string
+  denominazione: string | null
+  codiceInterno: string | null
+  note: string | null
+  isActive: boolean
+}
+
+export interface SetCollaboratoreActiveInput {
+  id: number
+  isActive: boolean
+}
+
+export type AnagraficheListCollaboratoriResponse = CollaboratoreListItem[]
+export type AnagraficheCreateCollaboratoreResponse = CollaboratoreListItem
+export type AnagraficheUpdateCollaboratoreResponse = CollaboratoreListItem
+export type AnagraficheSetCollaboratoreActiveResponse = { success: true }
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
@@ -375,5 +419,9 @@ export interface LexFlowApi {
     createProfessionista(input: CreateProfessionistaInput): Promise<AnagraficheCreateProfessionistaResponse>
     updateProfessionista(input: UpdateProfessionistaInput): Promise<AnagraficheUpdateProfessionistaResponse>
     setProfessionistaActive(input: SetProfessionistaActiveInput): Promise<AnagraficheSetProfessionistaActiveResponse>
+    listCollaboratori(): Promise<AnagraficheListCollaboratoriResponse>
+    createCollaboratore(input: CreateCollaboratoreInput): Promise<AnagraficheCreateCollaboratoreResponse>
+    updateCollaboratore(input: UpdateCollaboratoreInput): Promise<AnagraficheUpdateCollaboratoreResponse>
+    setCollaboratoreActive(input: SetCollaboratoreActiveInput): Promise<AnagraficheSetCollaboratoreActiveResponse>
   }
 }

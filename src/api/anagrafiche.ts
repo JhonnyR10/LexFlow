@@ -5,7 +5,14 @@ import type {
   AnagraficheSetProfessionistaActiveResponse,
   CreateProfessionistaInput,
   UpdateProfessionistaInput,
-  SetProfessionistaActiveInput
+  SetProfessionistaActiveInput,
+  AnagraficheListCollaboratoriResponse,
+  AnagraficheCreateCollaboratoreResponse,
+  AnagraficheUpdateCollaboratoreResponse,
+  AnagraficheSetCollaboratoreActiveResponse,
+  CreateCollaboratoreInput,
+  UpdateCollaboratoreInput,
+  SetCollaboratoreActiveInput
 } from '../../shared/ipc'
 
 export const anagraficheApi = {
@@ -25,5 +32,23 @@ export const anagraficheApi = {
   setProfessionistaActive: (
     input: SetProfessionistaActiveInput
   ): Promise<AnagraficheSetProfessionistaActiveResponse> =>
-    window.api.anagrafiche.setProfessionistaActive(input)
+    window.api.anagrafiche.setProfessionistaActive(input),
+
+  listCollaboratori: (): Promise<AnagraficheListCollaboratoriResponse> =>
+    window.api.anagrafiche.listCollaboratori(),
+
+  createCollaboratore: (
+    input: CreateCollaboratoreInput
+  ): Promise<AnagraficheCreateCollaboratoreResponse> =>
+    window.api.anagrafiche.createCollaboratore(input),
+
+  updateCollaboratore: (
+    input: UpdateCollaboratoreInput
+  ): Promise<AnagraficheUpdateCollaboratoreResponse> =>
+    window.api.anagrafiche.updateCollaboratore(input),
+
+  setCollaboratoreActive: (
+    input: SetCollaboratoreActiveInput
+  ): Promise<AnagraficheSetCollaboratoreActiveResponse> =>
+    window.api.anagrafiche.setCollaboratoreActive(input)
 }

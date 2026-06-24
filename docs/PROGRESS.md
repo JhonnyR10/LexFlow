@@ -20,7 +20,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S1.4   | CRUD menu a tendina                                          | FATTO    | Backend: 7 canali IPC con invarianti (key immutabile, value univoco/immutabile). UI: layout due livelli, 5 set standard visibili. Delete fisica e guard d'uso rinviati (TODO).                                           |
 | S1.5   | Regola PEC condizionale                                      | FATTO    | Schema migrato: tipo pec + conditionalOnFieldId/conditionalValue. Visibilità condizionale nel form campo, badge nella tabella, pulsante convenience PEC.                                                                  |
 | S2.1   | CRUD Professionisti                                          | FATTO    | Nuovo modulo anagrafiche (IPC namespace `anagrafiche:`), schema Drizzle + migrazione incrementale 0001_*.sql, CRUD completo, denominazione auto-derivata da cognome+nome, validazione CF/email morbida.                  |
-| S2.2   | CRUD Collaboratori                                           | TODO     |                                                                                                                                                                                                                          |
+| S2.2   | CRUD Collaboratori                                           | FATTO    | Modulo anagrafiche esteso: schema Drizzle + migrazione incrementale 0002_*.sql, CRUD completo, denominazione auto-derivata da cognome+nome, codiceInterno opzionale.                                                     |
 | S3.1   | Tabella pratiche attive                                      | TODO     |                                                                                                                                                                                                                          |
 | S3.2   | Ricerca globale                                              | TODO     |                                                                                                                                                                                                                          |
 | S3.3   | Filtri base                                                  | TODO     |                                                                                                                                                                                                                          |
@@ -556,3 +556,40 @@ Nota: le transizioni → Sospesa e → Annullata dei rami post-decreto usano but
 - CLAUDE.md aggiornato: descrizioni script allineate alla realtà di electron-vite (dev/desktop avviano l'intera app, non solo il renderer).
 
 **Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓ (finestra aperta con placeholder "LexFlow" e versione via IPC)
+
+---
+
+### 2026-06-24 — S2.2: CRUD Collaboratori
+
+**Migrazione DB:** incrementale `drizzle/0002_even_alice.sql` (`CREATE TABLE collaboratori`, 7 colonne). Nessun reset — dati dev esistenti conservati.
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `main/database/schema/collaboratori.ts` | Schema Drizzle: id, nome, cognome, denominazione, codiceInterno (nullable), note (nullable), isActive |
+| `src/features/anagrafiche/collaboratori/useCollaboratori.ts` | TanStack Query: useAllCollaboratori, useCreateCollaboratore, useUpdateCollaboratore, useSetCollaboratoreActive |
+| `src/features/anagrafiche/collaboratori/CollaboratoreFormModal.tsx` | Modal crea/modifica: 5 campi (cognome*, nome*, denominazione* auto-sync, codiceInterno, note), isActive solo in edit |
+| `src/features/anagrafiche/collaboratori/CollaboratoriSection.tsx` | Tabella (denominazione, codice interno, stato, azioni), loading/empty/error, toggle attiva/disattiva con confirm |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `main/database/schema/index.ts` | `export * from './collaboratori'` |
+| `shared/ipc.ts` | 4 canali `anagrafiche:*` collaboratori, tipi CollaboratoreListItem/Create/Update/SetActive, `LexFlowApi.anagrafiche` esteso |
+| `main/modules/anagrafiche/repository.ts` | +5 funzioni: findAllCollaboratori (ordinati per denominazione ASC), findCollaboratoreById, insertCollaboratore, updateCollaboratoreFields, setCollaboratoreIsActive |
+| `main/modules/anagrafiche/service.ts` | +4 funzioni: listCollaboratori, createCollaboratore, updateCollaboratore, setCollaboratoreActive; invarianti nome/cognome/denominazione; TODO guard pratiche documentato (E4) |
+| `main/modules/anagrafiche/controller.ts` | +4 handler IPC in registerAnagraficheHandlers; zod schema collaboratori (codiceInterno max 50) |
+| `main/preload.ts` | +4 metodi `anagrafiche:` collaboratori nel contextBridge |
+| `src/api/anagrafiche.ts` | +4 metodi collaboratori |
+| `src/pages/InstanceSettingsPage.tsx` | Placeholder "Collaboratori — in arrivo (S2.2)" → `<CollaboratoriSection />`; `comingSoonStyle` rimosso (non più usato) |
+
+**Invarianti service:**
+1. `nome` non vuoto → ValidationError
+2. `cognome` non vuoto → ValidationError
+3. `denominazione` null/vuota → generata da `${cognome} ${nome}`
+4. `codiceInterno`: opzionale, nessun formato imposto (max 50 chars)
+5. Guard pratiche: TODO documentato (E4)
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run build` ✓

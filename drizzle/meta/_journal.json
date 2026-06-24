@@ -15,6 +15,13 @@
       "when": 1782319414616,
       "tag": "0001_safe_black_bolt",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1782321092481,
+      "tag": "0002_even_alice",
+      "breakpoints": true
     }
   ]
 }

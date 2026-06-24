@@ -38,7 +38,15 @@ const api: LexFlowApi = {
     updateProfessionista: (input) =>
       ipcRenderer.invoke('anagrafiche:updateProfessionista', input),
     setProfessionistaActive: (input) =>
-      ipcRenderer.invoke('anagrafiche:setProfessionistaActive', input)
+      ipcRenderer.invoke('anagrafiche:setProfessionistaActive', input),
+    listCollaboratori: () =>
+      ipcRenderer.invoke('anagrafiche:listCollaboratori'),
+    createCollaboratore: (input) =>
+      ipcRenderer.invoke('anagrafiche:createCollaboratore', input),
+    updateCollaboratore: (input) =>
+      ipcRenderer.invoke('anagrafiche:updateCollaboratore', input),
+    setCollaboratoreActive: (input) =>
+      ipcRenderer.invoke('anagrafiche:setCollaboratoreActive', input)
   }
 }
 
