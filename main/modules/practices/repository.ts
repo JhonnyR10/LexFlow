@@ -1,6 +1,14 @@
 import { count, like, eq } from 'drizzle-orm'
 import { getDb } from '../../database/connection'
-import { practices, appSettings } from '../../database/schema'
+import {
+  practices,
+  appSettings,
+  phases,
+  transitions,
+  historyEvents,
+  pecRecipients,
+} from '../../database/schema'
+import type { NewHistoryEventRow } from '../../database/schema'
 
 export function countPracticesByYear(year: number): number {
   const prefix = `${year}%`
@@ -27,4 +35,78 @@ export function getSiglaCodice(): string {
     .from(appSettings)
     .get()
   return row?.siglaCodice ?? 'NP'
+}
+
+export function findInitialPhase() {
+  return getDb()
+    .select()
+    .from(phases)
+    .where(eq(phases.isInitial, true))
+    .get()
+}
+
+export function findAutomaticTransitionFromPhase(phaseId: number) {
+  return getDb()
+    .select()
+    .from(transitions)
+    .where(eq(transitions.fromPhaseId, phaseId))
+    .all()
+    .find(t => t.isAutomatic && t.toPhaseId != null) ?? null
+}
+
+export function insertPractice(data: {
+  codiceIstanza: string
+  nomeIstanza: string
+  collaboratoreId: number | null
+  professionistaId: number | null
+  tipologiaAttivita: string | null
+  dataUdienza: string
+  competenza: string | null
+  autoritaGiudiziaria: string | null
+  dataDeposito: string | null
+  modalitaDeposito: string | null
+  importoRichiesto: number | null
+  note: string | null
+  currentPhaseId: number
+  customValues: string
+  createdAt: string
+  updatedAt: string
+}): number {
+  const result = getDb()
+    .insert(practices)
+    .values(data)
+    .run()
+  return Number(result.lastInsertRowid)
+}
+
+export function updatePracticeCurrentPhase(
+  practiceId: number,
+  newPhaseId: number,
+  updatedAt: string
+): void {
+  getDb()
+    .update(practices)
+    .set({ currentPhaseId: newPhaseId, updatedAt, version: 2 })
+    .where(eq(practices.id, practiceId))
+    .run()
+}
+
+export function insertHistoryEvent(data: Omit<NewHistoryEventRow, 'id'>): number {
+  const result = getDb()
+    .insert(historyEvents)
+    .values(data)
+    .run()
+  return Number(result.lastInsertRowid)
+}
+
+export function insertPecRecipients(
+  practiceId: number,
+  indirizzi: string[],
+  contesto: 'deposito' | 'scp' | 'altro'
+): void {
+  if (indirizzi.length === 0) return
+  getDb()
+    .insert(pecRecipients)
+    .values(indirizzi.map(indirizzo => ({ practiceId, contesto, indirizzo })))
+    .run()
 }

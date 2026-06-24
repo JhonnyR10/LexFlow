@@ -1,6 +1,22 @@
-import type { GenerateCodiceIstanzaInput, GenerateCodiceIstanzaResponse } from '../../../shared/ipc'
-import { countPracticesByYear, existsCodiceIstanza, getSiglaCodice } from './repository'
-import { ValidationError } from '../../errors/AppError'
+import type {
+  GenerateCodiceIstanzaInput,
+  GenerateCodiceIstanzaResponse,
+  CreatePracticeInput,
+  CreatePracticeResponse,
+} from '../../../shared/ipc'
+import {
+  countPracticesByYear,
+  existsCodiceIstanza,
+  getSiglaCodice,
+  findInitialPhase,
+  findAutomaticTransitionFromPhase,
+  insertPractice,
+  updatePracticeCurrentPhase,
+  insertHistoryEvent,
+  insertPecRecipients,
+} from './repository'
+import { getDb } from '../../database/connection'
+import { ValidationError, NotFoundError } from '../../errors/AppError'
 
 // Genera il prossimo codice istanza disponibile.
 // Formato: AAAAMMGG_SIGLA_NNN (es. 20260624_NP_001).
@@ -35,4 +51,96 @@ export function generateCodiceIstanza(
 
 function buildCode(dateStr: string, sigla: string, n: number): string {
   return `${dateStr}_${sigla}_${String(n).padStart(3, '0')}`
+}
+
+export function createPractice(input: CreatePracticeInput): CreatePracticeResponse {
+  if (!input.dataUdienza) {
+    throw new ValidationError('dataUdienza è obbligatoria')
+  }
+
+  const initialPhase = findInitialPhase()
+  if (!initialPhase) {
+    throw new NotFoundError('Nessuna fase iniziale configurata. Verificare le impostazioni workflow.')
+  }
+
+  const now = new Date().toISOString()
+  const year = parseInt(input.dataUdienza.slice(0, 4), 10)
+  const dateStr = input.dataUdienza.replace(/-/g, '')
+
+  let result: CreatePracticeResponse
+
+  getDb().transaction(() => {
+    // Codice istanza: usa quello fornito se presente e unico, altrimenti rigenera
+    let codice = input.codiceIstanza?.trim() || ''
+    if (!codice || existsCodiceIstanza(codice)) {
+      const sigla = getSiglaCodice()
+      const existing = countPracticesByYear(year)
+      let n = existing + 1
+      codice = buildCode(dateStr, sigla, n)
+      while (existsCodiceIstanza(codice)) {
+        n++
+        codice = buildCode(dateStr, sigla, n)
+      }
+    }
+
+    const nomeIstanza = input.nomeIstanza?.trim() || `${dateStr}_NOTA_SPESE`
+
+    const practiceId = insertPractice({
+      codiceIstanza:       codice,
+      nomeIstanza,
+      collaboratoreId:     input.collaboratoreId ?? null,
+      professionistaId:    input.professionistaId ?? null,
+      tipologiaAttivita:   input.tipologiaAttivita ?? null,
+      dataUdienza:         input.dataUdienza,
+      competenza:          input.competenza ?? null,
+      autoritaGiudiziaria: input.autoritaGiudiziaria ?? null,
+      dataDeposito:        input.dataDeposito ?? null,
+      modalitaDeposito:    input.modalitaDeposito ?? null,
+      importoRichiesto:    input.importoRichiesto ?? null,
+      note:                input.note ?? null,
+      currentPhaseId:      initialPhase.id,
+      customValues:        JSON.stringify(input.customValues ?? {}),
+      createdAt:           now,
+      updatedAt:           now,
+    })
+
+    insertHistoryEvent({
+      practiceId,
+      timestamp:   now,
+      type:        'created',
+      title:       'Pratica depositata',
+      fromPhaseId: null,
+      toPhaseId:   initialPhase.id,
+      note:        null,
+      payload:     JSON.stringify({ codiceIstanza: codice }),
+    })
+
+    // Esegui la transizione automatica dalla fase iniziale (depositata → in_attesa_decreto)
+    const autoTransition = findAutomaticTransitionFromPhase(initialPhase.id)
+    let currentPhaseId = initialPhase.id
+
+    if (autoTransition?.toPhaseId != null) {
+      updatePracticeCurrentPhase(practiceId, autoTransition.toPhaseId, now)
+      insertHistoryEvent({
+        practiceId,
+        timestamp:   now,
+        type:        'auto_transition',
+        title:       'Pratica posta in attesa di decreto',
+        fromPhaseId: initialPhase.id,
+        toPhaseId:   autoTransition.toPhaseId,
+        note:        null,
+        payload:     '{}',
+      })
+      currentPhaseId = autoTransition.toPhaseId
+    }
+
+    // PEC deposito
+    if (input.pecDestinatari && input.pecDestinatari.length > 0) {
+      insertPecRecipients(practiceId, input.pecDestinatari, 'deposito')
+    }
+
+    result = { id: practiceId, codiceIstanza: codice, currentPhaseId }
+  })
+
+  return result!
 }

@@ -26,7 +26,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S3.3   | Filtri base                                                  | TODO     |                                                                                                                                                                                                                          |
 | S3.4   | Ordinamento + selezione multipla                             | TODO     |                                                                                                                                                                                                                          |
 | S4.1   | Generazione codice istanza                                   | FATTO    | Schema practices (22 col, FK a phases/professionisti/collaboratori), siglaCodice in AppSettings, migrazione 0003_*.sql, IPC practices:generateCodiceIstanza, formato AAAAMMGG_SIGLA_NNN.                                 |
-| S4.2   | Form Nuova pratica                                           | TODO     |                                                                                                                                                                                                                          |
+| S4.2   | Form Nuova pratica                                           | FATTO    | Modal Nuova pratica: 6 sezioni, campi fissi + campi custom generali + PEC deposito. Backend: createPractice con transazione, auto-transizione depositata→in_attesa_decreto, HistoryEvent. Nuove tabelle: history_events, pec_recipients. Migrazione 0004_*.sql. |                                                                                                                                                                                                                          |
 | S4.3   | Modifica pratica + storico                                   | TODO     |                                                                                                                                                                                                                          |
 | S5.1   | Dettaglio pratica                                            | TODO     |                                                                                                                                                                                                                          |
 | S5.2   | Pulsanti dinamici = transizioni                              | TODO     |                                                                                                                                                                                                                          |
@@ -593,6 +593,55 @@ Nota: le transizioni → Sospesa e → Annullata dei rami post-decreto usano but
 5. Guard pratiche: TODO documentato (E4)
 
 **Verifiche:** `npm run typecheck` ✓ · `npm run build` ✓
+
+---
+
+### 2026-06-25 — S4.2: Form Nuova pratica
+
+**Nuove tabelle DB:** migrazione incrementale `drizzle/0004_same_wolfsbane.sql`.
+
+| Tabella | Colonne |
+| ------- | ------- |
+| `history_events` | id, practiceId (FK→practices), timestamp, type, title, fromPhaseId (FK→phases, nullable), toPhaseId (FK→phases, nullable), note, payload (JSON) |
+| `pec_recipients` | id, practiceId (FK→practices), transitionRecordId (nullable — FK futura verso transition_records in E5), contesto (deposito\|scp\|altro), indirizzo |
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `main/database/schema/historyEvents.ts` | Schema Drizzle `history_events` |
+| `main/database/schema/pecRecipients.ts` | Schema Drizzle `pec_recipients` |
+| `src/features/practices/usePractices.ts` | TanStack Query: `useCreatePractice()` con invalidazione query `['practices']` |
+| `src/features/practices/NuovaPraticaModal.tsx` | Modal Nuova pratica: 6 sezioni fisse + campi custom generali dinamici + PEC deposito condizionale. Componenti `DynamicField` (tutti i tipi tranne `file`) e `PecBlock` (lista indirizzi con +/−). Preview codice istanza aggiornata live su cambio dataUdienza. Auto-gen nomeIstanza `YYYYMMDD_NOTA_SPESE`. |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `main/database/schema/index.ts` | + export historyEvents, pecRecipients |
+| `shared/ipc.ts` | + canale `PRACTICES_CREATE`, tipi `CreatePracticeInput` / `CreatePracticeResponse`; esteso `LexFlowApi.practices` |
+| `main/modules/practices/repository.ts` | + `findInitialPhase`, `findAutomaticTransitionFromPhase`, `insertPractice`, `updatePracticeCurrentPhase`, `insertHistoryEvent`, `insertPecRecipients` |
+| `main/modules/practices/service.ts` | + `createPractice` (transazione atomica: genera codice inside tx, insert practice, HistoryEvent "Pratica depositata", auto-transizione → HistoryEvent "In attesa di decreto", PEC recipients) |
+| `main/modules/practices/controller.ts` | + handler IPC `practices:createPractice` con schema zod |
+| `main/preload.ts` | + `practices.createPractice` nel bridge |
+| `src/api/practices.ts` | + `createPractice` |
+| `src/pages/PratichePage.tsx` | Placeholder → pulsante "+ Nuova pratica" + gestione modal + banner conferma post-creazione |
+
+**Invarianti service `createPractice`:**
+1. `dataUdienza` obbligatoria, formato YYYY-MM-DD → ValidationError
+2. Deve esistere una fase con `isInitial=true` → NotFoundError se assente
+3. `codiceIstanza` rigenerato inside tx con loop di unicità (race-condition safe anche in mono-utente)
+4. Auto-transizione eseguita solo se esiste una transizione con `isAutomatic=true` dalla fase iniziale (opzionale; senza transizione la pratica resta in `depositata`)
+5. PEC recipients inseriti solo se `pecDestinatari` non vuoto (indirizzi vuoti filtrati lato renderer)
+6. `transitionRecordId` in `pec_recipients` è null in S4.2 (FK sarà popolata in E5 con `transition_records`)
+
+**Campi custom generali:** il modal carica `useFields({ scope: 'general' })` e rende ogni campo attivo con il componente `DynamicField`. Visibilità condizionale rispettata. Tipo `file` mostra placeholder "Upload disponibile in E7".
+
+**Riutilizzati:** `useMenuSets()`, `useAllProfessionisti()`, `useAllCollaboratori()`, `useFields()` — nessuna modifica.
+
+**Nota CSS:** `--color-success-bg` non è definita in `global.css` (aggiunta inline come fallback `#f0fdf4` nel banner di conferma). Da aggiungere in S11.1 con il tema.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run build` ✓ · `npm run desktop` ✓ (app avviata, migrazione applicata, tabelle create) · Flusso createPractice simulato su DB reale con sqlite3 ✓ (practice con `current_phase_id=in_attesa_decreto`, 2 history_events, PEC recipients) · Funzionalità preesistenti integre ✓
 
 ---
 

@@ -50,7 +50,8 @@ export const IPC_CHANNELS = {
   ANAGRAFICHE_CREATE_COLLABORATORE: 'anagrafiche:createCollaboratore',
   ANAGRAFICHE_UPDATE_COLLABORATORE: 'anagrafiche:updateCollaboratore',
   ANAGRAFICHE_SET_COLLABORATORE_ACTIVE: 'anagrafiche:setCollaboratoreActive',
-  PRACTICES_GENERATE_CODICE: 'practices:generateCodiceIstanza'
+  PRACTICES_GENERATE_CODICE: 'practices:generateCodiceIstanza',
+  PRACTICES_CREATE: 'practices:createPractice'
 } as const
 
 export type AppGetVersionResponse = string
@@ -396,6 +397,29 @@ export interface GenerateCodiceIstanzaResponse {
   codice: string  // formato AAAAMMGG_SIGLA_NNN — pre-riempimento UI; il codice definitivo è generato/verificato inside la transazione di insert in S4.2
 }
 
+export interface CreatePracticeInput {
+  codiceIstanza?: string                  // se assente viene rigenerato server-side inside la tx
+  nomeIstanza?: string                    // se assente viene auto-generato YYYYMMDD_NOTA_SPESE
+  collaboratoreId?: number | null
+  professionistaId?: number | null
+  tipologiaAttivita?: string
+  dataUdienza: string                     // ISO YYYY-MM-DD — obbligatoria
+  competenza?: string
+  autoritaGiudiziaria?: string
+  dataDeposito?: string
+  modalitaDeposito?: string
+  importoRichiesto?: number | null
+  note?: string
+  customValues?: Record<string, unknown>
+  pecDestinatari?: string[]               // indirizzi email; usati solo se modalitaDeposito='pec'
+}
+
+export interface CreatePracticeResponse {
+  id: number
+  codiceIstanza: string
+  currentPhaseId: number
+}
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
@@ -427,6 +451,7 @@ export interface LexFlowApi {
   }
   practices: {
     generateCodiceIstanza(input: GenerateCodiceIstanzaInput): Promise<GenerateCodiceIstanzaResponse>
+    createPractice(input: CreatePracticeInput): Promise<CreatePracticeResponse>
   }
   anagrafiche: {
     listProfessionisti(): Promise<AnagraficheListProfessionistiResponse>
