@@ -19,7 +19,12 @@ import type {
   ConfigCreateMenuOptionResponse,
   ConfigUpdateMenuOptionResponse,
   ConfigSetMenuOptionActiveResponse,
-  ConfigReorderMenuOptionsResponse
+  ConfigReorderMenuOptionsResponse,
+  ConfigListFieldsResponse,
+  ConfigCreateFieldResponse,
+  ConfigUpdateFieldResponse,
+  ConfigSetFieldActiveResponse,
+  ConfigReorderFieldsResponse
 } from '../../../shared/ipc'
 import {
   listActivePhases,
@@ -39,7 +44,12 @@ import {
   createMenuOption,
   updateMenuOption,
   setMenuOptionActive,
-  reorderMenuOptions
+  reorderMenuOptions,
+  listFields,
+  createField,
+  updateField,
+  setFieldActive,
+  reorderFields
 } from './service'
 import { logger } from '../../utils/logger'
 
@@ -285,6 +295,101 @@ export function registerConfigHandlers(): void {
       logger.debug('IPC', IPC_CHANNELS.CONFIG_REORDER_MENU_OPTIONS)
       const parsed = parseOrThrow(reorderMenuOptionsSchema, input)
       return reorderMenuOptions(parsed)
+    }
+  )
+
+  // ---------- Field defs ----------
+
+  const fieldTypeEnum = z.enum([
+    'testo_breve',
+    'testo_lungo',
+    'numero',
+    'importo',
+    'data',
+    'menu',
+    'si_no',
+    'note',
+    'file'
+  ] as const)
+
+  const listFieldsFilterSchema = z
+    .object({
+      scope: z.enum(['general', 'transition']).optional(),
+      transitionId: z.number().int().positive().optional()
+    })
+    .optional()
+
+  const createFieldSchema = z.object({
+    scope: z.enum(['general', 'transition']),
+    transitionId: z.number().int().positive().nullable(),
+    label: z.string().min(1, "L'etichetta è obbligatoria").max(100),
+    type: fieldTypeEnum,
+    required: z.boolean(),
+    visibleInTable: z.boolean(),
+    usableInFilter: z.boolean(),
+    includeInExport: z.boolean(),
+    menuSetId: z.number().int().positive().nullable()
+  })
+
+  const updateFieldSchema = z.object({
+    id: z.number().int().positive(),
+    label: z.string().min(1, "L'etichetta è obbligatoria").max(100),
+    type: fieldTypeEnum,
+    required: z.boolean(),
+    visibleInTable: z.boolean(),
+    usableInFilter: z.boolean(),
+    includeInExport: z.boolean(),
+    menuSetId: z.number().int().positive().nullable()
+  })
+
+  const setFieldActiveSchema = z.object({
+    id: z.number().int().positive(),
+    isActive: z.boolean()
+  })
+
+  const reorderFieldsSchema = z
+    .array(z.object({ id: z.number().int().positive(), order: z.number().int().nonnegative() }))
+    .min(1)
+
+  ipcMain.handle(IPC_CHANNELS.CONFIG_LIST_FIELDS, (_, input: unknown): ConfigListFieldsResponse => {
+    logger.debug('IPC', IPC_CHANNELS.CONFIG_LIST_FIELDS)
+    const filter = input != null ? parseOrThrow(listFieldsFilterSchema, input) : undefined
+    return listFields(filter ?? undefined)
+  })
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONFIG_CREATE_FIELD,
+    (_, input: unknown): ConfigCreateFieldResponse => {
+      logger.debug('IPC', IPC_CHANNELS.CONFIG_CREATE_FIELD)
+      const parsed = parseOrThrow(createFieldSchema, input)
+      return createField(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONFIG_UPDATE_FIELD,
+    (_, input: unknown): ConfigUpdateFieldResponse => {
+      logger.debug('IPC', IPC_CHANNELS.CONFIG_UPDATE_FIELD)
+      const parsed = parseOrThrow(updateFieldSchema, input)
+      return updateField(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONFIG_SET_FIELD_ACTIVE,
+    (_, input: unknown): ConfigSetFieldActiveResponse => {
+      logger.debug('IPC', IPC_CHANNELS.CONFIG_SET_FIELD_ACTIVE)
+      const parsed = parseOrThrow(setFieldActiveSchema, input)
+      return setFieldActive(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONFIG_REORDER_FIELDS,
+    (_, input: unknown): ConfigReorderFieldsResponse => {
+      logger.debug('IPC', IPC_CHANNELS.CONFIG_REORDER_FIELDS)
+      const parsed = parseOrThrow(reorderFieldsSchema, input)
+      return reorderFields(parsed)
     }
   )
 }

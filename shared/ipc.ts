@@ -36,7 +36,12 @@ export const IPC_CHANNELS = {
   CONFIG_CREATE_MENU_OPTION: 'config:createMenuOption',
   CONFIG_UPDATE_MENU_OPTION: 'config:updateMenuOption',
   CONFIG_REORDER_MENU_OPTIONS: 'config:reorderMenuOptions',
-  CONFIG_SET_MENU_OPTION_ACTIVE: 'config:setMenuOptionActive'
+  CONFIG_SET_MENU_OPTION_ACTIVE: 'config:setMenuOptionActive',
+  CONFIG_LIST_FIELDS: 'config:listFields',
+  CONFIG_CREATE_FIELD: 'config:createField',
+  CONFIG_UPDATE_FIELD: 'config:updateField',
+  CONFIG_SET_FIELD_ACTIVE: 'config:setFieldActive',
+  CONFIG_REORDER_FIELDS: 'config:reorderFields'
 } as const
 
 export type AppGetVersionResponse = string
@@ -187,6 +192,90 @@ export type ConfigUpdateMenuOptionResponse = MenuOptionListItem
 export type ConfigSetMenuOptionActiveResponse = { success: true }
 export type ConfigReorderMenuOptionsResponse = { success: true }
 
+// ---------- FieldDef ----------
+
+export type FieldType =
+  | 'testo_breve'
+  | 'testo_lungo'
+  | 'numero'
+  | 'importo'
+  | 'data'
+  | 'menu'
+  | 'si_no'
+  | 'note'
+  | 'file'
+
+export const FIELD_TYPES: readonly FieldType[] = [
+  'testo_breve',
+  'testo_lungo',
+  'numero',
+  'importo',
+  'data',
+  'menu',
+  'si_no',
+  'note',
+  'file'
+]
+
+export interface FieldDefListItem {
+  id: number
+  scope: 'general' | 'transition'
+  transitionId: number | null
+  transitionLabel: string | null
+  key: string
+  label: string
+  type: FieldType
+  required: boolean
+  visibleInTable: boolean
+  usableInFilter: boolean
+  includeInExport: boolean
+  order: number
+  isActive: boolean
+  menuSetId: number | null
+  menuSetLabel: string | null
+}
+
+export interface ListFieldsFilter {
+  scope?: 'general' | 'transition'
+  transitionId?: number
+}
+
+export interface CreateFieldInput {
+  scope: 'general' | 'transition'
+  transitionId: number | null
+  label: string
+  type: FieldType
+  required: boolean
+  visibleInTable: boolean
+  usableInFilter: boolean
+  includeInExport: boolean
+  menuSetId: number | null
+}
+
+export interface UpdateFieldInput {
+  id: number
+  label: string
+  type: FieldType
+  required: boolean
+  visibleInTable: boolean
+  usableInFilter: boolean
+  includeInExport: boolean
+  menuSetId: number | null
+}
+
+export interface SetFieldActiveInput {
+  id: number
+  isActive: boolean
+}
+
+export type ReorderFieldsInput = { id: number; order: number }[]
+
+export type ConfigListFieldsResponse = FieldDefListItem[]
+export type ConfigCreateFieldResponse = FieldDefListItem
+export type ConfigUpdateFieldResponse = FieldDefListItem
+export type ConfigSetFieldActiveResponse = { success: true }
+export type ConfigReorderFieldsResponse = { success: true }
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
@@ -210,5 +299,10 @@ export interface LexFlowApi {
     updateMenuOption(input: UpdateMenuOptionInput): Promise<ConfigUpdateMenuOptionResponse>
     reorderMenuOptions(input: ReorderMenuOptionsInput): Promise<ConfigReorderMenuOptionsResponse>
     setMenuOptionActive(input: SetMenuOptionActiveInput): Promise<ConfigSetMenuOptionActiveResponse>
+    listFields(filter?: ListFieldsFilter): Promise<ConfigListFieldsResponse>
+    createField(input: CreateFieldInput): Promise<ConfigCreateFieldResponse>
+    updateField(input: UpdateFieldInput): Promise<ConfigUpdateFieldResponse>
+    setFieldActive(input: SetFieldActiveInput): Promise<ConfigSetFieldActiveResponse>
+    reorderFields(input: ReorderFieldsInput): Promise<ConfigReorderFieldsResponse>
   }
 }

@@ -16,7 +16,13 @@ import type {
   CreateMenuOptionInput,
   UpdateMenuOptionInput,
   SetMenuOptionActiveInput,
-  ReorderMenuOptionsInput
+  ReorderMenuOptionsInput,
+  FieldDefListItem,
+  CreateFieldInput,
+  UpdateFieldInput,
+  SetFieldActiveInput,
+  ReorderFieldsInput,
+  ListFieldsFilter
 } from '../../../shared/ipc'
 import {
   findActivePhases,
@@ -50,7 +56,15 @@ import {
   insertMenuOption,
   updateMenuOptionLabel,
   setMenuOptionIsActive,
-  reorderMenuOptionsAtomic
+  reorderMenuOptionsAtomic,
+  findFieldsByFilter,
+  findFieldById,
+  fieldKeyExistsInContainer,
+  findMaxFieldOrderInContainer,
+  insertField,
+  updateFieldFields,
+  setFieldIsActive,
+  reorderFieldsAtomic
 } from './repository'
 import { ConflictError, NotFoundError, ValidationError } from '../../errors/AppError'
 
@@ -395,5 +409,114 @@ export function setMenuOptionActive(input: SetMenuOptionActiveInput): { success:
 
 export function reorderMenuOptions(input: ReorderMenuOptionsInput): { success: true } {
   reorderMenuOptionsAtomic(input)
+  return { success: true }
+}
+
+// ---------- Field defs ----------
+
+function generateUniqueFieldKey(
+  label: string,
+  scope: 'general' | 'transition',
+  transitionId: number | null
+): string {
+  const base = slugify(label) || 'campo'
+  if (!fieldKeyExistsInContainer(base, scope, transitionId)) return base
+  for (let i = 2; i <= 99; i++) {
+    const candidate = `${base}_${i}`
+    if (!fieldKeyExistsInContainer(candidate, scope, transitionId)) return candidate
+  }
+  return `${base}_${Date.now()}`
+}
+
+export function listFields(filter?: ListFieldsFilter): FieldDefListItem[] {
+  return findFieldsByFilter(filter)
+}
+
+export function createField(input: CreateFieldInput): FieldDefListItem {
+  if (input.scope === 'transition') {
+    if (input.transitionId == null)
+      throw new ValidationError('Per i campi di transizione la transizione è obbligatoria')
+    const t = findTransitionById(input.transitionId)
+    if (!t) throw new NotFoundError(`Transizione ${input.transitionId} non trovata`)
+  } else {
+    if (input.transitionId != null)
+      throw new ValidationError('Per i campi generali la transizione deve essere vuota')
+  }
+
+  if (input.type === 'menu') {
+    if (input.menuSetId == null)
+      throw new ValidationError('Per i campi di tipo menu è obbligatorio selezionare un menu set')
+    const ms = findMenuSetById(input.menuSetId)
+    if (!ms) throw new NotFoundError(`Menu set ${input.menuSetId} non trovato`)
+  } else {
+    if (input.menuSetId != null)
+      throw new ValidationError('Il menu set può essere impostato solo per campi di tipo menu')
+  }
+
+  const scope = input.scope
+  const transitionId = input.transitionId ?? null
+  const key = generateUniqueFieldKey(input.label, scope, transitionId)
+  const maxOrder = findMaxFieldOrderInContainer(scope, transitionId)
+
+  const id = insertField({
+    scope,
+    transitionId,
+    key,
+    label: input.label,
+    type: input.type,
+    required: input.required,
+    visibleInTable: input.visibleInTable,
+    usableInFilter: input.usableInFilter,
+    includeInExport: input.includeInExport,
+    order: maxOrder + 1,
+    isActive: true,
+    menuSetId: input.menuSetId ?? null
+  })
+
+  const result = findFieldsByFilter().find((f) => f.id === id)
+  if (!result) throw new Error('Errore interno: campo non trovato dopo la creazione')
+  return result
+}
+
+export function updateField(input: UpdateFieldInput): FieldDefListItem {
+  const existing = findFieldById(input.id)
+  if (!existing) throw new NotFoundError(`Campo ${input.id} non trovato`)
+
+  if (input.type === 'menu') {
+    if (input.menuSetId == null)
+      throw new ValidationError('Per i campi di tipo menu è obbligatorio selezionare un menu set')
+    const ms = findMenuSetById(input.menuSetId)
+    if (!ms) throw new NotFoundError(`Menu set ${input.menuSetId} non trovato`)
+  } else {
+    if (input.menuSetId != null)
+      throw new ValidationError('Il menu set può essere impostato solo per campi di tipo menu')
+  }
+
+  updateFieldFields(input.id, {
+    label: input.label,
+    type: input.type,
+    required: input.required,
+    visibleInTable: input.visibleInTable,
+    usableInFilter: input.usableInFilter,
+    includeInExport: input.includeInExport,
+    menuSetId: input.menuSetId ?? null
+  })
+
+  const result = findFieldsByFilter().find((f) => f.id === input.id)
+  if (!result) throw new Error('Errore interno: campo non trovato dopo il salvataggio')
+  return result
+}
+
+export function setFieldActive(input: SetFieldActiveInput): { success: true } {
+  const existing = findFieldById(input.id)
+  if (!existing) throw new NotFoundError(`Campo ${input.id} non trovato`)
+  // TODO: verificare che il campo non sia valorizzato in pratiche prima di disattivarlo.
+  // Implementare quando esiste la tabella practices.
+  setFieldIsActive(input.id, input.isActive)
+  return { success: true }
+}
+
+export function reorderFields(input: ReorderFieldsInput): { success: true } {
+  reorderFieldsAtomic(input)
   return { success: true }
 }

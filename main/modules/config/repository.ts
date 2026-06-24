@@ -1,11 +1,20 @@
-import { eq, asc, and, ne, sql } from 'drizzle-orm'
+import { eq, asc, and, ne, sql, isNull } from 'drizzle-orm'
 import { getDb } from '../../database/connection'
-import { phases, transitions, menuSets, menuOptions } from '../../database/schema'
-import type { PhaseListItem, TransitionListItem, MenuSetListItem, MenuOptionListItem } from '../../../shared/ipc'
+import { phases, transitions, menuSets, menuOptions, fieldDefs } from '../../database/schema'
+import type {
+  PhaseListItem,
+  TransitionListItem,
+  MenuSetListItem,
+  MenuOptionListItem,
+  FieldDefListItem,
+  FieldType,
+  ListFieldsFilter
+} from '../../../shared/ipc'
 import type { NewPhase } from '../../database/schema/phases'
 import type { NewTransition, Transition } from '../../database/schema/transitions'
 import type { NewMenuSet, MenuSet } from '../../database/schema/menuSets'
 import type { NewMenuOption, MenuOption } from '../../database/schema/menuOptions'
+import type { NewFieldDef } from '../../database/schema/fieldDefs'
 
 function toListItem(row: typeof phases.$inferSelect): PhaseListItem {
   return {
@@ -370,6 +379,124 @@ export function reorderMenuOptionsAtomic(items: { id: number; order: number }[])
   getDb().transaction((tx) => {
     for (const item of items) {
       tx.update(menuOptions).set({ order: item.order }).where(eq(menuOptions.id, item.id)).run()
+    }
+  })
+}
+
+// ---------- Field defs ----------
+
+export function findFieldsByFilter(filter?: ListFieldsFilter): FieldDefListItem[] {
+  const db = getDb()
+  const allFields = db.select().from(fieldDefs).orderBy(asc(fieldDefs.order)).all()
+
+  const filtered = allFields.filter((f) => {
+    if (filter?.scope !== undefined && f.scope !== filter.scope) return false
+    if (filter?.transitionId !== undefined && f.transitionId !== filter.transitionId) return false
+    return true
+  })
+
+  const tIds = new Set(filtered.map((f) => f.transitionId).filter((id): id is number => id != null))
+  const msIds = new Set(filtered.map((f) => f.menuSetId).filter((id): id is number => id != null))
+
+  const tLabelById = new Map<number, string>()
+  if (tIds.size > 0) {
+    for (const row of db
+      .select({ id: transitions.id, buttonLabel: transitions.buttonLabel })
+      .from(transitions)
+      .all()) {
+      if (tIds.has(row.id)) tLabelById.set(row.id, row.buttonLabel)
+    }
+  }
+
+  const msLabelById = new Map<number, string>()
+  if (msIds.size > 0) {
+    for (const row of db.select({ id: menuSets.id, label: menuSets.label }).from(menuSets).all()) {
+      if (msIds.has(row.id)) msLabelById.set(row.id, row.label)
+    }
+  }
+
+  return filtered.map((f) => ({
+    id: f.id,
+    scope: f.scope as 'general' | 'transition',
+    transitionId: f.transitionId,
+    transitionLabel: f.transitionId != null ? (tLabelById.get(f.transitionId) ?? null) : null,
+    key: f.key,
+    label: f.label,
+    type: f.type as FieldType,
+    required: f.required,
+    visibleInTable: f.visibleInTable,
+    usableInFilter: f.usableInFilter,
+    includeInExport: f.includeInExport,
+    order: f.order,
+    isActive: f.isActive,
+    menuSetId: f.menuSetId,
+    menuSetLabel: f.menuSetId != null ? (msLabelById.get(f.menuSetId) ?? null) : null
+  }))
+}
+
+export function findFieldById(id: number): typeof fieldDefs.$inferSelect | undefined {
+  return getDb().select().from(fieldDefs).where(eq(fieldDefs.id, id)).get()
+}
+
+export function fieldKeyExistsInContainer(
+  key: string,
+  scope: 'general' | 'transition',
+  transitionId: number | null,
+  excludeId?: number
+): boolean {
+  const conditions = [
+    eq(fieldDefs.key, key),
+    eq(fieldDefs.scope, scope),
+    transitionId != null ? eq(fieldDefs.transitionId, transitionId) : isNull(fieldDefs.transitionId),
+    ...(excludeId !== undefined ? [ne(fieldDefs.id, excludeId)] : [])
+  ]
+  return getDb().select({ id: fieldDefs.id }).from(fieldDefs).where(and(...conditions)).get() != null
+}
+
+export function findMaxFieldOrderInContainer(
+  scope: 'general' | 'transition',
+  transitionId: number | null
+): number {
+  const conditions = [
+    eq(fieldDefs.scope, scope),
+    ...(transitionId != null ? [eq(fieldDefs.transitionId, transitionId)] : [])
+  ]
+  const result = getDb()
+    .select({ maxOrder: sql<number>`MAX(${fieldDefs.order})` })
+    .from(fieldDefs)
+    .where(and(...conditions))
+    .get()
+  return result?.maxOrder ?? 0
+}
+
+export function insertField(data: NewFieldDef): number {
+  const [row] = getDb().insert(fieldDefs).values(data).returning({ id: fieldDefs.id }).all()
+  return row.id
+}
+
+export function updateFieldFields(
+  id: number,
+  data: {
+    label: string
+    type: FieldType
+    required: boolean
+    visibleInTable: boolean
+    usableInFilter: boolean
+    includeInExport: boolean
+    menuSetId: number | null
+  }
+): void {
+  getDb().update(fieldDefs).set(data).where(eq(fieldDefs.id, id)).run()
+}
+
+export function setFieldIsActive(id: number, isActive: boolean): void {
+  getDb().update(fieldDefs).set({ isActive }).where(eq(fieldDefs.id, id)).run()
+}
+
+export function reorderFieldsAtomic(items: { id: number; order: number }[]): void {
+  getDb().transaction((tx) => {
+    for (const item of items) {
+      tx.update(fieldDefs).set({ order: item.order }).where(eq(fieldDefs.id, item.id)).run()
     }
   })
 }

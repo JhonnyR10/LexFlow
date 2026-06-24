@@ -17,6 +17,11 @@ import type {
   ConfigUpdateMenuOptionResponse,
   ConfigSetMenuOptionActiveResponse,
   ConfigReorderMenuOptionsResponse,
+  ConfigListFieldsResponse,
+  ConfigCreateFieldResponse,
+  ConfigUpdateFieldResponse,
+  ConfigSetFieldActiveResponse,
+  ConfigReorderFieldsResponse,
   CreatePhaseInput,
   UpdatePhaseInput,
   SetPhaseActiveInput,
@@ -30,7 +35,12 @@ import type {
   CreateMenuOptionInput,
   UpdateMenuOptionInput,
   SetMenuOptionActiveInput,
-  ReorderMenuOptionsInput
+  ReorderMenuOptionsInput,
+  ListFieldsFilter,
+  CreateFieldInput,
+  UpdateFieldInput,
+  SetFieldActiveInput,
+  ReorderFieldsInput
 } from '../../shared/ipc'
 
 export const configApi = {
@@ -67,5 +77,15 @@ export const configApi = {
   setMenuOptionActive: (input: SetMenuOptionActiveInput): Promise<ConfigSetMenuOptionActiveResponse> =>
     window.api.config.setMenuOptionActive(input),
   reorderMenuOptions: (input: ReorderMenuOptionsInput): Promise<ConfigReorderMenuOptionsResponse> =>
-    window.api.config.reorderMenuOptions(input)
+    window.api.config.reorderMenuOptions(input),
+  listFields: (filter?: ListFieldsFilter): Promise<ConfigListFieldsResponse> =>
+    window.api.config.listFields(filter),
+  createField: (input: CreateFieldInput): Promise<ConfigCreateFieldResponse> =>
+    window.api.config.createField(input),
+  updateField: (input: UpdateFieldInput): Promise<ConfigUpdateFieldResponse> =>
+    window.api.config.updateField(input),
+  setFieldActive: (input: SetFieldActiveInput): Promise<ConfigSetFieldActiveResponse> =>
+    window.api.config.setFieldActive(input),
+  reorderFields: (input: ReorderFieldsInput): Promise<ConfigReorderFieldsResponse> =>
+    window.api.config.reorderFields(input)
 }

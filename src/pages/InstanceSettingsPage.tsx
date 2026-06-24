@@ -1,5 +1,6 @@
 import { PhasesSection } from '../features/config/phases/PhasesSection'
 import { TransitionsSection } from '../features/config/transitions/TransitionsSection'
+import { FieldsSection } from '../features/config/fields/FieldsSection'
 import { MenusSection } from '../features/config/menus/MenusSection'
 
 const pageStyle: React.CSSProperties = {
@@ -42,7 +43,7 @@ export function InstanceSettingsPage(): React.JSX.Element {
       </div>
 
       <div style={sectionGapStyle}>
-        <div style={comingSoonStyle}>Campi — in arrivo (S1.3)</div>
+        <FieldsSection />
       </div>
 
       <div style={sectionGapStyle}>

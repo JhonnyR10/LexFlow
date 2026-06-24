@@ -28,7 +28,7 @@ CREATE UNIQUE INDEX `transitions_from_label_idx` ON `transitions` (`from_phase_i
 CREATE TABLE `field_defs` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`scope` text NOT NULL,
-	`phase_id` integer,
+	`transition_id` integer,
 	`key` text NOT NULL,
 	`label` text NOT NULL,
 	`type` text NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE `field_defs` (
 	`order` integer NOT NULL,
 	`is_active` integer DEFAULT true NOT NULL,
 	`menu_set_id` integer,
-	FOREIGN KEY (`phase_id`) REFERENCES `phases`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`transition_id`) REFERENCES `transitions`(`id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`menu_set_id`) REFERENCES `menu_sets`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint

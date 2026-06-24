@@ -23,7 +23,12 @@ const api: LexFlowApi = {
     createMenuOption: (input) => ipcRenderer.invoke('config:createMenuOption', input),
     updateMenuOption: (input) => ipcRenderer.invoke('config:updateMenuOption', input),
     reorderMenuOptions: (input) => ipcRenderer.invoke('config:reorderMenuOptions', input),
-    setMenuOptionActive: (input) => ipcRenderer.invoke('config:setMenuOptionActive', input)
+    setMenuOptionActive: (input) => ipcRenderer.invoke('config:setMenuOptionActive', input),
+    listFields: (filter) => ipcRenderer.invoke('config:listFields', filter),
+    createField: (input) => ipcRenderer.invoke('config:createField', input),
+    updateField: (input) => ipcRenderer.invoke('config:updateField', input),
+    setFieldActive: (input) => ipcRenderer.invoke('config:setFieldActive', input),
+    reorderFields: (input) => ipcRenderer.invoke('config:reorderFields', input)
   }
 }
 

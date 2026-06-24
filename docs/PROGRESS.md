@@ -8,48 +8,48 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 
 ## Stato avanzamento (per storia del backlog)
 
-| Storia | Descrizione                                                  | Stato    | Note                                                                                                                                           |
-| ------ | ------------------------------------------------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| S0.1   | Scaffolding Electron+React+TS+Vite (struttura e placeholder) | FATTO    | Senza DB (aggiunto in S0.4). Bridge IPC app:getVersion incluso.                                                                                |
-| S0.2   | Bridge IPC tipizzato                                         | TODO     |                                                                                                                                                |
-| S0.3   | Config zod + logging strutturato                             | IN CORSO | config/startup.ts (validazione zod + check scrittura) e utils/logger.ts fatti. Resto (gestione errori tipizzata, ErrorBoundary renderer) dopo. |
-| S0.4   | Migrazioni Drizzle + seed (fasi/menu standard)               | FATTO    | DB aperto in userData, migrazioni auto, seed idempotente verificato. Riallineato al modello canonico (13 fasi, 40 transizioni) il 2026-06-24.  |
-| S1.1   | CRUD fasi + guscio applicativo                               | FATTO    | Routing HashRouter, sidebar, 6 pagine, QueryClientProvider. CRUD fasi completo. Guard disattivazione unica fase iniziale attivo; guard pratiche (TODO) documentato. Delete fisica rinviata (FK constraints). |
+| Storia | Descrizione                                                  | Stato    | Note                                                                                                                                                                                                                     |
+| ------ | ------------------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| S0.1   | Scaffolding Electron+React+TS+Vite (struttura e placeholder) | FATTO    | Senza DB (aggiunto in S0.4). Bridge IPC app:getVersion incluso.                                                                                                                                                          |
+| S0.2   | Bridge IPC tipizzato                                         | TODO     |                                                                                                                                                                                                                          |
+| S0.3   | Config zod + logging strutturato                             | IN CORSO | config/startup.ts (validazione zod + check scrittura) e utils/logger.ts fatti. Resto (gestione errori tipizzata, ErrorBoundary renderer) dopo.                                                                           |
+| S0.4   | Migrazioni Drizzle + seed (fasi/menu standard)               | FATTO    | DB aperto in userData, migrazioni auto, seed idempotente verificato. Riallineato al modello canonico (13 fasi, 40 transizioni) il 2026-06-24.                                                                            |
+| S1.1   | CRUD fasi + guscio applicativo                               | FATTO    | Routing HashRouter, sidebar, 6 pagine, QueryClientProvider. CRUD fasi completo. Guard disattivazione unica fase iniziale attivo; guard pratiche (TODO) documentato. Delete fisica rinviata (FK constraints).             |
 | S1.2   | CRUD transizioni                                             | FATTO    | Backend: createTransition/updateTransition/setTransitionActive/reorderTransitions con invarianti; UI: elenco raggruppato per fase, modale create/edit, riordino scoped, attiva/disattiva. Delete fisica rinviata (TODO). |
-| S1.3   | CRUD campi generali e campi fase                             | TODO     |                                                                                                                                                |
-| S1.4   | CRUD menu a tendina                                          | FATTO    | Backend: 7 canali IPC con invarianti (key immutabile, value univoco/immutabile). UI: layout due livelli, 5 set standard visibili. Delete fisica e guard d'uso rinviati (TODO). |
-| S1.5   | Regola PEC condizionale                                      | TODO     |                                                                                                                                                |
-| S2.1   | CRUD Professionisti                                          | TODO     |                                                                                                                                                |
-| S2.2   | CRUD Collaboratori                                           | TODO     |                                                                                                                                                |
-| S3.1   | Tabella pratiche attive                                      | TODO     |                                                                                                                                                |
-| S3.2   | Ricerca globale                                              | TODO     |                                                                                                                                                |
-| S3.3   | Filtri base                                                  | TODO     |                                                                                                                                                |
-| S3.4   | Ordinamento + selezione multipla                             | TODO     |                                                                                                                                                |
-| S4.1   | Generazione codice istanza                                   | TODO     |                                                                                                                                                |
-| S4.2   | Form Nuova pratica                                           | TODO     |                                                                                                                                                |
-| S4.3   | Modifica pratica + storico                                   | TODO     |                                                                                                                                                |
-| S5.1   | Dettaglio pratica                                            | TODO     |                                                                                                                                                |
-| S5.2   | Pulsanti dinamici = transizioni                              | TODO     |                                                                                                                                                |
-| S5.3   | Form dinamico fase + salvataggio                             | TODO     |                                                                                                                                                |
-| S5.4   | Guard coerenza stati                                         | TODO     |                                                                                                                                                |
-| S5.5   | Storico/timeline                                             | TODO     |                                                                                                                                                |
-| S6.1   | Quattro importi                                              | TODO     |                                                                                                                                                |
-| S6.2   | Differenze calcolate                                         | TODO     |                                                                                                                                                |
-| S7.1   | Documenti decreto+fattura                                    | TODO     |                                                                                                                                                |
-| S8.1   | Card per fase dinamiche                                      | TODO     |                                                                                                                                                |
-| S8.2   | Alert aggregato per pratica                                  | TODO     |                                                                                                                                                |
-| S8.3   | Giorni da deposito                                           | TODO     |                                                                                                                                                |
-| S8.4   | Anzianità + stato vuoto + Vedi pratiche                      | TODO     |                                                                                                                                                |
-| S9.1   | Export CSV                                                   | TODO     |                                                                                                                                                |
-| S10.1  | Sposta nel cestino                                           | TODO     |                                                                                                                                                |
-| S10.2  | Ripristino                                                   | TODO     |                                                                                                                                                |
-| S10.3  | Cancellazione definitiva                                     | TODO     |                                                                                                                                                |
-| S11.1  | Tema + colori semantici fissi                                | TODO     |                                                                                                                                                |
-| S11.2  | Percorso dati                                                | TODO     |                                                                                                                                                |
-| S11.3  | Backup completo + ripristino                                 | TODO     |                                                                                                                                                |
-| S11.4  | Reset con backup automatico                                  | TODO     |                                                                                                                                                |
-| S11.7  | Backup automatico periodico + rotazione                      | TODO     | MVP (deciso 2026-06-23)                                                                                                                        |
-| S13.\* | Qualità trasversale (errori/loading/empty/PEC)               | TODO     |                                                                                                                                                |
+| S1.3   | CRUD campi configurabili (generali e per transizione)        | FATTO    | Schema migrato: scope general\|transition, transitionId (FK transitions) sostituisce phaseId. Migrazioni rigenerate, DB dev resettato. Delete fisica e guard d'uso rinviati (TODO con tabella practices).               |
+| S1.4   | CRUD menu a tendina                                          | FATTO    | Backend: 7 canali IPC con invarianti (key immutabile, value univoco/immutabile). UI: layout due livelli, 5 set standard visibili. Delete fisica e guard d'uso rinviati (TODO).                                           |
+| S1.5   | Regola PEC condizionale                                      | TODO     |                                                                                                                                                                                                                          |
+| S2.1   | CRUD Professionisti                                          | TODO     |                                                                                                                                                                                                                          |
+| S2.2   | CRUD Collaboratori                                           | TODO     |                                                                                                                                                                                                                          |
+| S3.1   | Tabella pratiche attive                                      | TODO     |                                                                                                                                                                                                                          |
+| S3.2   | Ricerca globale                                              | TODO     |                                                                                                                                                                                                                          |
+| S3.3   | Filtri base                                                  | TODO     |                                                                                                                                                                                                                          |
+| S3.4   | Ordinamento + selezione multipla                             | TODO     |                                                                                                                                                                                                                          |
+| S4.1   | Generazione codice istanza                                   | TODO     |                                                                                                                                                                                                                          |
+| S4.2   | Form Nuova pratica                                           | TODO     |                                                                                                                                                                                                                          |
+| S4.3   | Modifica pratica + storico                                   | TODO     |                                                                                                                                                                                                                          |
+| S5.1   | Dettaglio pratica                                            | TODO     |                                                                                                                                                                                                                          |
+| S5.2   | Pulsanti dinamici = transizioni                              | TODO     |                                                                                                                                                                                                                          |
+| S5.3   | Form dinamico fase + salvataggio                             | TODO     |                                                                                                                                                                                                                          |
+| S5.4   | Guard coerenza stati                                         | TODO     |                                                                                                                                                                                                                          |
+| S5.5   | Storico/timeline                                             | TODO     |                                                                                                                                                                                                                          |
+| S6.1   | Quattro importi                                              | TODO     |                                                                                                                                                                                                                          |
+| S6.2   | Differenze calcolate                                         | TODO     |                                                                                                                                                                                                                          |
+| S7.1   | Documenti decreto+fattura                                    | TODO     |                                                                                                                                                                                                                          |
+| S8.1   | Card per fase dinamiche                                      | TODO     |                                                                                                                                                                                                                          |
+| S8.2   | Alert aggregato per pratica                                  | TODO     |                                                                                                                                                                                                                          |
+| S8.3   | Giorni da deposito                                           | TODO     |                                                                                                                                                                                                                          |
+| S8.4   | Anzianità + stato vuoto + Vedi pratiche                      | TODO     |                                                                                                                                                                                                                          |
+| S9.1   | Export CSV                                                   | TODO     |                                                                                                                                                                                                                          |
+| S10.1  | Sposta nel cestino                                           | TODO     |                                                                                                                                                                                                                          |
+| S10.2  | Ripristino                                                   | TODO     |                                                                                                                                                                                                                          |
+| S10.3  | Cancellazione definitiva                                     | TODO     |                                                                                                                                                                                                                          |
+| S11.1  | Tema + colori semantici fissi                                | TODO     |                                                                                                                                                                                                                          |
+| S11.2  | Percorso dati                                                | TODO     |                                                                                                                                                                                                                          |
+| S11.3  | Backup completo + ripristino                                 | TODO     |                                                                                                                                                                                                                          |
+| S11.4  | Reset con backup automatico                                  | TODO     |                                                                                                                                                                                                                          |
+| S11.7  | Backup automatico periodico + rotazione                      | TODO     | MVP (deciso 2026-06-23)                                                                                                                                                                                                  |
+| S13.\* | Qualità trasversale (errori/loading/empty/PEC)               | TODO     |                                                                                                                                                                                                                          |
 
 (Storie post-MVP non elencate finché non promosse: report avanzati, assistente, numeri procedimento multipli, ecc.)
 
@@ -69,6 +69,7 @@ Ogni riga: data — decisione — motivo.
 - 2026-06-23 — Scadenzario (E15) ed export PDF scheda pratica (E16) **post-MVP**. — Utili, non urgenti.
 - 2026-06-24 — **Workflow riallineato al file canonico** `docs/07-workflow-tree.md`. — Il seed iniziale modellava come fasi alcune transizioni (solleciti, integrazioni, invio SCP). Modello corretto: 13 fasi, solleciti/integrazioni come transizioni/eventi, transizioni con flag isRepeatable/isAutomatic/isResume, `previousPhaseId` per sospensione/ripresa, finali solo Chiusa/Rifiutata/Annullata (Liquidata non finale).
 - 2026-06-24 — **Impugnazione solo da Decreto ricevuto; Rifiutata terminale** (opzione A). — Definito dal file canonico. PASSO 5b superato/annullato.
+- 2026-06-24 — **Campi configurabili legati alle transizioni, non alle fasi** (FieldDef.scope general|transition, transitionId). — Più transizioni entrano nella stessa fase con dati diversi; lo scoping per fase era insufficiente. PhaseRecord sostituito da TransitionRecord (consolidamento in E5).
 
 ## Decisioni aperte / da confermare
 
@@ -82,30 +83,76 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-06-24 — S1.3: CRUD Campi configurabili
+
+**Modifiche schema (con reset DB dev):**
+
+- `main/database/schema/fieldDefs.ts` — `scope` enum cambiato da `'general'|'phase'` → `'general'|'transition'`; colonna `phaseId` (FK→phases) sostituita da `transitionId` (FK→transitions, nullable)
+- Migrazione precedente eliminata; `drizzle/meta/_journal.json` ricreato vuoto; `npm run db:generate` → `drizzle/0000_hard_mockingbird.sql` (nuovo schema completo)
+- DB dev (`~/Library/Application Support/lexflow/lexflow.db`) eliminato e ricostruito al prossimo avvio (migrazioni + seed automatici)
+- Seed invariato: nessun field_def nel seed; fasi/transizioni/menu standard ripopolati correttamente
+- Nota: con dati reali si useranno migrazioni incrementali, non il reset
+
+**File nuovi:**
+
+| File                                                | Descrizione                                                                                                                                  |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/features/config/fields/useFields.ts`           | TanStack Query hooks: useFields, useCreateField, useUpdateField, useSetFieldActive, useReorderFields                                         |
+| `src/features/config/fields/FieldFormModal.tsx`     | Modale crea/modifica campo: label, tipo (9 opzioni), menuSetId condizionale (solo type=menu), 4 toggle, key read-only in edit                |
+| `src/features/config/fields/FieldsSection.tsx`      | Sezione campi: 2 tab (Campi generali / Campi per transizione), select transizione raggruppata per fase, tabella, riordino ▲/▼, attiva/disattiva |
+
+**File modificati:**
+
+| File                                 | Modifica                                                                                                                                                                          |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shared/ipc.ts`                      | 5 nuovi canali IPC; aggiunti `FieldType`, `FIELD_TYPES`, `FieldDefListItem`, `ListFieldsFilter`, `CreateFieldInput`, `UpdateFieldInput`, `SetFieldActiveInput`, `ReorderFieldsInput` e relativi response type; esteso `LexFlowApi.config` |
+| `main/modules/config/repository.ts`  | Aggiunte 8 funzioni: `findFieldsByFilter`, `findFieldById`, `fieldKeyExistsInContainer`, `findMaxFieldOrderInContainer`, `insertField`, `updateFieldFields`, `setFieldIsActive`, `reorderFieldsAtomic` |
+| `main/modules/config/service.ts`     | Aggiunti `listFields`, `createField`, `updateField`, `setFieldActive`, `reorderFields`; helper `generateUniqueFieldKey`                                                           |
+| `main/modules/config/controller.ts`  | 5 handler IPC con schemi zod (fieldTypeEnum con `as const` per preservare literal union)                                                                                         |
+| `main/preload.ts`                    | Aggiornati 5 metodi config nel bridge                                                                                                                                             |
+| `src/api/config.ts`                  | Aggiunti 5 metodi client IPC                                                                                                                                                      |
+| `src/pages/InstanceSettingsPage.tsx` | Sostituito segnaposto S1.3 con `<FieldsSection />`                                                                                                                                |
+
+**Invarianti implementate nel service:**
+
+1. `scope='transition'`: `transitionId` obbligatorio e deve referenziare una transizione esistente → ValidationError/NotFoundError
+2. `scope='general'`: `transitionId` deve essere null → ValidationError
+3. `type='menu'`: `menuSetId` obbligatorio e deve referenziare un menu set esistente → ValidationError/NotFoundError
+4. `type!='menu'`: `menuSetId` deve essere null → ValidationError
+5. `key` generata come slug dalla label alla creazione (con suffisso numerico per unicità); unica all'interno del container (global per general, per transitionId per transition); immutabile dopo creazione
+6. TODO documentato: guard "non disattivare campo in uso da pratiche" (implementare quando esiste tabella practices)
+
+**Delete fisica:** NON implementata (solo attiva/disattiva con `isActive`).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · avvio Electron ✓ · sezione "Campi configurabili" visibile in Impostazioni istanze ✓ · modale "Nuovo campo" aperto correttamente ✓ · tab "Campi per transizione" mostra select raggruppata per fase ✓ · (automatica) selezionabile ✓
+
+---
+
 ### 2026-06-24 — S1.4: CRUD Menu a tendina
 
 **File nuovi:**
 
-| File | Descrizione |
-|------|-------------|
-| `src/features/config/menus/useMenus.ts` | TanStack Query hooks: useMenuSets, useCreateMenuSet, useUpdateMenuSet, useCreateMenuOption, useUpdateMenuOption, useSetMenuOptionActive, useReorderMenuOptions |
-| `src/features/config/menus/MenuSetFormModal.tsx` | Modale crea/rinomina menu set; key auto-generata in creazione, sola lettura in modifica |
-| `src/features/config/menus/MenuOptionFormModal.tsx` | Modale crea/modifica opzione; value in sola lettura in modifica |
-| `src/features/config/menus/MenusSection.tsx` | Sezione menu: layout due livelli (set list + options pane), riordino ▲/▼ scoped, attiva/disattiva inline, stati loading/empty/error |
+| File                                                | Descrizione                                                                                                                                                    |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/features/config/menus/useMenus.ts`             | TanStack Query hooks: useMenuSets, useCreateMenuSet, useUpdateMenuSet, useCreateMenuOption, useUpdateMenuOption, useSetMenuOptionActive, useReorderMenuOptions |
+| `src/features/config/menus/MenuSetFormModal.tsx`    | Modale crea/rinomina menu set; key auto-generata in creazione, sola lettura in modifica                                                                        |
+| `src/features/config/menus/MenuOptionFormModal.tsx` | Modale crea/modifica opzione; value in sola lettura in modifica                                                                                                |
+| `src/features/config/menus/MenusSection.tsx`        | Sezione menu: layout due livelli (set list + options pane), riordino ▲/▼ scoped, attiva/disattiva inline, stati loading/empty/error                            |
 
 **File modificati:**
 
-| File | Modifica |
-|------|----------|
-| `shared/ipc.ts` | 7 nuovi canali IPC; aggiunti `MenuOptionListItem`, `MenuSetListItem`, tutti i tipi input/response; esteso `LexFlowApi.config` |
-| `main/modules/config/repository.ts` | Aggiunte tutte le funzioni repo per menu sets e options (findAllMenuSets, findMenuSetById, menuSetKeyExists, insertMenuSet, updateMenuSetLabel, findMenuOptionById, menuOptionValueExists, findMaxMenuOptionOrder, insertMenuOption, updateMenuOptionLabel, setMenuOptionIsActive, reorderMenuOptionsAtomic) |
-| `main/modules/config/service.ts` | Aggiunti listMenuSets, createMenuSet, updateMenuSet, createMenuOption, updateMenuOption, setMenuOptionActive, reorderMenuOptions con invarianti; helper generateUniqueMenuSetKey, toMenuOptionListItem |
-| `main/modules/config/controller.ts` | 7 handler IPC con schemi zod |
-| `main/preload.ts` | Aggiunti 7 metodi config nel bridge |
-| `src/api/config.ts` | Aggiunti 7 metodi client IPC |
-| `src/pages/InstanceSettingsPage.tsx` | Sostituito segnaposto S1.4 con `<MenusSection />` |
+| File                                 | Modifica                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `shared/ipc.ts`                      | 7 nuovi canali IPC; aggiunti `MenuOptionListItem`, `MenuSetListItem`, tutti i tipi input/response; esteso `LexFlowApi.config`                                                                                                                                                                                |
+| `main/modules/config/repository.ts`  | Aggiunte tutte le funzioni repo per menu sets e options (findAllMenuSets, findMenuSetById, menuSetKeyExists, insertMenuSet, updateMenuSetLabel, findMenuOptionById, menuOptionValueExists, findMaxMenuOptionOrder, insertMenuOption, updateMenuOptionLabel, setMenuOptionIsActive, reorderMenuOptionsAtomic) |
+| `main/modules/config/service.ts`     | Aggiunti listMenuSets, createMenuSet, updateMenuSet, createMenuOption, updateMenuOption, setMenuOptionActive, reorderMenuOptions con invarianti; helper generateUniqueMenuSetKey, toMenuOptionListItem                                                                                                       |
+| `main/modules/config/controller.ts`  | 7 handler IPC con schemi zod                                                                                                                                                                                                                                                                                 |
+| `main/preload.ts`                    | Aggiunti 7 metodi config nel bridge                                                                                                                                                                                                                                                                          |
+| `src/api/config.ts`                  | Aggiunti 7 metodi client IPC                                                                                                                                                                                                                                                                                 |
+| `src/pages/InstanceSettingsPage.tsx` | Sostituito segnaposto S1.4 con `<MenusSection />`                                                                                                                                                                                                                                                            |
 
 **Invarianti implementate nel service:**
+
 1. `key` del set generata come slug snake_case dalla label alla creazione; immutabile (non esposta in update)
 2. `key` del set univoca (generateUniqueMenuSetKey con fallback numerico)
 3. `value` dell'opzione univoco dentro lo stesso set → ConflictError se duplicato
@@ -125,25 +172,26 @@ Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato
 
 **File nuovi:**
 
-| File | Descrizione |
-|------|-------------|
-| `src/features/config/transitions/useTransitions.ts` | TanStack Query hooks: useAllTransitions, useCreateTransition, useUpdateTransition, useSetTransitionActive, useReorderTransitions |
-| `src/features/config/transitions/TransitionFormModal.tsx` | Modale crea/modifica transizione con validazione zod lato renderer; fromPhaseId readonly in edit mode |
-| `src/features/config/transitions/TransitionsSection.tsx` | Sezione transizioni: elenco raggruppato per fase (header MAIUSCOLO), badge flag, riordino ▲/▼ scoped per gruppo, attiva/disattiva con confirm |
+| File                                                      | Descrizione                                                                                                                                   |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/features/config/transitions/useTransitions.ts`       | TanStack Query hooks: useAllTransitions, useCreateTransition, useUpdateTransition, useSetTransitionActive, useReorderTransitions              |
+| `src/features/config/transitions/TransitionFormModal.tsx` | Modale crea/modifica transizione con validazione zod lato renderer; fromPhaseId readonly in edit mode                                         |
+| `src/features/config/transitions/TransitionsSection.tsx`  | Sezione transizioni: elenco raggruppato per fase (header MAIUSCOLO), badge flag, riordino ▲/▼ scoped per gruppo, attiva/disattiva con confirm |
 
 **File modificati:**
 
-| File | Modifica |
-|------|----------|
-| `shared/ipc.ts` | 4 nuovi canali IPC; esteso `TransitionListItem` con `fromPhaseDisplayName`, `fromPhaseOrder`, `toPhaseDisplayName`; aggiunto `CreateTransitionInput`, `UpdateTransitionInput`, `SetTransitionActiveInput`, `ReorderTransitionsInput` e relativi response type; esteso `LexFlowApi.config` |
-| `main/modules/config/repository.ts` | Aggiornato `findTransitions()` (ora include displayName/order da phases, ordina per `phases.order` anziché `fromPhaseId`); aggiunti `findTransitionById`, `findTransitionEnrichedById`, `findMaxTransitionOrderForPhase`, `countActiveAutomaticTransitionsForPhase`, `transitionLabelExists`, `insertTransition`, `updateTransitionFields`, `setTransitionIsActive`, `reorderTransitionsAtomic` |
-| `main/modules/config/service.ts` | Aggiunto helper privato `assertTransitionInputValid` con tutte le invarianti; aggiunti `createTransition`, `updateTransition`, `setTransitionActive`, `reorderTransitions` |
-| `main/modules/config/controller.ts` | Aggiunto 4 handler IPC con schemi zod |
-| `main/preload.ts` | Aggiunto 4 metodi config nel bridge |
-| `src/api/config.ts` | Aggiunto 4 metodi client IPC |
-| `src/pages/InstanceSettingsPage.tsx` | Sostituito segnaposto S1.2 con `<TransitionsSection />` |
+| File                                 | Modifica                                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shared/ipc.ts`                      | 4 nuovi canali IPC; esteso `TransitionListItem` con `fromPhaseDisplayName`, `fromPhaseOrder`, `toPhaseDisplayName`; aggiunto `CreateTransitionInput`, `UpdateTransitionInput`, `SetTransitionActiveInput`, `ReorderTransitionsInput` e relativi response type; esteso `LexFlowApi.config`                                                                                                       |
+| `main/modules/config/repository.ts`  | Aggiornato `findTransitions()` (ora include displayName/order da phases, ordina per `phases.order` anziché `fromPhaseId`); aggiunti `findTransitionById`, `findTransitionEnrichedById`, `findMaxTransitionOrderForPhase`, `countActiveAutomaticTransitionsForPhase`, `transitionLabelExists`, `insertTransition`, `updateTransitionFields`, `setTransitionIsActive`, `reorderTransitionsAtomic` |
+| `main/modules/config/service.ts`     | Aggiunto helper privato `assertTransitionInputValid` con tutte le invarianti; aggiunti `createTransition`, `updateTransition`, `setTransitionActive`, `reorderTransitions`                                                                                                                                                                                                                      |
+| `main/modules/config/controller.ts`  | Aggiunto 4 handler IPC con schemi zod                                                                                                                                                                                                                                                                                                                                                           |
+| `main/preload.ts`                    | Aggiunto 4 metodi config nel bridge                                                                                                                                                                                                                                                                                                                                                             |
+| `src/api/config.ts`                  | Aggiunto 4 metodi client IPC                                                                                                                                                                                                                                                                                                                                                                    |
+| `src/pages/InstanceSettingsPage.tsx` | Sostituito segnaposto S1.2 con `<TransitionsSection />`                                                                                                                                                                                                                                                                                                                                         |
 
 **Invarianti implementate nel service:**
+
 1. `fromPhase` non può essere finale (`isFinal=true`) → ValidationError
 2. `toPhase` non può essere inattiva (`isActive=false`) → ValidationError
 3. `isResume=true`: `toPhaseId` deve essere null; `fromPhase` deve avere `category=suspended`; `buttonLabel` obbligatorio → ValidationError
@@ -160,45 +208,47 @@ Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato
 ### 2026-06-24 — S1.1: Guscio applicativo + CRUD Fasi
 
 **Dipendenze aggiunte:**
+
 - `react-router-dom` v7 (prod) — routing HashRouter lato renderer
 - `@tanstack/react-query` v5 (prod) — gestione dati asincroni e cache lato renderer
 
 **File nuovi:**
 
-| File | Descrizione |
-|------|-------------|
-| `main/errors/AppError.ts` | Gerarchia errori tipizzati: AppError, NotFoundError, ConflictError, ValidationError |
-| `src/styles/global.css` | CSS custom properties (tema chiaro base, colori semantici fissi, badge) |
-| `src/components/layout/Sidebar.tsx` | Sidebar di navigazione con NavLink attivo e link Diagnostica IPC |
-| `src/components/layout/AppLayout.tsx` | Layout root: sidebar + `<Outlet />` scrollabile |
-| `src/routes/Router.tsx` | HashRouter con 7 route (dashboard, pratiche, report, impostazioni-istanze, impostazioni-app, cestino, dev/ipc) |
-| `src/pages/PlaceholderSection.tsx` | Componente placeholder riutilizzabile "Sezione in costruzione" |
-| `src/pages/DashboardPage.tsx` | Placeholder Dashboard |
-| `src/pages/PratichePage.tsx` | Placeholder Pratiche |
-| `src/pages/ReportPage.tsx` | Placeholder Report |
-| `src/pages/AppSettingsPage.tsx` | Placeholder Impostazioni app |
-| `src/pages/CestinoPage.tsx` | Placeholder Cestino |
-| `src/pages/IpcDemoPage.tsx` | Demo IPC spostata da PlaceholderPage (route `/dev/ipc`) |
-| `src/pages/InstanceSettingsPage.tsx` | Pagina Impostazioni istanze: sezione Fasi + segnaposto Transizioni/Campi/Menu/Anagrafiche |
-| `src/features/config/phases/usePhases.ts` | TanStack Query hooks: useAllPhases, useCreatePhase, useUpdatePhase, useSetPhaseActive, useReorderPhases |
-| `src/features/config/phases/PhaseFormModal.tsx` | Modale crea/modifica fase con validazione zod lato renderer |
-| `src/features/config/phases/PhasesSection.tsx` | Sezione fasi: tabella ordinata, badge, pulsanti su/giù, Attiva/Disattiva con guard inline |
-| `src/utils/ipcError.ts` | Helper per estrarre il messaggio utente dagli errori IPC di Electron |
+| File                                            | Descrizione                                                                                                    |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `main/errors/AppError.ts`                       | Gerarchia errori tipizzati: AppError, NotFoundError, ConflictError, ValidationError                            |
+| `src/styles/global.css`                         | CSS custom properties (tema chiaro base, colori semantici fissi, badge)                                        |
+| `src/components/layout/Sidebar.tsx`             | Sidebar di navigazione con NavLink attivo e link Diagnostica IPC                                               |
+| `src/components/layout/AppLayout.tsx`           | Layout root: sidebar + `<Outlet />` scrollabile                                                                |
+| `src/routes/Router.tsx`                         | HashRouter con 7 route (dashboard, pratiche, report, impostazioni-istanze, impostazioni-app, cestino, dev/ipc) |
+| `src/pages/PlaceholderSection.tsx`              | Componente placeholder riutilizzabile "Sezione in costruzione"                                                 |
+| `src/pages/DashboardPage.tsx`                   | Placeholder Dashboard                                                                                          |
+| `src/pages/PratichePage.tsx`                    | Placeholder Pratiche                                                                                           |
+| `src/pages/ReportPage.tsx`                      | Placeholder Report                                                                                             |
+| `src/pages/AppSettingsPage.tsx`                 | Placeholder Impostazioni app                                                                                   |
+| `src/pages/CestinoPage.tsx`                     | Placeholder Cestino                                                                                            |
+| `src/pages/IpcDemoPage.tsx`                     | Demo IPC spostata da PlaceholderPage (route `/dev/ipc`)                                                        |
+| `src/pages/InstanceSettingsPage.tsx`            | Pagina Impostazioni istanze: sezione Fasi + segnaposto Transizioni/Campi/Menu/Anagrafiche                      |
+| `src/features/config/phases/usePhases.ts`       | TanStack Query hooks: useAllPhases, useCreatePhase, useUpdatePhase, useSetPhaseActive, useReorderPhases        |
+| `src/features/config/phases/PhaseFormModal.tsx` | Modale crea/modifica fase con validazione zod lato renderer                                                    |
+| `src/features/config/phases/PhasesSection.tsx`  | Sezione fasi: tabella ordinata, badge, pulsanti su/giù, Attiva/Disattiva con guard inline                      |
+| `src/utils/ipcError.ts`                         | Helper per estrarre il messaggio utente dagli errori IPC di Electron                                           |
 
 **File modificati:**
 
-| File | Modifica |
-|------|----------|
-| `shared/ipc.ts` | Aggiunto `PhaseCategory`, `PHASE_CATEGORIES`, 5 nuovi canali IPC, tipi input/output CRUD fasi, esteso `LexFlowApi.config` |
+| File                                | Modifica                                                                                                                                                                                                                                                           |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `shared/ipc.ts`                     | Aggiunto `PhaseCategory`, `PHASE_CATEGORIES`, 5 nuovi canali IPC, tipi input/output CRUD fasi, esteso `LexFlowApi.config`                                                                                                                                          |
 | `main/modules/config/repository.ts` | Aggiunto `findAllPhases`, `findPhaseById`, `findMaxOrder`, `countActiveInitialPhases`, `keyExists`, `createPhaseAtomic`, `updatePhaseAtomic`, `setPhaseIsActive`, `reorderPhasesAtomic`; rimosso explicit `.select()` da `findActivePhases` (ora usa `toListItem`) |
-| `main/modules/config/service.ts` | Aggiunto `listAllPhases`, `createPhase`, `updatePhase`, `setPhaseActive`, `reorderPhases`; helper `slugify`, `generateUniqueKey`, `assertCanDeactivate` (con TODO guard pratiche) |
-| `main/modules/config/controller.ts` | Aggiunto 5 handler IPC con validazione zod; helper `parseOrThrow` |
-| `main/preload.ts` | Aggiunto 5 metodi config nel bridge contextBridge |
-| `src/api/config.ts` | Aggiunto 5 metodi client IPC |
-| `src/App.tsx` | Sostituito `<PlaceholderPage />` con `<Router />` |
-| `src/main.tsx` | Aggiunto `QueryClientProvider` e import `global.css` |
+| `main/modules/config/service.ts`    | Aggiunto `listAllPhases`, `createPhase`, `updatePhase`, `setPhaseActive`, `reorderPhases`; helper `slugify`, `generateUniqueKey`, `assertCanDeactivate` (con TODO guard pratiche)                                                                                  |
+| `main/modules/config/controller.ts` | Aggiunto 5 handler IPC con validazione zod; helper `parseOrThrow`                                                                                                                                                                                                  |
+| `main/preload.ts`                   | Aggiunto 5 metodi config nel bridge contextBridge                                                                                                                                                                                                                  |
+| `src/api/config.ts`                 | Aggiunto 5 metodi client IPC                                                                                                                                                                                                                                       |
+| `src/App.tsx`                       | Sostituito `<PlaceholderPage />` con `<Router />`                                                                                                                                                                                                                  |
+| `src/main.tsx`                      | Aggiunto `QueryClientProvider` e import `global.css`                                                                                                                                                                                                               |
 
 **Decisioni implementative:**
+
 - Transazioni nelle operazioni composite (`createPhaseAtomic`, `updatePhaseAtomic`, `reorderPhasesAtomic`) usando `getDb().transaction((tx) => {...})` con `tx` per garantire atomicità.
 - La `key` viene generata via `slugify(displayName)` alla creazione e non è mai aggiornata in `updatePhase` (colonna `key` esclusa dal SET).
 - Guard "non disattivare l'unica fase iniziale" attivo in `assertCanDeactivate`. Guard "non disattivare se usata da pratiche" lasciato come TODO documentato.

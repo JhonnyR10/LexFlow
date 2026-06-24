@@ -1,11 +1,11 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
-import { phases } from './phases'
+import { transitions } from './transitions'
 import { menuSets } from './menuSets'
 
 export const fieldDefs = sqliteTable('field_defs', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  scope: text('scope', { enum: ['general', 'phase'] }).notNull(),
-  phaseId: integer('phase_id').references(() => phases.id),
+  scope: text('scope', { enum: ['general', 'transition'] }).notNull(),
+  transitionId: integer('transition_id').references(() => transitions.id),
   key: text('key').notNull(),
   label: text('label').notNull(),
   type: text('type', {

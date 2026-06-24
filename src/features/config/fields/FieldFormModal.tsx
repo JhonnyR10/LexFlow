@@ -1,0 +1,427 @@
+import { useState } from 'react'
+import { z } from 'zod'
+import { FIELD_TYPES } from '../../../../shared/ipc'
+import type { FieldDefListItem, FieldType, MenuSetListItem } from '../../../../shared/ipc'
+import { useCreateField, useUpdateField } from './useFields'
+import { ipcErrorMessage } from '../../../utils/ipcError'
+
+const FIELD_TYPE_LABELS: Record<FieldType, string> = {
+  testo_breve: 'Testo breve',
+  testo_lungo: 'Testo lungo',
+  numero: 'Numero',
+  importo: 'Importo',
+  data: 'Data',
+  menu: 'Menu a tendina',
+  si_no: 'Sì / No',
+  note: 'Note',
+  file: 'File'
+}
+
+const fieldTypeZod = z.enum(FIELD_TYPES as [FieldType, ...FieldType[]])
+
+const formSchema = z
+  .object({
+    label: z.string().min(1, "L'etichetta è obbligatoria").max(100, 'Massimo 100 caratteri'),
+    type: fieldTypeZod,
+    required: z.boolean(),
+    visibleInTable: z.boolean(),
+    usableInFilter: z.boolean(),
+    includeInExport: z.boolean(),
+    menuSetId: z.number().int().positive().nullable()
+  })
+  .superRefine((data, ctx) => {
+    if (data.type === 'menu' && data.menuSetId == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['menuSetId'],
+        message: 'Seleziona un menu set per i campi di tipo menu'
+      })
+    }
+    if (data.type !== 'menu' && data.menuSetId != null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['menuSetId'],
+        message: 'Il menu set è consentito solo per campi di tipo menu'
+      })
+    }
+  })
+
+interface Props {
+  mode: 'create' | 'edit'
+  scope: 'general' | 'transition'
+  transitionId: number | null
+  field?: FieldDefListItem
+  menuSets: MenuSetListItem[]
+  onClose: () => void
+}
+
+// ---------- Styles ----------
+
+const overlayStyle: React.CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(0,0,0,0.45)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 1000
+}
+
+const dialogStyle: React.CSSProperties = {
+  background: 'var(--color-surface)',
+  borderRadius: '10px',
+  padding: '28px 32px',
+  width: '520px',
+  maxWidth: '95vw',
+  maxHeight: '90vh',
+  overflowY: 'auto',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.18)'
+}
+
+const titleStyle: React.CSSProperties = {
+  fontSize: '16px',
+  fontWeight: 600,
+  marginBottom: '20px',
+  color: 'var(--color-text)'
+}
+
+const fieldStyle: React.CSSProperties = { marginBottom: '16px' }
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: '13px',
+  fontWeight: 500,
+  marginBottom: '5px',
+  color: 'var(--color-text)'
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '7px 10px',
+  border: '1px solid var(--color-border)',
+  borderRadius: '6px',
+  fontSize: '13px',
+  color: 'var(--color-text)',
+  background: 'var(--color-surface)',
+  outline: 'none',
+  boxSizing: 'border-box'
+}
+
+const readonlyInputStyle: React.CSSProperties = {
+  ...inputStyle,
+  background: 'var(--color-bg)',
+  color: 'var(--color-text-secondary)',
+  cursor: 'default'
+}
+
+const selectStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer' }
+
+const hintStyle: React.CSSProperties = {
+  marginTop: '4px',
+  fontSize: '11px',
+  color: 'var(--color-text-muted)'
+}
+
+const warnStyle: React.CSSProperties = {
+  marginTop: '4px',
+  fontSize: '11px',
+  color: 'var(--color-warning, #b45309)'
+}
+
+const toggleRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  marginBottom: '8px'
+}
+
+const toggleLabelStyle: React.CSSProperties = {
+  fontSize: '13px',
+  color: 'var(--color-text)',
+  cursor: 'pointer'
+}
+
+const errorStyle: React.CSSProperties = {
+  marginBottom: '14px',
+  padding: '8px 12px',
+  background: 'var(--color-error-bg)',
+  border: '1px solid var(--color-error-border)',
+  borderRadius: '6px',
+  color: 'var(--color-error)',
+  fontSize: '13px'
+}
+
+const footerStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: '10px',
+  justifyContent: 'flex-end',
+  marginTop: '20px',
+  paddingTop: '16px',
+  borderTop: '1px solid var(--color-border)'
+}
+
+const btnPrimaryStyle: React.CSSProperties = {
+  padding: '8px 18px',
+  background: 'var(--color-accent)',
+  color: '#fff',
+  border: 'none',
+  borderRadius: '6px',
+  fontSize: '13px',
+  fontWeight: 500,
+  cursor: 'pointer'
+}
+
+const btnSecondaryStyle: React.CSSProperties = {
+  padding: '8px 18px',
+  background: 'var(--color-bg)',
+  color: 'var(--color-text)',
+  border: '1px solid var(--color-border)',
+  borderRadius: '6px',
+  fontSize: '13px',
+  cursor: 'pointer'
+}
+
+const sectionNoteStyle: React.CSSProperties = {
+  fontSize: '11px',
+  color: 'var(--color-text-muted)',
+  fontStyle: 'italic',
+  marginBottom: '8px'
+}
+
+// ---------- Component ----------
+
+export function FieldFormModal({
+  mode,
+  scope,
+  transitionId,
+  field,
+  menuSets,
+  onClose
+}: Props): React.JSX.Element {
+  const isEdit = mode === 'edit' && field != null
+
+  const [label, setLabel] = useState(isEdit ? field.label : '')
+  const [type, setType] = useState<FieldType>(isEdit ? field.type : 'testo_breve')
+  const [required, setRequired] = useState(isEdit ? field.required : false)
+  const [visibleInTable, setVisibleInTable] = useState(isEdit ? field.visibleInTable : false)
+  const [usableInFilter, setUsableInFilter] = useState(isEdit ? field.usableInFilter : false)
+  const [includeInExport, setIncludeInExport] = useState(isEdit ? field.includeInExport : false)
+  const [menuSetId, setMenuSetId] = useState<number | null>(isEdit ? field.menuSetId : null)
+  const [formError, setFormError] = useState<string | null>(null)
+
+  const createMutation = useCreateField()
+  const updateMutation = useUpdateField()
+  const isPending = createMutation.isPending || updateMutation.isPending
+
+  const setsWithActiveOptions = menuSets.filter((s) => s.options.some((o) => o.isActive))
+  const selectedSet = menuSets.find((s) => s.id === menuSetId)
+  const selectedSetHasNoActiveOptions =
+    selectedSet != null && !selectedSet.options.some((o) => o.isActive)
+
+  function handleTypeChange(newType: FieldType): void {
+    setType(newType)
+    if (newType !== 'menu') setMenuSetId(null)
+  }
+
+  function handleSubmit(e: React.FormEvent): void {
+    e.preventDefault()
+    setFormError(null)
+
+    const result = formSchema.safeParse({
+      label,
+      type,
+      required,
+      visibleInTable,
+      usableInFilter,
+      includeInExport,
+      menuSetId
+    })
+
+    if (!result.success) {
+      setFormError(result.error.issues[0]?.message ?? 'Dati non validi')
+      return
+    }
+
+    if (isEdit) {
+      updateMutation.mutate(
+        { id: field.id, ...result.data },
+        {
+          onSuccess: () => onClose(),
+          onError: (err) => setFormError(ipcErrorMessage(err))
+        }
+      )
+    } else {
+      createMutation.mutate(
+        { scope, transitionId, ...result.data },
+        {
+          onSuccess: () => onClose(),
+          onError: (err) => setFormError(ipcErrorMessage(err))
+        }
+      )
+    }
+  }
+
+  return (
+    <div style={overlayStyle} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div style={dialogStyle}>
+        <h2 style={titleStyle}>{isEdit ? 'Modifica campo' : 'Nuovo campo'}</h2>
+
+        <form onSubmit={handleSubmit}>
+          {/* Etichetta */}
+          <div style={fieldStyle}>
+            <label style={labelStyle} htmlFor="ff-label">
+              Etichetta *
+            </label>
+            <input
+              id="ff-label"
+              style={inputStyle}
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Es. Data udienza"
+              autoFocus={!isEdit}
+            />
+          </div>
+
+          {/* Key (solo lettura in modifica) */}
+          {isEdit && (
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Chiave tecnica</label>
+              <input style={readonlyInputStyle} value={field.key} readOnly />
+              <div style={hintStyle}>Immutabile dopo la creazione</div>
+            </div>
+          )}
+
+          {/* Tipo */}
+          <div style={fieldStyle}>
+            <label style={labelStyle} htmlFor="ff-type">
+              Tipo *
+            </label>
+            <select
+              id="ff-type"
+              style={selectStyle}
+              value={type}
+              onChange={(e) => handleTypeChange(e.target.value as FieldType)}
+            >
+              {FIELD_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {FIELD_TYPE_LABELS[t]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Menu set (solo se type='menu') */}
+          {type === 'menu' && (
+            <div style={fieldStyle}>
+              <label style={labelStyle} htmlFor="ff-menuSet">
+                Menu set *
+              </label>
+              <select
+                id="ff-menuSet"
+                style={selectStyle}
+                value={menuSetId ?? ''}
+                onChange={(e) => setMenuSetId(e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">— Seleziona un menu —</option>
+                {setsWithActiveOptions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+                {menuSets
+                  .filter((s) => !s.options.some((o) => o.isActive))
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label} (nessuna opzione attiva)
+                    </option>
+                  ))}
+              </select>
+              {selectedSetHasNoActiveOptions && (
+                <div style={warnStyle}>
+                  Attenzione: il menu set selezionato non ha opzioni attive. Il campo non mostrerà
+                  scelte disponibili.
+                </div>
+              )}
+              {setsWithActiveOptions.length === 0 && (
+                <div style={warnStyle}>
+                  Nessun menu set con opzioni attive. Aggiungine uno nella sezione Menu a tendina.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Flag */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ ...labelStyle, marginBottom: '8px' }}>Opzioni</label>
+
+            {scope === 'transition' && (
+              <div style={sectionNoteStyle}>
+                I flag di visibilità (tabella/filtri/export) sono rilevanti soprattutto per i campi
+                generali.
+              </div>
+            )}
+
+            <div style={toggleRowStyle}>
+              <input
+                type="checkbox"
+                id="ff-required"
+                checked={required}
+                onChange={(e) => setRequired(e.target.checked)}
+              />
+              <label style={toggleLabelStyle} htmlFor="ff-required">
+                Obbligatorio
+              </label>
+            </div>
+
+            <div style={toggleRowStyle}>
+              <input
+                type="checkbox"
+                id="ff-visibleInTable"
+                checked={visibleInTable}
+                onChange={(e) => setVisibleInTable(e.target.checked)}
+              />
+              <label style={toggleLabelStyle} htmlFor="ff-visibleInTable">
+                Visibile in tabella
+              </label>
+            </div>
+
+            <div style={toggleRowStyle}>
+              <input
+                type="checkbox"
+                id="ff-usableInFilter"
+                checked={usableInFilter}
+                onChange={(e) => setUsableInFilter(e.target.checked)}
+              />
+              <label style={toggleLabelStyle} htmlFor="ff-usableInFilter">
+                Usabile nei filtri
+              </label>
+            </div>
+
+            <div style={toggleRowStyle}>
+              <input
+                type="checkbox"
+                id="ff-includeInExport"
+                checked={includeInExport}
+                onChange={(e) => setIncludeInExport(e.target.checked)}
+              />
+              <label style={toggleLabelStyle} htmlFor="ff-includeInExport">
+                Includi nell&apos;export
+              </label>
+            </div>
+          </div>
+
+          {formError && <div style={errorStyle}>{formError}</div>}
+
+          <div style={footerStyle}>
+            <button type="button" style={btnSecondaryStyle} onClick={onClose} disabled={isPending}>
+              Annulla
+            </button>
+            <button type="submit" style={btnPrimaryStyle} disabled={isPending}>
+              {isPending ? 'Salvataggio…' : isEdit ? 'Salva modifiche' : 'Crea campo'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
