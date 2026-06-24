@@ -7,6 +7,8 @@ import type {
   GetPracticeInput,
   GetPracticeResponse,
   PracticeDetailHistoryItem,
+  ListAvailableTransitionsInput,
+  PracticesListAvailableTransitionsResponse,
 } from '../../../shared/ipc'
 import {
   countPracticesByYear,
@@ -19,6 +21,7 @@ import {
   insertHistoryEvent,
   insertPecRecipients,
   findAllActivePractices,
+  findAvailableTransitionsFromPhase,
   findPracticeDetailById,
   findPhaseNameMap,
   findHistoryEventsByPractice,
@@ -128,6 +131,31 @@ export function getPracticeDetail(input: GetPracticeInput): GetPracticeResponse 
     createdAt:  p.createdAt,
     updatedAt:  p.updatedAt,
   }
+}
+
+// Pulsanti di avanzamento (S5.2): transizioni configurate dalla fase corrente.
+// Le transizioni invalide non esistono nel grafo, quindi non generano pulsanti
+// (cfr. docs/03-workflow-engine.md). Una fase finale non ha azioni in uscita.
+export function listAvailableTransitions(
+  input: ListAvailableTransitionsInput
+): PracticesListAvailableTransitionsResponse {
+  const row = findPracticeDetailById(input.practiceId)
+  if (!row) {
+    throw new NotFoundError('Pratica non trovata')
+  }
+
+  if (row.currentPhaseIsFinal === true) {
+    return []
+  }
+
+  return findAvailableTransitionsFromPhase(row.practice.currentPhaseId).map(t => ({
+    id:                 t.id,
+    buttonLabel:        t.buttonLabel,
+    toPhaseId:          t.toPhaseId,
+    toPhaseDisplayName: t.toPhaseDisplayName ?? null,
+    isRepeatable:       t.isRepeatable,
+    isResume:           t.isResume,
+  }))
 }
 
 export function createPractice(input: CreatePracticeInput): CreatePracticeResponse {

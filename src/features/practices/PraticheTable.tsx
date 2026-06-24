@@ -18,7 +18,7 @@ function formatImporto(value: number | null): string {
   }).format(value)
 }
 
-function PhaseBadge({ name }: { name: string | null }) {
+function PhaseBadge({ name }: { name: string | null }): React.JSX.Element {
   return (
     <span style={{
       display: 'inline-block',
@@ -35,7 +35,7 @@ function PhaseBadge({ name }: { name: string | null }) {
   )
 }
 
-function PracticeRow({ p }: { p: PracticeListItem }) {
+function PracticeRow({ p }: { p: PracticeListItem }): React.JSX.Element {
   return (
     <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
       <td style={tdStyle}>

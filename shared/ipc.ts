@@ -53,7 +53,8 @@ export const IPC_CHANNELS = {
   PRACTICES_GENERATE_CODICE: 'practices:generateCodiceIstanza',
   PRACTICES_CREATE: 'practices:createPractice',
   PRACTICES_LIST: 'practices:listPractices',
-  PRACTICES_GET: 'practices:getPractice'
+  PRACTICES_GET: 'practices:getPractice',
+  PRACTICES_LIST_AVAILABLE_TRANSITIONS: 'practices:listAvailableTransitions'
 } as const
 
 export type AppGetVersionResponse = string
@@ -493,6 +494,25 @@ export interface PracticeDetail {
 
 export type GetPracticeResponse = PracticeDetail
 
+// --- Transizioni disponibili dalla fase corrente (S5.2) ---
+// Pulsanti di avanzamento generati dalla configurazione: solo transizioni
+// attive e non automatiche dalla fase corrente della pratica. Il form e il
+// salvataggio sono gestiti in S5.3.
+export interface ListAvailableTransitionsInput {
+  practiceId: number
+}
+
+export interface AvailableTransition {
+  id: number
+  buttonLabel: string
+  toPhaseId: number | null
+  toPhaseDisplayName: string | null
+  isRepeatable: boolean
+  isResume: boolean
+}
+
+export type PracticesListAvailableTransitionsResponse = AvailableTransition[]
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
@@ -527,6 +547,7 @@ export interface LexFlowApi {
     createPractice(input: CreatePracticeInput): Promise<CreatePracticeResponse>
     listPractices(): Promise<PracticesListResponse>
     getPractice(input: GetPracticeInput): Promise<GetPracticeResponse>
+    listAvailableTransitions(input: ListAvailableTransitionsInput): Promise<PracticesListAvailableTransitionsResponse>
   }
   anagrafiche: {
     listProfessionisti(): Promise<AnagraficheListProfessionistiResponse>

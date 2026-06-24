@@ -6,7 +6,7 @@ export function PratichePage(): React.JSX.Element {
   const [modalOpen, setModalOpen] = useState(false)
   const [lastCreated, setLastCreated] = useState<{ id: number; codice: string } | null>(null)
 
-  const handleCreated = (id: number, codiceIstanza: string) => {
+  const handleCreated = (id: number, codiceIstanza: string): void => {
     setLastCreated({ id, codice: codiceIstanza })
     setModalOpen(false)
   }

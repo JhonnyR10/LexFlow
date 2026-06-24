@@ -7,7 +7,7 @@ import { useAllCollaboratori } from '../anagrafiche/collaboratori/useCollaborato
 import { useCreatePractice } from './usePractices'
 import { practicesApi } from '../../api/practices'
 import { ipcErrorMessage } from '../../utils/ipcError'
-import type { FieldDefListItem, MenuSetListItem } from '../../../shared/ipc'
+import type { FieldDefListItem, MenuSetListItem, MenuOptionListItem } from '../../../shared/ipc'
 
 // ---- Validazione renderer ----
 const formSchema = z.object({
@@ -93,11 +93,11 @@ const btnSmallStyle: React.CSSProperties = {
 }
 
 // ---- Helper ----
-function getMenuOptions(menuSets: MenuSetListItem[], key: string) {
+function getMenuOptions(menuSets: MenuSetListItem[], key: string): MenuOptionListItem[] {
   return menuSets.find(s => s.key === key)?.options.filter(o => o.isActive) ?? []
 }
 
-function getMenuOptionsBySetId(menuSets: MenuSetListItem[], setId: number | null) {
+function getMenuOptionsBySetId(menuSets: MenuSetListItem[], setId: number | null): MenuOptionListItem[] {
   if (setId == null) return []
   return menuSets.find(s => s.id === setId)?.options.filter(o => o.isActive) ?? []
 }
@@ -223,13 +223,13 @@ interface PecBlockProps {
 function PecBlock({ addresses, onChange }: PecBlockProps): React.JSX.Element {
   const list = addresses.length > 0 ? addresses : ['']
 
-  const update = (i: number, val: string) => {
+  const update = (i: number, val: string): void => {
     const next = [...list]
     next[i] = val
     onChange(next)
   }
-  const add = () => onChange([...list, ''])
-  const remove = (i: number) => {
+  const add = (): void => onChange([...list, ''])
+  const remove = (i: number): void => {
     if (list.length === 1) { onChange([]); return }
     onChange(list.filter((_, idx) => idx !== i))
   }
@@ -295,29 +295,30 @@ export function NuovaPraticaModal({ onClose, onCreated }: Props): React.JSX.Elem
       .catch(() => {/* ignora errori di preview */})
   }, [dataUdienza, codiceManual])
 
-  // Auto-genera nomeIstanza quando cambia dataUdienza
-  useEffect(() => {
-    if (!dataUdienza || !/^\d{4}-\d{2}-\d{2}$/.test(dataUdienza)) return
-    if (nomeManual) return
-    const dateStr = dataUdienza.replace(/-/g, '')
-    setNomeIstanza(`${dateStr}_NOTA_SPESE`)
-  }, [dataUdienza, nomeManual])
+  // Cambio data udienza: aggiorna la data e, se l'utente non ha modificato a
+  // mano il nome istanza, lo rigenera in linea (niente setState-in-effect).
+  const handleDataUdienzaChange = useCallback((val: string): void => {
+    setDataUdienza(val)
+    if (!nomeManual && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      setNomeIstanza(`${val.replace(/-/g, '')}_NOTA_SPESE`)
+    }
+  }, [nomeManual])
 
-  const handleCodiceChange = useCallback((val: string) => {
+  const handleCodiceChange = useCallback((val: string): void => {
     setCodiceIstanza(val)
     setCodiceManual(true)
   }, [])
 
-  const handleNomeChange = useCallback((val: string) => {
+  const handleNomeChange = useCallback((val: string): void => {
     setNomeIstanza(val)
     setNomeManual(true)
   }, [])
 
-  const handleCustomChange = useCallback((key: string, value: unknown) => {
+  const handleCustomChange = useCallback((key: string, value: unknown): void => {
     setCustomValues(prev => ({ ...prev, [key]: value }))
   }, [])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
     setError(null)
 
@@ -384,7 +385,7 @@ export function NuovaPraticaModal({ onClose, onCreated }: Props): React.JSX.Elem
               style={inputStyle}
               type="date"
               value={dataUdienza}
-              onChange={e => setDataUdienza(e.target.value)}
+              onChange={e => handleDataUdienzaChange(e.target.value)}
               required
             />
           </div>

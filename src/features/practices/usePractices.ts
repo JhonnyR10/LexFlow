@@ -11,6 +11,7 @@ import type {
   CreatePracticeResponse,
   GetPracticeResponse,
   PracticesListResponse,
+  PracticesListAvailableTransitionsResponse,
 } from '../../../shared/ipc'
 
 export function useActivePractices(): UseQueryResult<PracticesListResponse, Error> {
@@ -25,6 +26,16 @@ export function usePracticeDetail(id: number | null): UseQueryResult<GetPractice
     queryKey: ['practice', id],
     queryFn: () => practicesApi.getPractice({ id: id as number }),
     enabled: id != null,
+  })
+}
+
+export function useAvailableTransitions(
+  practiceId: number | null
+): UseQueryResult<PracticesListAvailableTransitionsResponse, Error> {
+  return useQuery({
+    queryKey: ['practice', practiceId, 'transitions'],
+    queryFn: () => practicesApi.listAvailableTransitions({ practiceId: practiceId as number }),
+    enabled: practiceId != null,
   })
 }
 

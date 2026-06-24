@@ -6,6 +6,8 @@ import type {
   PracticesListResponse,
   GetPracticeInput,
   GetPracticeResponse,
+  ListAvailableTransitionsInput,
+  PracticesListAvailableTransitionsResponse,
 } from '../../shared/ipc'
 
 export const practicesApi = {
@@ -24,4 +26,9 @@ export const practicesApi = {
 
   getPractice: (input: GetPracticeInput): Promise<GetPracticeResponse> =>
     window.api.practices.getPractice(input),
+
+  listAvailableTransitions: (
+    input: ListAvailableTransitionsInput
+  ): Promise<PracticesListAvailableTransitionsResponse> =>
+    window.api.practices.listAvailableTransitions(input),
 }

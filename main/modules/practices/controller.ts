@@ -6,8 +6,15 @@ import type {
   CreatePracticeResponse,
   PracticesListResponse,
   GetPracticeResponse,
+  PracticesListAvailableTransitionsResponse,
 } from '../../../shared/ipc'
-import { generateCodiceIstanza, createPractice, listActivePractices, getPracticeDetail } from './service'
+import {
+  generateCodiceIstanza,
+  createPractice,
+  listActivePractices,
+  getPracticeDetail,
+  listAvailableTransitions,
+} from './service'
 import { logger } from '../../utils/logger'
 
 function parseOrThrow<T>(schema: z.ZodType<T>, input: unknown): T {
@@ -28,6 +35,10 @@ const generateCodiceSchema = z.object({
 
 const getPracticeSchema = z.object({
   id: z.number().int().positive()
+})
+
+const listAvailableTransitionsSchema = z.object({
+  practiceId: z.number().int().positive()
 })
 
 const createPracticeSchema = z.object({
@@ -80,6 +91,15 @@ export function registerPracticesHandlers(): void {
       logger.debug('IPC', IPC_CHANNELS.PRACTICES_GET)
       const parsed = parseOrThrow(getPracticeSchema, input)
       return getPracticeDetail(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.PRACTICES_LIST_AVAILABLE_TRANSITIONS,
+    (_, input: unknown): PracticesListAvailableTransitionsResponse => {
+      logger.debug('IPC', IPC_CHANNELS.PRACTICES_LIST_AVAILABLE_TRANSITIONS)
+      const parsed = parseOrThrow(listAvailableTransitionsSchema, input)
+      return listAvailableTransitions(parsed)
     }
   )
 }

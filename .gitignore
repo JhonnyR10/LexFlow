@@ -9,6 +9,7 @@ release/
 .env
 .env.*
 !.env.example
+.eslintcache
 # dati locali, DB e backup dell'app: non devono finire su Git
 data/
 backups/

@@ -1,6 +1,7 @@
 import React from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { usePracticeDetail } from '../features/practices/usePractices'
+import { WorkflowActions } from '../features/practices/WorkflowActions'
 import { useFields } from '../features/config/fields/useFields'
 import { useMenuSets } from '../features/config/menus/useMenus'
 import type {
@@ -353,9 +354,9 @@ export function DettaglioPraticaPage(): React.JSX.Element {
             <Field label="Fase di provenienza" value={practice.previousPhaseDisplayName} />
           )}
         </FieldGrid>
-        <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '14px 0 0' }}>
-          Le azioni di avanzamento (pulsanti delle transizioni) saranno disponibili nella prossima storia (S5.2).
-        </p>
+        <div style={{ marginTop: '18px' }}>
+          <WorkflowActions practiceId={practice.id} isFinal={practice.currentPhase.isFinal} />
+        </div>
       </Section>
 
       {/* Storico */}

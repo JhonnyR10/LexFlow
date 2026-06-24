@@ -40,7 +40,7 @@ export function getSiglaCodice(): string {
   return row?.siglaCodice ?? 'NP'
 }
 
-export function findInitialPhase() {
+export function findInitialPhase(): typeof phases.$inferSelect | undefined {
   return getDb()
     .select()
     .from(phases)
@@ -48,13 +48,48 @@ export function findInitialPhase() {
     .get()
 }
 
-export function findAutomaticTransitionFromPhase(phaseId: number) {
+export function findAutomaticTransitionFromPhase(
+  phaseId: number
+): typeof transitions.$inferSelect | null {
   return getDb()
     .select()
     .from(transitions)
     .where(eq(transitions.fromPhaseId, phaseId))
     .all()
     .find(t => t.isAutomatic && t.toPhaseId != null) ?? null
+}
+
+export interface AvailableTransitionRow {
+  id: number
+  buttonLabel: string
+  toPhaseId: number | null
+  toPhaseDisplayName: string | null
+  isRepeatable: boolean
+  isResume: boolean
+}
+
+// Transizioni disponibili (pulsanti) dalla fase corrente: solo attive e non
+// automatiche, ordinate per `order`. Il join risolve il displayName della
+// fase di destinazione (null per le isResume, che hanno toPhaseId null).
+export function findAvailableTransitionsFromPhase(phaseId: number): AvailableTransitionRow[] {
+  return getDb()
+    .select({
+      id:                 transitions.id,
+      buttonLabel:        transitions.buttonLabel,
+      toPhaseId:          transitions.toPhaseId,
+      toPhaseDisplayName: phases.displayName,
+      isRepeatable:       transitions.isRepeatable,
+      isResume:           transitions.isResume,
+    })
+    .from(transitions)
+    .leftJoin(phases, eq(transitions.toPhaseId, phases.id))
+    .where(and(
+      eq(transitions.fromPhaseId, phaseId),
+      eq(transitions.isActive, true),
+      eq(transitions.isAutomatic, false),
+    ))
+    .orderBy(transitions.order)
+    .all()
 }
 
 export function insertPractice(data: {
@@ -164,7 +199,17 @@ export function findPhaseNameMap(): Map<number, string> {
   return new Map(rows.map(r => [r.id, r.displayName]))
 }
 
-export function findHistoryEventsByPractice(practiceId: number) {
+export interface HistoryEventListRow {
+  id: number
+  timestamp: string
+  type: string
+  title: string
+  fromPhaseId: number | null
+  toPhaseId: number | null
+  note: string | null
+}
+
+export function findHistoryEventsByPractice(practiceId: number): HistoryEventListRow[] {
   return getDb()
     .select({
       id:          historyEvents.id,

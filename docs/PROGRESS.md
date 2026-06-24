@@ -29,7 +29,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S4.2   | Form Nuova pratica                                           | FATTO    | Modal Nuova pratica: 6 sezioni, campi fissi + campi custom generali + PEC deposito. Backend: createPractice con transazione, auto-transizione depositata→in_attesa_decreto, HistoryEvent. Nuove tabelle: history_events, pec_recipients. Migrazione 0004_*.sql. |                                                                                                                                                                                                                          |
 | S4.3   | Modifica pratica + storico                                   | TODO     |                                                                                                                                                                                                                          |
 | S5.1   | Dettaglio pratica                                            | FATTO    | IPC `practices:getPractice` (detail con join fasi/anagrafiche, history, PEC deposito). DettaglioPraticaPage read-only: intestazione, dati generali, soggetti, importi, campi personalizzati risolti, workflow, storico/timeline, documenti (stub E7). Pulsanti transizione = S5.2.                                                                          |
-| S5.2   | Pulsanti dinamici = transizioni                              | TODO     |                                                                                                                                                                                                                          |
+| S5.2   | Pulsanti dinamici = transizioni                              | FATTO    | IPC `practices:listAvailableTransitions` (attive, non automatiche, dalla fase corrente; fase finale → nessuna azione). Componente `WorkflowActions` nel dettaglio: pulsanti generati dalla config, loading/empty/error. Form+salvataggio = S5.3.                                                                                              |
 | S5.3   | Form dinamico fase + salvataggio                             | TODO     |                                                                                                                                                                                                                          |
 | S5.4   | Guard coerenza stati                                         | TODO     |                                                                                                                                                                                                                          |
 | S5.5   | Storico/timeline                                             | TODO     |                                                                                                                                                                                                                          |
@@ -84,6 +84,45 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-25 — S5.2: Pulsanti dinamici = transizioni
+
+**Nessuna modifica schema, nessuna migrazione.** Solo lettura della configurazione workflow esistente.
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `src/features/practices/WorkflowActions.tsx` | Componente: un pulsante per transizione disponibile dalla fase corrente; stati loading/empty/error; click → avviso "compilazione in S5.3" (form e salvataggio non ancora implementati) |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `shared/ipc.ts` | Canale `PRACTICES_LIST_AVAILABLE_TRANSITIONS`; tipi `ListAvailableTransitionsInput`, `AvailableTransition`, `PracticesListAvailableTransitionsResponse`; esteso `LexFlowApi.practices` |
+| `main/modules/practices/repository.ts` | `findAvailableTransitionsFromPhase(phaseId)`: transizioni `isActive && !isAutomatic` dalla fase, join `phases` per toPhaseDisplayName, ordinate per `order` |
+| `main/modules/practices/service.ts` | `listAvailableTransitions({practiceId})`: NotFoundError se pratica assente; `[]` se fase finale; altrimenti mappa il repository |
+| `main/modules/practices/controller.ts` | Handler IPC con schema zod `{ practiceId }` |
+| `main/preload.ts` | Metodo `practices.listAvailableTransitions` nel bridge |
+| `src/api/practices.ts` | Client `listAvailableTransitions` |
+| `src/features/practices/usePractices.ts` | Hook `useAvailableTransitions(practiceId)` (disabilitato se id null/fase finale) |
+| `src/pages/DettaglioPraticaPage.tsx` | Sezione Workflow: placeholder S5.2 sostituito da `<WorkflowActions>` |
+
+**Invarianti:**
+1. Solo transizioni `isActive && !isAutomatic` dalla `currentPhaseId`, ordinate per `order`.
+2. Fase finale (`isFinal`) → nessun pulsante (la query è disabilitata lato hook e il service ritorna `[]`).
+3. Nessuna fase/pulsante hard-coded: l'elenco deriva interamente dalla config workflow.
+
+**Confine di storia:** il click sui pulsanti non avanza ancora la pratica. Form dinamico, validazione PEC condizionale, `TransitionRecord`/`HistoryEvent` e cambio fase sono **S5.3**.
+
+**Pulizia debito lint (contestuale, su richiesta utente):** azzerati gli errori `eslint` preesistenti che rendevano `npm run lint` rosso. Interventi:
+- Tipi di ritorno espliciti aggiunti: `PhaseBadge`/`PracticeRow` (`PraticheTable.tsx`), `handleCreated` (`PratichePage.tsx`), `getMenuOptions`/`getMenuOptionsBySetId`/handler/`handleSubmit` (`NuovaPraticaModal.tsx`), `findInitialPhase`/`findAutomaticTransitionFromPhase`/`findHistoryEventsByPractice`/`findAvailableTransitionsFromPhase` (`practices/repository.ts`, con interfacce `AvailableTransitionRow` e `HistoryEventListRow`).
+- Anti-pattern `react-hooks/set-state-in-effect` in `NuovaPraticaModal.tsx`: l'auto-generazione di `nomeIstanza` è passata da `useEffect` a un handler `handleDataUdienzaChange` sul cambio data (stesso comportamento, nessun `setState` sincrono in effect).
+- `eslint.config.mjs`: override `@typescript-eslint/no-unused-vars` con `argsIgnorePattern`/`varsIgnorePattern`/`caughtErrorsIgnorePattern: '^_'` e `ignoreRestSiblings: true`, per istituzionalizzare la convenzione underscore già in uso (es. `_ia`).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ (exit 0, intero progetto) · `npm run build` ✓
+
+---
 
 ### 2026-06-24 — S2.1: CRUD Professionisti
 
