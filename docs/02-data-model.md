@@ -62,8 +62,11 @@ La Dashboard e gli alert ragionano sulla **category**, non sul `displayName`: ri
 
 ### FieldDef (definizione campo configurabile)
 
-`id, scope (general|transition), transitionId (FK transitions, null se general), key, label, type, required, visibleInTable, usableInFilter, includeInExport, order, isActive, menuSetId (null)`.
-Tipi: `testo_breve, testo_lungo, numero, importo, data, menu, si_no, note, file`. I campi `general` compaiono nel form Nuova pratica; i campi `transition` compaiono solo nel form di quella transizione, quando la si esegue dal dettaglio pratica. I flag di visibilità (tabella/filtri/export) sono rilevanti soprattutto per i campi `general`.
+`id, scope (general|transition), transitionId (FK transitions, null se general), key, label, type, required, visibleInTable, usableInFilter, includeInExport, order, isActive, menuSetId (null), conditionalOnFieldId (FK field_defs, null), conditionalValue (text, null)`.
+Tipi: `testo_breve, testo_lungo, numero, importo, data, menu, si_no, note, file, pec`. Il tipo `pec` rende un blocco multi-destinatario PEC (gli indirizzi sono raccolti a runtime in E5 e salvati come `PecRecipient`).
+I campi `general` compaiono nel form Nuova pratica; i campi `transition` compaiono solo nel form di quella transizione. I flag di visibilità (tabella/filtri/export) sono rilevanti soprattutto per i campi `general`.
+
+**Visibilità condizionale (base della regola PEC):** se `conditionalOnFieldId` è valorizzato, il campo è mostrato solo quando il campo controllore (un campo `menu` dello **stesso contenitore**) ha valore uguale a `conditionalValue`. Vincoli: una sola condizione per campo; il controllore deve essere di tipo `menu`, attivo, diverso dal campo stesso; `conditionalValue` deve essere un value di un'opzione attiva di quel menu. `conditionalOnFieldId` e `conditionalValue` sono entrambi null o entrambi valorizzati. La **regola PEC** è un campo `pec` condizionato al campo "modalità" della transizione quando vale l'opzione PEC.
 
 ### TransitionRecord (registrazione di una transizione/evento)
 

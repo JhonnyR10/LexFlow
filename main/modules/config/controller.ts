@@ -309,7 +309,8 @@ export function registerConfigHandlers(): void {
     'menu',
     'si_no',
     'note',
-    'file'
+    'file',
+    'pec'
   ] as const)
 
   const listFieldsFilterSchema = z
@@ -328,7 +329,9 @@ export function registerConfigHandlers(): void {
     visibleInTable: z.boolean(),
     usableInFilter: z.boolean(),
     includeInExport: z.boolean(),
-    menuSetId: z.number().int().positive().nullable()
+    menuSetId: z.number().int().positive().nullable(),
+    conditionalOnFieldId: z.number().int().positive().nullable(),
+    conditionalValue: z.string().nullable()
   })
 
   const updateFieldSchema = z.object({
@@ -339,7 +342,9 @@ export function registerConfigHandlers(): void {
     visibleInTable: z.boolean(),
     usableInFilter: z.boolean(),
     includeInExport: z.boolean(),
-    menuSetId: z.number().int().positive().nullable()
+    menuSetId: z.number().int().positive().nullable(),
+    conditionalOnFieldId: z.number().int().positive().nullable(),
+    conditionalValue: z.string().nullable()
   })
 
   const setFieldActiveSchema = z.object({

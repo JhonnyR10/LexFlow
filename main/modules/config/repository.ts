@@ -397,6 +397,9 @@ export function findFieldsByFilter(filter?: ListFieldsFilter): FieldDefListItem[
 
   const tIds = new Set(filtered.map((f) => f.transitionId).filter((id): id is number => id != null))
   const msIds = new Set(filtered.map((f) => f.menuSetId).filter((id): id is number => id != null))
+  const cfIds = new Set(
+    filtered.map((f) => f.conditionalOnFieldId).filter((id): id is number => id != null)
+  )
 
   const tLabelById = new Map<number, string>()
   if (tIds.size > 0) {
@@ -415,6 +418,14 @@ export function findFieldsByFilter(filter?: ListFieldsFilter): FieldDefListItem[
     }
   }
 
+  // Resolve label of controller field (may live outside the filtered set)
+  const cfLabelById = new Map<number, string>()
+  if (cfIds.size > 0) {
+    for (const row of allFields) {
+      if (cfIds.has(row.id)) cfLabelById.set(row.id, row.label)
+    }
+  }
+
   return filtered.map((f) => ({
     id: f.id,
     scope: f.scope as 'general' | 'transition',
@@ -430,7 +441,11 @@ export function findFieldsByFilter(filter?: ListFieldsFilter): FieldDefListItem[
     order: f.order,
     isActive: f.isActive,
     menuSetId: f.menuSetId,
-    menuSetLabel: f.menuSetId != null ? (msLabelById.get(f.menuSetId) ?? null) : null
+    menuSetLabel: f.menuSetId != null ? (msLabelById.get(f.menuSetId) ?? null) : null,
+    conditionalOnFieldId: f.conditionalOnFieldId,
+    conditionalValue: f.conditionalValue,
+    conditionalOnFieldLabel:
+      f.conditionalOnFieldId != null ? (cfLabelById.get(f.conditionalOnFieldId) ?? null) : null
   }))
 }
 
@@ -484,9 +499,28 @@ export function updateFieldFields(
     usableInFilter: boolean
     includeInExport: boolean
     menuSetId: number | null
+    conditionalOnFieldId: number | null
+    conditionalValue: string | null
   }
 ): void {
   getDb().update(fieldDefs).set(data).where(eq(fieldDefs.id, id)).run()
+}
+
+export function findActiveMenuOptionByValue(
+  menuSetId: number,
+  value: string
+): typeof menuOptions.$inferSelect | undefined {
+  return getDb()
+    .select()
+    .from(menuOptions)
+    .where(
+      and(
+        eq(menuOptions.menuSetId, menuSetId),
+        eq(menuOptions.value, value),
+        eq(menuOptions.isActive, true)
+      )
+    )
+    .get()
 }
 
 export function setFieldIsActive(id: number, isActive: boolean): void {

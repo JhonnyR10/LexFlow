@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { FieldDefListItem, FieldType, ListFieldsFilter } from '../../../../shared/ipc'
-import { useFields, useSetFieldActive, useReorderFields } from './useFields'
+import { useFields, useCreateField, useSetFieldActive, useReorderFields } from './useFields'
 import { useAllTransitions } from '../transitions/useTransitions'
 import { useMenuSets } from '../menus/useMenus'
 import { FieldFormModal } from './FieldFormModal'
@@ -15,7 +15,8 @@ const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   menu: 'Menu a tendina',
   si_no: 'Sì / No',
   note: 'Note',
-  file: 'File'
+  file: 'File',
+  pec: 'PEC (destinatari)'
 }
 
 // ---------- Styles ----------
@@ -39,6 +40,12 @@ const sectionTitleStyle: React.CSSProperties = {
   fontSize: '15px',
   fontWeight: 600,
   color: 'var(--color-text)'
+}
+
+const headerActionsStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: '8px',
+  alignItems: 'center'
 }
 
 const tabBarStyle: React.CSSProperties = {
@@ -141,6 +148,16 @@ const btnPrimaryStyle: React.CSSProperties = {
   cursor: 'pointer'
 }
 
+const btnSecondaryStyle: React.CSSProperties = {
+  padding: '6px 14px',
+  background: 'var(--color-bg)',
+  color: 'var(--color-text)',
+  border: '1px solid var(--color-border)',
+  borderRadius: '6px',
+  fontSize: '13px',
+  cursor: 'pointer'
+}
+
 const loadingStyle: React.CSSProperties = {
   padding: '32px 20px',
   textAlign: 'center',
@@ -178,7 +195,8 @@ const badgeBase: React.CSSProperties = {
   padding: '1px 7px',
   borderRadius: '10px',
   fontSize: '11px',
-  fontWeight: 600
+  fontWeight: 600,
+  marginRight: '4px'
 }
 
 function Badge({
@@ -237,7 +255,7 @@ function FieldsTable({
           <th style={thStyle}>Etichetta</th>
           <th style={thStyle}>Tipo</th>
           <th style={thStyle}>Chiave</th>
-          <th style={thStyle}>Opzioni</th>
+          <th style={thStyle}>Badge</th>
           <th style={thStyle}>Stato</th>
           <th style={{ ...thStyle, textAlign: 'right' }}>Azioni</th>
         </tr>
@@ -265,6 +283,17 @@ function FieldsTable({
               {f.key}
             </td>
             <td style={tdStyle}>
+              {f.type === 'pec' && (
+                <Badge bg="#dbeafe" color="#1d4ed8">
+                  PEC
+                </Badge>
+              )}
+              {f.conditionalOnFieldId != null && (
+                <Badge bg="#fef3c7" color="#92400e">
+                  se {f.conditionalOnFieldLabel ?? `#${f.conditionalOnFieldId}`} ={' '}
+                  {f.conditionalValue}
+                </Badge>
+              )}
               {f.required && (
                 <Badge bg="var(--badge-initial-bg)" color="var(--badge-initial-text)">
                   Obbligatorio
@@ -327,6 +356,7 @@ export function FieldsSection(): React.JSX.Element {
   const [editField, setEditField] = useState<FieldDefListItem | null>(null)
   const [inlineError, setInlineError] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<number | null>(null)
+  const [pecNote, setPecNote] = useState<string | null>(null)
 
   const { data: transitions, isLoading: tLoading } = useAllTransitions()
   const { data: menuSets, isLoading: msLoading } = useMenuSets()
@@ -347,6 +377,7 @@ export function FieldsSection(): React.JSX.Element {
 
   const setActiveMutation = useSetFieldActive()
   const reorderMutation = useReorderFields()
+  const createMutation = useCreateField()
 
   const transitionGroups = useMemo(() => {
     if (!transitions) return []
@@ -413,21 +444,103 @@ export function FieldsSection(): React.JSX.Element {
     )
   }
 
+  // Convenience: add PEC conditional block in one click
+  function handleAddPecBlock(): void {
+    if (!fields || !menuSets || selectedTransitionId == null) return
+    setPecNote(null)
+    setInlineError(null)
+
+    // Find an active menu field in this container
+    const menuFields = fields.filter((f) => f.type === 'menu' && f.isActive)
+    if (menuFields.length === 0) {
+      setPecNote(
+        'Nessun campo menu a tendina trovato in questa transizione. Aggiungi prima un campo menu (es. "Modalità invio") con un\'opzione il cui valore indichi PEC.'
+      )
+      return
+    }
+
+    // Find the first menu field whose set has an active option with value='pec' (case-insensitive)
+    // or label='pec' (case-insensitive)
+    let targetFieldId: number | null = null
+    let targetValue: string | null = null
+
+    for (const mf of menuFields) {
+      if (mf.menuSetId == null) continue
+      const ms = menuSets.find((s) => s.id === mf.menuSetId)
+      if (!ms) continue
+      const pecOption = ms.options.find(
+        (o) =>
+          o.isActive &&
+          (o.value.toLowerCase() === 'pec' || o.label.toLowerCase() === 'pec')
+      )
+      if (pecOption) {
+        targetFieldId = mf.id
+        targetValue = pecOption.value
+        break
+      }
+    }
+
+    if (targetFieldId == null || targetValue == null) {
+      setPecNote(
+        'Nessun campo menu ha un\'opzione con valore o etichetta "pec". ' +
+          'Aggiungi prima un\'opzione PEC al menu set del campo modalità, poi riprova.'
+      )
+      return
+    }
+
+    createMutation.mutate(
+      {
+        scope: 'transition',
+        transitionId: selectedTransitionId,
+        label: 'Destinatari PEC',
+        type: 'pec',
+        required: false,
+        visibleInTable: false,
+        usableInFilter: false,
+        includeInExport: false,
+        menuSetId: null,
+        conditionalOnFieldId: targetFieldId,
+        conditionalValue: targetValue
+      },
+      {
+        onSuccess: () =>
+          setPecNote('Campo PEC aggiunto con la condizione impostata automaticamente.'),
+        onError: (err) => setInlineError(ipcErrorMessage(err))
+      }
+    )
+  }
+
   const modalScope: 'general' | 'transition' = activeTab
   const modalTransitionId = activeTab === 'transition' ? selectedTransitionId : null
 
   const showModal = (createOpen || editField != null) && menuSets != null
+
+  const showAddField = activeTab === 'general' || selectedTransitionId != null
+  const showPecButton =
+    activeTab === 'transition' && selectedTransitionId != null && !createMutation.isPending
 
   return (
     <div style={sectionStyle}>
       {/* Header */}
       <div style={sectionHeaderStyle}>
         <span style={sectionTitleStyle}>Campi configurabili</span>
-        {(activeTab === 'general' || selectedTransitionId != null) && (
-          <button style={btnPrimaryStyle} onClick={() => setCreateOpen(true)}>
-            + Aggiungi campo
-          </button>
-        )}
+        <div style={headerActionsStyle}>
+          {showPecButton && (
+            <button
+              style={btnSecondaryStyle}
+              onClick={handleAddPecBlock}
+              disabled={createMutation.isPending}
+              title="Crea automaticamente un campo PEC condizionato al campo menu PEC di questa transizione"
+            >
+              + Blocco PEC condizionale
+            </button>
+          )}
+          {showAddField && (
+            <button style={btnPrimaryStyle} onClick={() => { setCreateOpen(true); setPecNote(null) }}>
+              + Aggiungi campo
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tab bar */}
@@ -470,6 +583,21 @@ export function FieldsSection(): React.JSX.Element {
               ))}
             </select>
           )}
+        </div>
+      )}
+
+      {/* PEC convenience note */}
+      {pecNote && (
+        <div
+          style={{
+            padding: '10px 20px',
+            background: 'var(--color-bg)',
+            borderBottom: '1px solid var(--color-border)',
+            color: 'var(--color-text-secondary)',
+            fontSize: '12px'
+          }}
+        >
+          {pecNote}
         </div>
       )}
 
@@ -516,6 +644,7 @@ export function FieldsSection(): React.JSX.Element {
           transitionId={modalTransitionId}
           field={editField ?? undefined}
           menuSets={menuSets!}
+          containerFields={fields ?? []}
           onClose={() => {
             setCreateOpen(false)
             setEditField(null)

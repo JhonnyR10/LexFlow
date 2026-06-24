@@ -64,7 +64,8 @@ import {
   insertField,
   updateFieldFields,
   setFieldIsActive,
-  reorderFieldsAtomic
+  reorderFieldsAtomic,
+  findActiveMenuOptionByValue
 } from './repository'
 import { ConflictError, NotFoundError, ValidationError } from '../../errors/AppError'
 
@@ -428,6 +429,58 @@ function generateUniqueFieldKey(
   return `${base}_${Date.now()}`
 }
 
+function assertConditionalInvariant(
+  conditionalOnFieldId: number | null,
+  conditionalValue: string | null,
+  scope: 'general' | 'transition',
+  transitionId: number | null,
+  selfId?: number
+): void {
+  if ((conditionalOnFieldId == null) !== (conditionalValue == null)) {
+    throw new ValidationError(
+      'Il campo controllore e il valore della condizione devono essere entrambi valorizzati o entrambi vuoti'
+    )
+  }
+
+  if (conditionalOnFieldId == null) return
+
+  const controller = findFieldById(conditionalOnFieldId)
+  if (!controller) throw new NotFoundError(`Campo controllore ${conditionalOnFieldId} non trovato`)
+
+  if (selfId !== undefined && controller.id === selfId)
+    throw new ValidationError('Un campo non può essere controllore di sé stesso')
+
+  if (controller.type !== 'menu')
+    throw new ValidationError('Il campo controllore deve essere di tipo menu a tendina')
+
+  if (!controller.isActive)
+    throw new ValidationError('Il campo controllore deve essere attivo')
+
+  // Stesso contenitore: stesso scope e stesso transitionId
+  const sameContainer =
+    controller.scope === scope &&
+    (scope === 'general'
+      ? controller.transitionId == null
+      : controller.transitionId === transitionId)
+  if (!sameContainer)
+    throw new ValidationError('Il campo controllore deve essere nello stesso contenitore del campo')
+
+  if (controller.menuSetId == null)
+    throw new ValidationError('Il campo controllore (menu) non ha un menu set associato')
+
+  const validOption = findActiveMenuOptionByValue(controller.menuSetId, conditionalValue!)
+  if (!validOption)
+    throw new ValidationError(
+      `Il valore "${conditionalValue}" non corrisponde a nessuna opzione attiva del menu set del campo controllore`
+    )
+
+  // Ciclo diretto: il controllore è a sua volta condizionato da questo campo
+  if (selfId !== undefined && controller.conditionalOnFieldId === selfId)
+    throw new ValidationError(
+      'Ciclo rilevato: il campo controllore è a sua volta condizionato da questo campo'
+    )
+}
+
 export function listFields(filter?: ListFieldsFilter): FieldDefListItem[] {
   return findFieldsByFilter(filter)
 }
@@ -443,7 +496,10 @@ export function createField(input: CreateFieldInput): FieldDefListItem {
       throw new ValidationError('Per i campi generali la transizione deve essere vuota')
   }
 
-  if (input.type === 'menu') {
+  if (input.type === 'pec') {
+    if (input.menuSetId != null)
+      throw new ValidationError('Il menu set non è consentito per i campi di tipo PEC')
+  } else if (input.type === 'menu') {
     if (input.menuSetId == null)
       throw new ValidationError('Per i campi di tipo menu è obbligatorio selezionare un menu set')
     const ms = findMenuSetById(input.menuSetId)
@@ -455,6 +511,15 @@ export function createField(input: CreateFieldInput): FieldDefListItem {
 
   const scope = input.scope
   const transitionId = input.transitionId ?? null
+
+  assertConditionalInvariant(
+    input.conditionalOnFieldId ?? null,
+    input.conditionalValue ?? null,
+    scope,
+    transitionId
+    // selfId undefined: il campo non esiste ancora, nessun ciclo possibile
+  )
+
   const key = generateUniqueFieldKey(input.label, scope, transitionId)
   const maxOrder = findMaxFieldOrderInContainer(scope, transitionId)
 
@@ -470,7 +535,9 @@ export function createField(input: CreateFieldInput): FieldDefListItem {
     includeInExport: input.includeInExport,
     order: maxOrder + 1,
     isActive: true,
-    menuSetId: input.menuSetId ?? null
+    menuSetId: input.menuSetId ?? null,
+    conditionalOnFieldId: input.conditionalOnFieldId ?? null,
+    conditionalValue: input.conditionalValue ?? null
   })
 
   const result = findFieldsByFilter().find((f) => f.id === id)
@@ -482,15 +549,30 @@ export function updateField(input: UpdateFieldInput): FieldDefListItem {
   const existing = findFieldById(input.id)
   if (!existing) throw new NotFoundError(`Campo ${input.id} non trovato`)
 
-  if (input.type === 'menu') {
+  if (input.type === 'pec') {
+    if (input.menuSetId != null)
+      throw new ValidationError('Il menu set non è consentito per i campi di tipo PEC')
+  } else if (input.type === 'menu') {
     if (input.menuSetId == null)
       throw new ValidationError('Per i campi di tipo menu è obbligatorio selezionare un menu set')
     const ms = findMenuSetById(input.menuSetId)
     if (!ms) throw new NotFoundError(`Menu set ${input.menuSetId} non trovato`)
+    // TODO: se si cambia il menuSetId di un campo menu usato come controllore di altri campi,
+    // le condizioni esistenti rimangono ma conditionalValue potrebbe non corrispondere più
+    // alle opzioni del nuovo menu. E5 tratterà il controllore inattivo/incompatibile come
+    // "condizione non soddisfatta" a runtime.
   } else {
     if (input.menuSetId != null)
       throw new ValidationError('Il menu set può essere impostato solo per campi di tipo menu')
   }
+
+  assertConditionalInvariant(
+    input.conditionalOnFieldId ?? null,
+    input.conditionalValue ?? null,
+    existing.scope as 'general' | 'transition',
+    existing.transitionId,
+    input.id
+  )
 
   updateFieldFields(input.id, {
     label: input.label,
@@ -499,7 +581,9 @@ export function updateField(input: UpdateFieldInput): FieldDefListItem {
     visibleInTable: input.visibleInTable,
     usableInFilter: input.usableInFilter,
     includeInExport: input.includeInExport,
-    menuSetId: input.menuSetId ?? null
+    menuSetId: input.menuSetId ?? null,
+    conditionalOnFieldId: input.conditionalOnFieldId ?? null,
+    conditionalValue: input.conditionalValue ?? null
   })
 
   const result = findFieldsByFilter().find((f) => f.id === input.id)
@@ -511,7 +595,8 @@ export function setFieldActive(input: SetFieldActiveInput): { success: true } {
   const existing = findFieldById(input.id)
   if (!existing) throw new NotFoundError(`Campo ${input.id} non trovato`)
   // TODO: verificare che il campo non sia valorizzato in pratiche prima di disattivarlo.
-  // Implementare quando esiste la tabella practices.
+  // Se il campo è usato come controllore da altri campi, la condizione viene lasciata intatta:
+  // E5 tratterà il controllore inattivo come "condizione non soddisfatta" a runtime.
   setFieldIsActive(input.id, input.isActive)
   return { success: true }
 }

@@ -1,3 +1,5 @@
+-- Schema completo generato il 2026-06-24 (S1.5). Nessun dato reale: reset DB dev + rigenerazione.
+-- Con dati reali si useranno migrazioni incrementali (0001_*.sql, ecc.), non questo reset.
 CREATE TABLE `phases` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`key` text NOT NULL,
@@ -39,8 +41,11 @@ CREATE TABLE `field_defs` (
 	`order` integer NOT NULL,
 	`is_active` integer DEFAULT true NOT NULL,
 	`menu_set_id` integer,
+	`conditional_on_field_id` integer,
+	`conditional_value` text,
 	FOREIGN KEY (`transition_id`) REFERENCES `transitions`(`id`) ON UPDATE no action ON DELETE no action,
-	FOREIGN KEY (`menu_set_id`) REFERENCES `menu_sets`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`menu_set_id`) REFERENCES `menu_sets`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`conditional_on_field_id`) REFERENCES `field_defs`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE TABLE `menu_sets` (

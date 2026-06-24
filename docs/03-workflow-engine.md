@@ -2,11 +2,11 @@
 
 Parte centrale e più rischiosa dell'app. Tutto (pratiche, dettaglio, dashboard, alert, report) si appoggia qui. La UI **non contiene fasi né pulsanti hard-coded**: legge la configurazione (Phase, Transition) dal DB e genera tutto a runtime.
 
-**Fonte di verità del workflow standard:** `docs/07-workflow-tree.md` (albero completo fasi/transizioni/timeline). In caso di dubbio sul flusso, quel file prevale. Questo documento descrive il *motore* che lo implementa.
+**Fonte di verità del workflow standard:** `docs/07-workflow-tree.md` (albero completo fasi/transizioni/timeline). In caso di dubbio sul flusso, quel file prevale. Questo documento descrive il _motore_ che lo implementa.
 
 ## Tre concetti distinti
 
-- **(F) Fase** — stato in cui la pratica *resta*. La pratica ha sempre **una sola** fase corrente (`practice.currentPhaseId`).
+- **(F) Fase** — stato in cui la pratica _resta_. La pratica ha sempre **una sola** fase corrente (`practice.currentPhaseId`).
 - **(T) Transizione** — pulsante/azione disponibile da una fase. Definita in tabella `transitions` (from, to, label, flag).
 - **(TL) Evento di timeline** — record storico prodotto **da ogni** transizione (`HistoryEvent`). I dati compilati nell'azione (date, importi, modalità, PEC, note) vivono nel payload dell'evento; i valori chiave (importi, date rilevanti) vengono anche denormalizzati sulla pratica per filtri e riepiloghi.
 
@@ -67,7 +67,7 @@ Alla creazione la pratica nasce in `depositata` con i dati di deposito; il motor
 
 ## PEC (condizionale, guidata dai campi)
 
-La PEC non è un flag di fase. È guidata dai campi della transizione: quando un campo "modalità" (deposito / invio / invio SCP / invio integrazione, ecc.) ha valore `PEC`, compaiono i campi PEC (uno o più destinatari) con `contesto` coerente. Si configura in E1 (campi della transizione) e si valida in E5.
+La PEC non è un flag di fase né logica cablata. Si configura come **visibilità condizionale** di un campo (E1, S1.5): un campo di tipo `pec` (blocco multi-destinatario) viene mostrato solo quando un campo `menu` "modalità" della stessa transizione ha valore uguale all'opzione PEC (`conditionalOnFieldId` + `conditionalValue` sul campo `pec`). A runtime (E5) il motore valuta la condizione, mostra/nasconde il blocco e, se PEC, raccoglie gli indirizzi salvandoli come `PecRecipient`. Deposito e invio SCP usano lo stesso meccanismo su transizioni diverse.
 
 ## Coerenza degli stati
 

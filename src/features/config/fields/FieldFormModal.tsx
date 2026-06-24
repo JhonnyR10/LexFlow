@@ -14,7 +14,8 @@ const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   menu: 'Menu a tendina',
   si_no: 'Sì / No',
   note: 'Note',
-  file: 'File'
+  file: 'File',
+  pec: 'PEC (destinatari)'
 }
 
 const fieldTypeZod = z.enum(FIELD_TYPES as [FieldType, ...FieldType[]])
@@ -27,7 +28,9 @@ const formSchema = z
     visibleInTable: z.boolean(),
     usableInFilter: z.boolean(),
     includeInExport: z.boolean(),
-    menuSetId: z.number().int().positive().nullable()
+    menuSetId: z.number().int().positive().nullable(),
+    conditionalOnFieldId: z.number().int().positive().nullable(),
+    conditionalValue: z.string().nullable()
   })
   .superRefine((data, ctx) => {
     if (data.type === 'menu' && data.menuSetId == null) {
@@ -37,11 +40,25 @@ const formSchema = z
         message: 'Seleziona un menu set per i campi di tipo menu'
       })
     }
-    if (data.type !== 'menu' && data.menuSetId != null) {
+    if (data.type !== 'menu' && data.type !== 'pec' && data.menuSetId != null) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['menuSetId'],
         message: 'Il menu set è consentito solo per campi di tipo menu'
+      })
+    }
+    if (data.type === 'pec' && data.menuSetId != null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['menuSetId'],
+        message: 'Il menu set non è consentito per i campi di tipo PEC'
+      })
+    }
+    if ((data.conditionalOnFieldId == null) !== (data.conditionalValue == null)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['conditionalOnFieldId'],
+        message: 'Seleziona sia il campo controllore sia il valore, oppure lascia entrambi vuoti'
       })
     }
   })
@@ -52,6 +69,7 @@ interface Props {
   transitionId: number | null
   field?: FieldDefListItem
   menuSets: MenuSetListItem[]
+  containerFields: FieldDefListItem[]
   onClose: () => void
 }
 
@@ -141,6 +159,12 @@ const toggleLabelStyle: React.CSSProperties = {
   cursor: 'pointer'
 }
 
+const toggleLabelDisabledStyle: React.CSSProperties = {
+  ...toggleLabelStyle,
+  color: 'var(--color-text-muted)',
+  cursor: 'default'
+}
+
 const errorStyle: React.CSSProperties = {
   marginBottom: '14px',
   padding: '8px 12px',
@@ -188,6 +212,21 @@ const sectionNoteStyle: React.CSSProperties = {
   marginBottom: '8px'
 }
 
+const conditionalSectionStyle: React.CSSProperties = {
+  marginBottom: '16px',
+  padding: '12px 14px',
+  border: '1px solid var(--color-border)',
+  borderRadius: '8px',
+  background: 'var(--color-bg)'
+}
+
+const conditionalSectionTitleStyle: React.CSSProperties = {
+  fontSize: '13px',
+  fontWeight: 600,
+  marginBottom: '10px',
+  color: 'var(--color-text)'
+}
+
 // ---------- Component ----------
 
 export function FieldFormModal({
@@ -196,6 +235,7 @@ export function FieldFormModal({
   transitionId,
   field,
   menuSets,
+  containerFields,
   onClose
 }: Props): React.JSX.Element {
   const isEdit = mode === 'edit' && field != null
@@ -207,6 +247,17 @@ export function FieldFormModal({
   const [usableInFilter, setUsableInFilter] = useState(isEdit ? field.usableInFilter : false)
   const [includeInExport, setIncludeInExport] = useState(isEdit ? field.includeInExport : false)
   const [menuSetId, setMenuSetId] = useState<number | null>(isEdit ? field.menuSetId : null)
+
+  const [conditionalEnabled, setConditionalEnabled] = useState(
+    isEdit ? field.conditionalOnFieldId != null : false
+  )
+  const [conditionalOnFieldId, setConditionalOnFieldId] = useState<number | null>(
+    isEdit ? field.conditionalOnFieldId : null
+  )
+  const [conditionalValue, setConditionalValue] = useState<string | null>(
+    isEdit ? field.conditionalValue : null
+  )
+
   const [formError, setFormError] = useState<string | null>(null)
 
   const createMutation = useCreateField()
@@ -218,14 +269,45 @@ export function FieldFormModal({
   const selectedSetHasNoActiveOptions =
     selectedSet != null && !selectedSet.options.some((o) => o.isActive)
 
+  // Menu fields in same container (for controller selection), excluding self if edit
+  const availableControllers = containerFields.filter(
+    (f) =>
+      f.type === 'menu' &&
+      f.isActive &&
+      (mode === 'create' || f.id !== field?.id)
+  )
+  const hasMenuControllers = availableControllers.length > 0
+
+  const selectedController = availableControllers.find((f) => f.id === conditionalOnFieldId)
+  const controllerMenuSet = selectedController
+    ? menuSets.find((ms) => ms.id === selectedController.menuSetId)
+    : undefined
+  const controllerActiveOptions = controllerMenuSet?.options.filter((o) => o.isActive) ?? []
+
   function handleTypeChange(newType: FieldType): void {
     setType(newType)
     if (newType !== 'menu') setMenuSetId(null)
   }
 
+  function handleConditionalToggle(enabled: boolean): void {
+    setConditionalEnabled(enabled)
+    if (!enabled) {
+      setConditionalOnFieldId(null)
+      setConditionalValue(null)
+    }
+  }
+
+  function handleControllerChange(id: number | null): void {
+    setConditionalOnFieldId(id)
+    setConditionalValue(null)
+  }
+
   function handleSubmit(e: React.FormEvent): void {
     e.preventDefault()
     setFormError(null)
+
+    const effectiveConditionalOnFieldId = conditionalEnabled ? conditionalOnFieldId : null
+    const effectiveConditionalValue = conditionalEnabled ? conditionalValue : null
 
     const result = formSchema.safeParse({
       label,
@@ -234,7 +316,9 @@ export function FieldFormModal({
       visibleInTable,
       usableInFilter,
       includeInExport,
-      menuSetId
+      menuSetId,
+      conditionalOnFieldId: effectiveConditionalOnFieldId,
+      conditionalValue: effectiveConditionalValue
     })
 
     if (!result.success) {
@@ -305,9 +389,15 @@ export function FieldFormModal({
               {FIELD_TYPES.map((t) => (
                 <option key={t} value={t}>
                   {FIELD_TYPE_LABELS[t]}
+                  {t === 'pec' ? '' : ''}
                 </option>
               ))}
             </select>
+            {type === 'pec' && (
+              <div style={hintStyle}>
+                Blocco multi-destinatario PEC — mostrato in base alla condizione configurata sotto.
+              </div>
+            )}
           </div>
 
           {/* Menu set (solo se type='menu') */}
@@ -408,6 +498,88 @@ export function FieldFormModal({
                 Includi nell&apos;export
               </label>
             </div>
+          </div>
+
+          {/* Visibilità condizionale */}
+          <div style={conditionalSectionStyle}>
+            <div style={conditionalSectionTitleStyle}>Visibilità condizionale</div>
+
+            <div style={toggleRowStyle}>
+              <input
+                type="checkbox"
+                id="ff-conditional"
+                checked={conditionalEnabled}
+                disabled={!hasMenuControllers}
+                onChange={(e) => handleConditionalToggle(e.target.checked)}
+              />
+              <label
+                style={hasMenuControllers ? toggleLabelStyle : toggleLabelDisabledStyle}
+                htmlFor="ff-conditional"
+              >
+                Mostra solo a una condizione
+              </label>
+            </div>
+
+            {!hasMenuControllers && (
+              <div style={hintStyle}>
+                Serve prima un campo di tipo menu a tendina in questo contenitore per usare una
+                condizione.
+              </div>
+            )}
+
+            {conditionalEnabled && hasMenuControllers && (
+              <>
+                <div style={{ ...fieldStyle, marginTop: '10px' }}>
+                  <label style={labelStyle} htmlFor="ff-controller">
+                    Campo controllore *
+                  </label>
+                  <select
+                    id="ff-controller"
+                    style={selectStyle}
+                    value={conditionalOnFieldId ?? ''}
+                    onChange={(e) =>
+                      handleControllerChange(e.target.value ? Number(e.target.value) : null)
+                    }
+                  >
+                    <option value="">— Seleziona un campo menu —</option>
+                    {availableControllers.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.label} ({f.key})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {conditionalOnFieldId != null && (
+                  <div style={fieldStyle}>
+                    <label style={labelStyle} htmlFor="ff-condvalue">
+                      Valore *
+                    </label>
+                    {controllerActiveOptions.length > 0 ? (
+                      <select
+                        id="ff-condvalue"
+                        style={selectStyle}
+                        value={conditionalValue ?? ''}
+                        onChange={(e) =>
+                          setConditionalValue(e.target.value || null)
+                        }
+                      >
+                        <option value="">— Seleziona un valore —</option>
+                        {controllerActiveOptions.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label} ({o.value})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div style={warnStyle}>
+                        Il campo controllore selezionato non ha opzioni attive.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {formError && <div style={errorStyle}>{formError}</div>}

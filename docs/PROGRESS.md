@@ -16,9 +16,9 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S0.4   | Migrazioni Drizzle + seed (fasi/menu standard)               | FATTO    | DB aperto in userData, migrazioni auto, seed idempotente verificato. Riallineato al modello canonico (13 fasi, 40 transizioni) il 2026-06-24.                                                                            |
 | S1.1   | CRUD fasi + guscio applicativo                               | FATTO    | Routing HashRouter, sidebar, 6 pagine, QueryClientProvider. CRUD fasi completo. Guard disattivazione unica fase iniziale attivo; guard pratiche (TODO) documentato. Delete fisica rinviata (FK constraints).             |
 | S1.2   | CRUD transizioni                                             | FATTO    | Backend: createTransition/updateTransition/setTransitionActive/reorderTransitions con invarianti; UI: elenco raggruppato per fase, modale create/edit, riordino scoped, attiva/disattiva. Delete fisica rinviata (TODO). |
-| S1.3   | CRUD campi configurabili (generali e per transizione)        | FATTO    | Schema migrato: scope general\|transition, transitionId (FK transitions) sostituisce phaseId. Migrazioni rigenerate, DB dev resettato. Delete fisica e guard d'uso rinviati (TODO con tabella practices).               |
+| S1.3   | CRUD campi configurabili (generali e per transizione)        | FATTO    | Schema migrato: scope general\|transition, transitionId (FK transitions) sostituisce phaseId. Migrazioni rigenerate, DB dev resettato. Delete fisica e guard d'uso rinviati (TODO con tabella practices).                |
 | S1.4   | CRUD menu a tendina                                          | FATTO    | Backend: 7 canali IPC con invarianti (key immutabile, value univoco/immutabile). UI: layout due livelli, 5 set standard visibili. Delete fisica e guard d'uso rinviati (TODO).                                           |
-| S1.5   | Regola PEC condizionale                                      | TODO     |                                                                                                                                                                                                                          |
+| S1.5   | Regola PEC condizionale                                      | FATTO    | Schema migrato: tipo pec + conditionalOnFieldId/conditionalValue. Visibilità condizionale nel form campo, badge nella tabella, pulsante convenience PEC.                                                                  |
 | S2.1   | CRUD Professionisti                                          | TODO     |                                                                                                                                                                                                                          |
 | S2.2   | CRUD Collaboratori                                           | TODO     |                                                                                                                                                                                                                          |
 | S3.1   | Tabella pratiche attive                                      | TODO     |                                                                                                                                                                                                                          |
@@ -70,6 +70,7 @@ Ogni riga: data — decisione — motivo.
 - 2026-06-24 — **Workflow riallineato al file canonico** `docs/07-workflow-tree.md`. — Il seed iniziale modellava come fasi alcune transizioni (solleciti, integrazioni, invio SCP). Modello corretto: 13 fasi, solleciti/integrazioni come transizioni/eventi, transizioni con flag isRepeatable/isAutomatic/isResume, `previousPhaseId` per sospensione/ripresa, finali solo Chiusa/Rifiutata/Annullata (Liquidata non finale).
 - 2026-06-24 — **Impugnazione solo da Decreto ricevuto; Rifiutata terminale** (opzione A). — Definito dal file canonico. PASSO 5b superato/annullato.
 - 2026-06-24 — **Campi configurabili legati alle transizioni, non alle fasi** (FieldDef.scope general|transition, transitionId). — Più transizioni entrano nella stessa fase con dati diversi; lo scoping per fase era insufficiente. PhaseRecord sostituito da TransitionRecord (consolidamento in E5).
+- 2026-06-24 — **Regola PEC come visibilità condizionale generica** (FieldDef.conditionalOnFieldId/conditionalValue + tipo campo `pec`). — Nessun hardcoding: PEC = campo `pec` condizionato al campo modalità=PEC. Vincolato a una sola condizione su campo menu dello stesso contenitore.
 
 ## Decisioni aperte / da confermare
 
@@ -83,6 +84,47 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-06-24 — S1.5: Regola PEC condizionale — **E1 (Configurazione workflow) COMPLETATA**
+
+**Modifiche schema (con reset DB dev):**
+
+- `main/database/schema/fieldDefs.ts` — aggiunto `pec` all'enum dei tipi; aggiunte colonne `conditionalOnFieldId` (FK self → field_defs, nullable) e `conditionalValue` (text, nullable)
+- Migrazione `drizzle/0000_hard_mockingbird.sql` eliminata, snapshot e journal resettati; `npm run db:generate` → `drizzle/0000_real_micromax.sql` (schema completo, 6 tabelle, 15 colonne field_defs)
+- DB dev (`~/Library/Application Support/lexflow/lexflow.db`) eliminato e ricreato al prossimo avvio (migrazioni + seed automatici)
+- Nota: con dati reali si useranno migrazioni incrementali (0001_*.sql), non il reset
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `main/database/schema/fieldDefs.ts` | Tipo `pec` aggiunto all'enum; `conditionalOnFieldId` (FK self) e `conditionalValue` nullable |
+| `shared/ipc.ts` | `FieldType` e `FIELD_TYPES` aggiornati con `pec`; `FieldDefListItem` esteso con `conditionalOnFieldId`, `conditionalValue`, `conditionalOnFieldLabel`; `CreateFieldInput` e `UpdateFieldInput` estesi con i due nuovi campi |
+| `main/modules/config/repository.ts` | `findFieldsByFilter` risolve ora `conditionalOnFieldLabel`; `updateFieldFields` accetta i due nuovi campi; aggiunta `findActiveMenuOptionByValue` |
+| `main/modules/config/service.ts` | Aggiunta `assertConditionalInvariant` con tutte le invarianti; `createField` e `updateField` aggiornati (invarianti pec + condizionale); `setFieldActive` aggiornato con TODO su controllori |
+| `main/modules/config/controller.ts` | `fieldTypeEnum` aggiornato con `pec`; schemi zod `createFieldSchema` e `updateFieldSchema` estesi |
+| `src/features/config/fields/FieldFormModal.tsx` | Aggiunto tipo PEC con hint; nuova sezione "Visibilità condizionale" (toggle + select controllore + select valore); validazione zod coerente; prop `containerFields` aggiunta |
+| `src/features/config/fields/FieldsSection.tsx` | `FIELD_TYPE_LABELS` aggiornato; badge "PEC" e "se [controllore] = [valore]" in tabella; pulsante "Blocco PEC condizionale" (convenience); `containerFields` passato al modal |
+
+**Invarianti implementate nel service (`assertConditionalInvariant`):**
+
+1. `type='pec'`: `menuSetId` deve essere null → ValidationError
+2. `conditionalOnFieldId` e `conditionalValue`: entrambi null o entrambi valorizzati → ValidationError
+3. Il campo controllore deve esistere → NotFoundError
+4. Il campo controllore deve essere `type='menu'` → ValidationError
+5. Il campo controllore deve essere `isActive=true` → ValidationError
+6. Il campo controllore deve essere nello stesso contenitore (stesso scope e transitionId) → ValidationError
+7. Il campo controllore deve avere un `menuSetId` associato → ValidationError
+8. `conditionalValue` deve corrispondere al value di un'opzione attiva del menu set del controllore → ValidationError
+9. Un campo non può essere controllore di sé stesso → ValidationError
+10. Ciclo diretto (A condiziona B e B condiziona A) rilevato in update → ValidationError
+11. TODO documentato: disattivare/modificare un campo menu usato come controllore lascia la condizione intatta; E5 tratterà il controllore inattivo come "condizione non soddisfatta"
+
+**Pulsante convenience PEC:** incluso in `FieldsSection` (tab transizione). Cerca un campo menu nella transizione con un'opzione il cui value o label (case-insensitive) = 'pec'; se trovato crea direttamente il campo `type='pec'` "Destinatari PEC" condizionato su quel campo e valore. Se non trovato, mostra nota esplicativa. Nessuna logica di dominio cablata.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓
+
+---
+
 ### 2026-06-24 — S1.3: CRUD Campi configurabili
 
 **Modifiche schema (con reset DB dev):**
@@ -95,23 +137,23 @@ Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato
 
 **File nuovi:**
 
-| File                                                | Descrizione                                                                                                                                  |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/features/config/fields/useFields.ts`           | TanStack Query hooks: useFields, useCreateField, useUpdateField, useSetFieldActive, useReorderFields                                         |
-| `src/features/config/fields/FieldFormModal.tsx`     | Modale crea/modifica campo: label, tipo (9 opzioni), menuSetId condizionale (solo type=menu), 4 toggle, key read-only in edit                |
-| `src/features/config/fields/FieldsSection.tsx`      | Sezione campi: 2 tab (Campi generali / Campi per transizione), select transizione raggruppata per fase, tabella, riordino ▲/▼, attiva/disattiva |
+| File                                            | Descrizione                                                                                                                                     |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/features/config/fields/useFields.ts`       | TanStack Query hooks: useFields, useCreateField, useUpdateField, useSetFieldActive, useReorderFields                                            |
+| `src/features/config/fields/FieldFormModal.tsx` | Modale crea/modifica campo: label, tipo (9 opzioni), menuSetId condizionale (solo type=menu), 4 toggle, key read-only in edit                   |
+| `src/features/config/fields/FieldsSection.tsx`  | Sezione campi: 2 tab (Campi generali / Campi per transizione), select transizione raggruppata per fase, tabella, riordino ▲/▼, attiva/disattiva |
 
 **File modificati:**
 
-| File                                 | Modifica                                                                                                                                                                          |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File                                 | Modifica                                                                                                                                                                                                                                  |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `shared/ipc.ts`                      | 5 nuovi canali IPC; aggiunti `FieldType`, `FIELD_TYPES`, `FieldDefListItem`, `ListFieldsFilter`, `CreateFieldInput`, `UpdateFieldInput`, `SetFieldActiveInput`, `ReorderFieldsInput` e relativi response type; esteso `LexFlowApi.config` |
-| `main/modules/config/repository.ts`  | Aggiunte 8 funzioni: `findFieldsByFilter`, `findFieldById`, `fieldKeyExistsInContainer`, `findMaxFieldOrderInContainer`, `insertField`, `updateFieldFields`, `setFieldIsActive`, `reorderFieldsAtomic` |
-| `main/modules/config/service.ts`     | Aggiunti `listFields`, `createField`, `updateField`, `setFieldActive`, `reorderFields`; helper `generateUniqueFieldKey`                                                           |
-| `main/modules/config/controller.ts`  | 5 handler IPC con schemi zod (fieldTypeEnum con `as const` per preservare literal union)                                                                                         |
-| `main/preload.ts`                    | Aggiornati 5 metodi config nel bridge                                                                                                                                             |
-| `src/api/config.ts`                  | Aggiunti 5 metodi client IPC                                                                                                                                                      |
-| `src/pages/InstanceSettingsPage.tsx` | Sostituito segnaposto S1.3 con `<FieldsSection />`                                                                                                                                |
+| `main/modules/config/repository.ts`  | Aggiunte 8 funzioni: `findFieldsByFilter`, `findFieldById`, `fieldKeyExistsInContainer`, `findMaxFieldOrderInContainer`, `insertField`, `updateFieldFields`, `setFieldIsActive`, `reorderFieldsAtomic`                                    |
+| `main/modules/config/service.ts`     | Aggiunti `listFields`, `createField`, `updateField`, `setFieldActive`, `reorderFields`; helper `generateUniqueFieldKey`                                                                                                                   |
+| `main/modules/config/controller.ts`  | 5 handler IPC con schemi zod (fieldTypeEnum con `as const` per preservare literal union)                                                                                                                                                  |
+| `main/preload.ts`                    | Aggiornati 5 metodi config nel bridge                                                                                                                                                                                                     |
+| `src/api/config.ts`                  | Aggiunti 5 metodi client IPC                                                                                                                                                                                                              |
+| `src/pages/InstanceSettingsPage.tsx` | Sostituito segnaposto S1.3 con `<FieldsSection />`                                                                                                                                                                                        |
 
 **Invarianti implementate nel service:**
 

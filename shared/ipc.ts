@@ -204,6 +204,7 @@ export type FieldType =
   | 'si_no'
   | 'note'
   | 'file'
+  | 'pec'
 
 export const FIELD_TYPES: readonly FieldType[] = [
   'testo_breve',
@@ -214,7 +215,8 @@ export const FIELD_TYPES: readonly FieldType[] = [
   'menu',
   'si_no',
   'note',
-  'file'
+  'file',
+  'pec'
 ]
 
 export interface FieldDefListItem {
@@ -233,6 +235,9 @@ export interface FieldDefListItem {
   isActive: boolean
   menuSetId: number | null
   menuSetLabel: string | null
+  conditionalOnFieldId: number | null
+  conditionalValue: string | null
+  conditionalOnFieldLabel: string | null
 }
 
 export interface ListFieldsFilter {
@@ -250,6 +255,8 @@ export interface CreateFieldInput {
   usableInFilter: boolean
   includeInExport: boolean
   menuSetId: number | null
+  conditionalOnFieldId: number | null
+  conditionalValue: string | null
 }
 
 export interface UpdateFieldInput {
@@ -261,6 +268,8 @@ export interface UpdateFieldInput {
   usableInFilter: boolean
   includeInExport: boolean
   menuSetId: number | null
+  conditionalOnFieldId: number | null
+  conditionalValue: string | null
 }
 
 export interface SetFieldActiveInput {

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "49cc6bfc-7653-4e34-914d-01087799b045",
+  "id": "acafc8f8-a3d5-41be-93b4-eb67b7a45abd",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "phases": {
@@ -292,6 +292,20 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "conditional_on_field_id": {
+          "name": "conditional_on_field_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "conditional_value": {
+          "name": "conditional_value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {},
@@ -315,6 +329,19 @@
           "tableTo": "menu_sets",
           "columnsFrom": [
             "menu_set_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "field_defs_conditional_on_field_id_field_defs_id_fk": {
+          "name": "field_defs_conditional_on_field_id_field_defs_id_fk",
+          "tableFrom": "field_defs",
+          "tableTo": "field_defs",
+          "columnsFrom": [
+            "conditional_on_field_id"
           ],
           "columnsTo": [
             "id"
