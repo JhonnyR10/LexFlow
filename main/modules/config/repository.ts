@@ -1,9 +1,11 @@
 import { eq, asc, and, ne, sql } from 'drizzle-orm'
 import { getDb } from '../../database/connection'
-import { phases, transitions } from '../../database/schema'
-import type { PhaseListItem, TransitionListItem } from '../../../shared/ipc'
+import { phases, transitions, menuSets, menuOptions } from '../../database/schema'
+import type { PhaseListItem, TransitionListItem, MenuSetListItem, MenuOptionListItem } from '../../../shared/ipc'
 import type { NewPhase } from '../../database/schema/phases'
 import type { NewTransition, Transition } from '../../database/schema/transitions'
+import type { NewMenuSet, MenuSet } from '../../database/schema/menuSets'
+import type { NewMenuOption, MenuOption } from '../../database/schema/menuOptions'
 
 function toListItem(row: typeof phases.$inferSelect): PhaseListItem {
   return {
@@ -267,6 +269,107 @@ export function reorderTransitionsAtomic(items: { id: number; order: number }[])
   getDb().transaction((tx) => {
     for (const item of items) {
       tx.update(transitions).set({ order: item.order }).where(eq(transitions.id, item.id)).run()
+    }
+  })
+}
+
+// ---------- Menu sets ----------
+
+export function findAllMenuSets(): MenuSetListItem[] {
+  const db = getDb()
+  const sets = db.select().from(menuSets).orderBy(asc(menuSets.id)).all()
+  const opts = db
+    .select()
+    .from(menuOptions)
+    .orderBy(asc(menuOptions.menuSetId), asc(menuOptions.order))
+    .all()
+
+  const optsBySet = new Map<number, MenuOptionListItem[]>()
+  for (const o of opts) {
+    if (!optsBySet.has(o.menuSetId)) optsBySet.set(o.menuSetId, [])
+    optsBySet.get(o.menuSetId)!.push({
+      id: o.id,
+      menuSetId: o.menuSetId,
+      label: o.label,
+      value: o.value,
+      order: o.order,
+      isActive: o.isActive
+    })
+  }
+
+  return sets.map((s) => ({
+    id: s.id,
+    key: s.key,
+    label: s.label,
+    options: optsBySet.get(s.id) ?? []
+  }))
+}
+
+export function findMenuSetById(id: number): MenuSet | undefined {
+  return getDb().select().from(menuSets).where(eq(menuSets.id, id)).get()
+}
+
+export function menuSetKeyExists(key: string): boolean {
+  return getDb().select({ id: menuSets.id }).from(menuSets).where(eq(menuSets.key, key)).get() != null
+}
+
+export function insertMenuSet(data: NewMenuSet): number {
+  const [row] = getDb().insert(menuSets).values(data).returning({ id: menuSets.id }).all()
+  return row.id
+}
+
+export function updateMenuSetLabel(id: number, label: string): void {
+  getDb().update(menuSets).set({ label }).where(eq(menuSets.id, id)).run()
+}
+
+// ---------- Menu options ----------
+
+export function findMenuOptionById(id: number): MenuOption | undefined {
+  return getDb().select().from(menuOptions).where(eq(menuOptions.id, id)).get()
+}
+
+export function menuOptionValueExists(menuSetId: number, value: string, excludeId?: number): boolean {
+  return (
+    getDb()
+      .select({ id: menuOptions.id })
+      .from(menuOptions)
+      .where(
+        and(
+          eq(menuOptions.menuSetId, menuSetId),
+          eq(menuOptions.value, value),
+          excludeId !== undefined ? ne(menuOptions.id, excludeId) : undefined
+        )
+      )
+      .get() != null
+  )
+}
+
+export function findMaxMenuOptionOrder(menuSetId: number): number {
+  const result = getDb()
+    .select({ maxOrder: sql<number>`MAX(${menuOptions.order})` })
+    .from(menuOptions)
+    .where(eq(menuOptions.menuSetId, menuSetId))
+    .get()
+  return result?.maxOrder ?? 0
+}
+
+export function insertMenuOption(data: NewMenuOption): number {
+  const [row] = getDb().insert(menuOptions).values(data).returning({ id: menuOptions.id }).all()
+  return row.id
+}
+
+export function updateMenuOptionLabel(id: number, label: string): void {
+  getDb().update(menuOptions).set({ label }).where(eq(menuOptions.id, id)).run()
+}
+
+export function setMenuOptionIsActive(id: number, isActive: boolean): void {
+  getDb().update(menuOptions).set({ isActive }).where(eq(menuOptions.id, id)).run()
+}
+
+export function reorderMenuOptionsAtomic(items: { id: number; order: number }[]): void {
+  getDb().transaction((tx) => {
+    for (const item of items) {
+      tx.update(menuOptions).set({ order: item.order }).where(eq(menuOptions.id, item.id)).run()
     }
   })
 }

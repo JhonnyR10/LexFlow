@@ -10,6 +10,13 @@ import type {
   ConfigUpdateTransitionResponse,
   ConfigSetTransitionActiveResponse,
   ConfigReorderTransitionsResponse,
+  ConfigListMenuSetsResponse,
+  ConfigCreateMenuSetResponse,
+  ConfigUpdateMenuSetResponse,
+  ConfigCreateMenuOptionResponse,
+  ConfigUpdateMenuOptionResponse,
+  ConfigSetMenuOptionActiveResponse,
+  ConfigReorderMenuOptionsResponse,
   CreatePhaseInput,
   UpdatePhaseInput,
   SetPhaseActiveInput,
@@ -17,7 +24,13 @@ import type {
   CreateTransitionInput,
   UpdateTransitionInput,
   SetTransitionActiveInput,
-  ReorderTransitionsInput
+  ReorderTransitionsInput,
+  CreateMenuSetInput,
+  UpdateMenuSetInput,
+  CreateMenuOptionInput,
+  UpdateMenuOptionInput,
+  SetMenuOptionActiveInput,
+  ReorderMenuOptionsInput
 } from '../../shared/ipc'
 
 export const configApi = {
@@ -40,5 +53,19 @@ export const configApi = {
   setTransitionActive: (input: SetTransitionActiveInput): Promise<ConfigSetTransitionActiveResponse> =>
     window.api.config.setTransitionActive(input),
   reorderTransitions: (input: ReorderTransitionsInput): Promise<ConfigReorderTransitionsResponse> =>
-    window.api.config.reorderTransitions(input)
+    window.api.config.reorderTransitions(input),
+  listMenuSets: (): Promise<ConfigListMenuSetsResponse> =>
+    window.api.config.listMenuSets(),
+  createMenuSet: (input: CreateMenuSetInput): Promise<ConfigCreateMenuSetResponse> =>
+    window.api.config.createMenuSet(input),
+  updateMenuSet: (input: UpdateMenuSetInput): Promise<ConfigUpdateMenuSetResponse> =>
+    window.api.config.updateMenuSet(input),
+  createMenuOption: (input: CreateMenuOptionInput): Promise<ConfigCreateMenuOptionResponse> =>
+    window.api.config.createMenuOption(input),
+  updateMenuOption: (input: UpdateMenuOptionInput): Promise<ConfigUpdateMenuOptionResponse> =>
+    window.api.config.updateMenuOption(input),
+  setMenuOptionActive: (input: SetMenuOptionActiveInput): Promise<ConfigSetMenuOptionActiveResponse> =>
+    window.api.config.setMenuOptionActive(input),
+  reorderMenuOptions: (input: ReorderMenuOptionsInput): Promise<ConfigReorderMenuOptionsResponse> =>
+    window.api.config.reorderMenuOptions(input)
 }

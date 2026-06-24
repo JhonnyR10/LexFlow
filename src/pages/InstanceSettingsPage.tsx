@@ -1,5 +1,6 @@
 import { PhasesSection } from '../features/config/phases/PhasesSection'
 import { TransitionsSection } from '../features/config/transitions/TransitionsSection'
+import { MenusSection } from '../features/config/menus/MenusSection'
 
 const pageStyle: React.CSSProperties = {
   padding: '28px 32px',
@@ -45,7 +46,7 @@ export function InstanceSettingsPage(): React.JSX.Element {
       </div>
 
       <div style={sectionGapStyle}>
-        <div style={comingSoonStyle}>Menu a tendina — in arrivo (S1.4)</div>
+        <MenusSection />
       </div>
 
       <div style={sectionGapStyle}>

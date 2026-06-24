@@ -17,7 +17,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S1.1   | CRUD fasi + guscio applicativo                               | FATTO    | Routing HashRouter, sidebar, 6 pagine, QueryClientProvider. CRUD fasi completo. Guard disattivazione unica fase iniziale attivo; guard pratiche (TODO) documentato. Delete fisica rinviata (FK constraints). |
 | S1.2   | CRUD transizioni                                             | FATTO    | Backend: createTransition/updateTransition/setTransitionActive/reorderTransitions con invarianti; UI: elenco raggruppato per fase, modale create/edit, riordino scoped, attiva/disattiva. Delete fisica rinviata (TODO). |
 | S1.3   | CRUD campi generali e campi fase                             | TODO     |                                                                                                                                                |
-| S1.4   | CRUD menu a tendina                                          | TODO     |                                                                                                                                                |
+| S1.4   | CRUD menu a tendina                                          | FATTO    | Backend: 7 canali IPC con invarianti (key immutabile, value univoco/immutabile). UI: layout due livelli, 5 set standard visibili. Delete fisica e guard d'uso rinviati (TODO). |
 | S1.5   | Regola PEC condizionale                                      | TODO     |                                                                                                                                                |
 | S2.1   | CRUD Professionisti                                          | TODO     |                                                                                                                                                |
 | S2.2   | CRUD Collaboratori                                           | TODO     |                                                                                                                                                |
@@ -81,6 +81,45 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-24 — S1.4: CRUD Menu a tendina
+
+**File nuovi:**
+
+| File | Descrizione |
+|------|-------------|
+| `src/features/config/menus/useMenus.ts` | TanStack Query hooks: useMenuSets, useCreateMenuSet, useUpdateMenuSet, useCreateMenuOption, useUpdateMenuOption, useSetMenuOptionActive, useReorderMenuOptions |
+| `src/features/config/menus/MenuSetFormModal.tsx` | Modale crea/rinomina menu set; key auto-generata in creazione, sola lettura in modifica |
+| `src/features/config/menus/MenuOptionFormModal.tsx` | Modale crea/modifica opzione; value in sola lettura in modifica |
+| `src/features/config/menus/MenusSection.tsx` | Sezione menu: layout due livelli (set list + options pane), riordino ▲/▼ scoped, attiva/disattiva inline, stati loading/empty/error |
+
+**File modificati:**
+
+| File | Modifica |
+|------|----------|
+| `shared/ipc.ts` | 7 nuovi canali IPC; aggiunti `MenuOptionListItem`, `MenuSetListItem`, tutti i tipi input/response; esteso `LexFlowApi.config` |
+| `main/modules/config/repository.ts` | Aggiunte tutte le funzioni repo per menu sets e options (findAllMenuSets, findMenuSetById, menuSetKeyExists, insertMenuSet, updateMenuSetLabel, findMenuOptionById, menuOptionValueExists, findMaxMenuOptionOrder, insertMenuOption, updateMenuOptionLabel, setMenuOptionIsActive, reorderMenuOptionsAtomic) |
+| `main/modules/config/service.ts` | Aggiunti listMenuSets, createMenuSet, updateMenuSet, createMenuOption, updateMenuOption, setMenuOptionActive, reorderMenuOptions con invarianti; helper generateUniqueMenuSetKey, toMenuOptionListItem |
+| `main/modules/config/controller.ts` | 7 handler IPC con schemi zod |
+| `main/preload.ts` | Aggiunti 7 metodi config nel bridge |
+| `src/api/config.ts` | Aggiunti 7 metodi client IPC |
+| `src/pages/InstanceSettingsPage.tsx` | Sostituito segnaposto S1.4 con `<MenusSection />` |
+
+**Invarianti implementate nel service:**
+1. `key` del set generata come slug snake_case dalla label alla creazione; immutabile (non esposta in update)
+2. `key` del set univoca (generateUniqueMenuSetKey con fallback numerico)
+3. `value` dell'opzione univoco dentro lo stesso set → ConflictError se duplicato
+4. `value` immutabile dopo la creazione (non incluso nell'UpdateMenuOptionInput)
+5. `value` non vuoto obbligatorio → ValidationError
+6. TODO documentato: guard "non disattivare opzione in uso da pratiche" (implementare con tabella practices)
+
+**Seed:** I 5 menu set standard erano già presenti nel seed (creato in S0.4). Nessuna reinserzione necessaria.
+
+**Delete fisica:** NON implementata per set né opzioni (TODO documentato); solo attiva/disattiva per le opzioni.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · avvio Electron ✓ · 5 set standard visibili con conteggi opzioni ✓ · selezione set mostra opzioni ✓ · aggiunta opzione a `autorita_giudiziaria` ✓ · creazione nuovo set (`Test menu` → key `test_menu`) ✓ · badge "opz. attive" aggiornato in tempo reale ✓
+
+---
 
 ### 2026-06-24 — S1.2: CRUD Transizioni
 

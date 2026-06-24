@@ -12,7 +12,14 @@ import type {
   ConfigCreateTransitionResponse,
   ConfigUpdateTransitionResponse,
   ConfigSetTransitionActiveResponse,
-  ConfigReorderTransitionsResponse
+  ConfigReorderTransitionsResponse,
+  ConfigListMenuSetsResponse,
+  ConfigCreateMenuSetResponse,
+  ConfigUpdateMenuSetResponse,
+  ConfigCreateMenuOptionResponse,
+  ConfigUpdateMenuOptionResponse,
+  ConfigSetMenuOptionActiveResponse,
+  ConfigReorderMenuOptionsResponse
 } from '../../../shared/ipc'
 import {
   listActivePhases,
@@ -25,7 +32,14 @@ import {
   createTransition,
   updateTransition,
   setTransitionActive,
-  reorderTransitions
+  reorderTransitions,
+  listMenuSets,
+  createMenuSet,
+  updateMenuSet,
+  createMenuOption,
+  updateMenuOption,
+  setMenuOptionActive,
+  reorderMenuOptions
 } from './service'
 import { logger } from '../../utils/logger'
 
@@ -181,6 +195,96 @@ export function registerConfigHandlers(): void {
       logger.debug('IPC', IPC_CHANNELS.CONFIG_REORDER_TRANSITIONS)
       const parsed = parseOrThrow(reorderTransitionsSchema, input)
       return reorderTransitions(parsed)
+    }
+  )
+
+  // ---------- Menu sets / options ----------
+
+  ipcMain.handle(IPC_CHANNELS.CONFIG_LIST_MENU_SETS, (): ConfigListMenuSetsResponse => {
+    logger.debug('IPC', IPC_CHANNELS.CONFIG_LIST_MENU_SETS)
+    return listMenuSets()
+  })
+
+  const createMenuSetSchema = z.object({
+    label: z.string().min(1, 'Il nome del menu è obbligatorio').max(100)
+  })
+
+  const updateMenuSetSchema = z.object({
+    id: z.number().int().positive(),
+    label: z.string().min(1, 'Il nome del menu è obbligatorio').max(100)
+  })
+
+  const createMenuOptionSchema = z.object({
+    menuSetId: z.number().int().positive(),
+    label: z.string().min(1, "L'etichetta è obbligatoria").max(100),
+    value: z.string().min(1, 'Il valore è obbligatorio').max(100)
+  })
+
+  const updateMenuOptionSchema = z.object({
+    id: z.number().int().positive(),
+    label: z.string().min(1, "L'etichetta è obbligatoria").max(100)
+  })
+
+  const setMenuOptionActiveSchema = z.object({
+    id: z.number().int().positive(),
+    isActive: z.boolean()
+  })
+
+  const reorderMenuOptionsSchema = z
+    .array(z.object({ id: z.number().int().positive(), order: z.number().int().nonnegative() }))
+    .min(1)
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONFIG_CREATE_MENU_SET,
+    (_, input: unknown): ConfigCreateMenuSetResponse => {
+      logger.debug('IPC', IPC_CHANNELS.CONFIG_CREATE_MENU_SET)
+      const parsed = parseOrThrow(createMenuSetSchema, input)
+      return createMenuSet(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONFIG_UPDATE_MENU_SET,
+    (_, input: unknown): ConfigUpdateMenuSetResponse => {
+      logger.debug('IPC', IPC_CHANNELS.CONFIG_UPDATE_MENU_SET)
+      const parsed = parseOrThrow(updateMenuSetSchema, input)
+      return updateMenuSet(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONFIG_CREATE_MENU_OPTION,
+    (_, input: unknown): ConfigCreateMenuOptionResponse => {
+      logger.debug('IPC', IPC_CHANNELS.CONFIG_CREATE_MENU_OPTION)
+      const parsed = parseOrThrow(createMenuOptionSchema, input)
+      return createMenuOption(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONFIG_UPDATE_MENU_OPTION,
+    (_, input: unknown): ConfigUpdateMenuOptionResponse => {
+      logger.debug('IPC', IPC_CHANNELS.CONFIG_UPDATE_MENU_OPTION)
+      const parsed = parseOrThrow(updateMenuOptionSchema, input)
+      return updateMenuOption(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONFIG_SET_MENU_OPTION_ACTIVE,
+    (_, input: unknown): ConfigSetMenuOptionActiveResponse => {
+      logger.debug('IPC', IPC_CHANNELS.CONFIG_SET_MENU_OPTION_ACTIVE)
+      const parsed = parseOrThrow(setMenuOptionActiveSchema, input)
+      return setMenuOptionActive(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONFIG_REORDER_MENU_OPTIONS,
+    (_, input: unknown): ConfigReorderMenuOptionsResponse => {
+      logger.debug('IPC', IPC_CHANNELS.CONFIG_REORDER_MENU_OPTIONS)
+      const parsed = parseOrThrow(reorderMenuOptionsSchema, input)
+      return reorderMenuOptions(parsed)
     }
   )
 }

@@ -8,7 +8,15 @@ import type {
   CreateTransitionInput,
   UpdateTransitionInput,
   SetTransitionActiveInput,
-  ReorderTransitionsInput
+  ReorderTransitionsInput,
+  MenuSetListItem,
+  MenuOptionListItem,
+  CreateMenuSetInput,
+  UpdateMenuSetInput,
+  CreateMenuOptionInput,
+  UpdateMenuOptionInput,
+  SetMenuOptionActiveInput,
+  ReorderMenuOptionsInput
 } from '../../../shared/ipc'
 import {
   findActivePhases,
@@ -30,7 +38,19 @@ import {
   insertTransition,
   updateTransitionFields,
   setTransitionIsActive,
-  reorderTransitionsAtomic
+  reorderTransitionsAtomic,
+  findAllMenuSets,
+  findMenuSetById,
+  menuSetKeyExists,
+  insertMenuSet,
+  updateMenuSetLabel,
+  findMenuOptionById,
+  menuOptionValueExists,
+  findMaxMenuOptionOrder,
+  insertMenuOption,
+  updateMenuOptionLabel,
+  setMenuOptionIsActive,
+  reorderMenuOptionsAtomic
 } from './repository'
 import { ConflictError, NotFoundError, ValidationError } from '../../errors/AppError'
 
@@ -274,5 +294,106 @@ export function setTransitionActive(input: SetTransitionActiveInput): { success:
 
 export function reorderTransitions(input: ReorderTransitionsInput): { success: true } {
   reorderTransitionsAtomic(input)
+  return { success: true }
+}
+
+// ---------- Menu sets ----------
+
+function generateUniqueMenuSetKey(label: string): string {
+  const base = slugify(label)
+  if (!menuSetKeyExists(base)) return base
+  for (let i = 2; i <= 99; i++) {
+    const candidate = `${base}_${i}`
+    if (!menuSetKeyExists(candidate)) return candidate
+  }
+  return `${base}_${Date.now()}`
+}
+
+export function listMenuSets(): MenuSetListItem[] {
+  return findAllMenuSets()
+}
+
+export function createMenuSet(input: CreateMenuSetInput): MenuSetListItem {
+  const key = generateUniqueMenuSetKey(input.label)
+  const id = insertMenuSet({ key, label: input.label })
+  const created = findAllMenuSets().find((s) => s.id === id)
+  if (!created) throw new Error('Errore interno: menu set non trovato dopo la creazione')
+  return created
+}
+
+export function updateMenuSet(input: UpdateMenuSetInput): MenuSetListItem {
+  const existing = findMenuSetById(input.id)
+  if (!existing) throw new NotFoundError(`Menu set ${input.id} non trovato`)
+  updateMenuSetLabel(input.id, input.label)
+  const updated = findAllMenuSets().find((s) => s.id === input.id)
+  if (!updated) throw new Error('Errore interno: menu set non trovato dopo il salvataggio')
+  return updated
+}
+
+// ---------- Menu options ----------
+
+function toMenuOptionListItem(opt: {
+  id: number
+  menuSetId: number
+  label: string
+  value: string
+  order: number
+  isActive: boolean
+}): MenuOptionListItem {
+  return {
+    id: opt.id,
+    menuSetId: opt.menuSetId,
+    label: opt.label,
+    value: opt.value,
+    order: opt.order,
+    isActive: opt.isActive
+  }
+}
+
+export function createMenuOption(input: CreateMenuOptionInput): MenuOptionListItem {
+  const set = findMenuSetById(input.menuSetId)
+  if (!set) throw new NotFoundError(`Menu set ${input.menuSetId} non trovato`)
+
+  if (!input.value.trim()) throw new ValidationError('Il valore è obbligatorio')
+
+  if (menuOptionValueExists(input.menuSetId, input.value)) {
+    throw new ConflictError(
+      `Esiste già un'opzione con il valore "${input.value}" in questo menu`
+    )
+  }
+
+  const maxOrder = findMaxMenuOptionOrder(input.menuSetId)
+  const id = insertMenuOption({
+    menuSetId: input.menuSetId,
+    label: input.label,
+    value: input.value,
+    order: maxOrder + 1,
+    isActive: true
+  })
+
+  const opt = findMenuOptionById(id)
+  if (!opt) throw new Error("Errore interno: opzione non trovata dopo la creazione")
+  return toMenuOptionListItem(opt)
+}
+
+export function updateMenuOption(input: UpdateMenuOptionInput): MenuOptionListItem {
+  const existing = findMenuOptionById(input.id)
+  if (!existing) throw new NotFoundError(`Opzione ${input.id} non trovata`)
+  updateMenuOptionLabel(input.id, input.label)
+  const opt = findMenuOptionById(input.id)!
+  return toMenuOptionListItem(opt)
+}
+
+export function setMenuOptionActive(input: SetMenuOptionActiveInput): { success: true } {
+  const existing = findMenuOptionById(input.id)
+  if (!existing) throw new NotFoundError(`Opzione ${input.id} non trovata`)
+  // TODO: verificare che l'opzione non sia in uso da pratiche prima di disattivarla.
+  // Implementare quando esiste la tabella practices con i campi configurabili.
+  setMenuOptionIsActive(input.id, input.isActive)
+  return { success: true }
+}
+
+export function reorderMenuOptions(input: ReorderMenuOptionsInput): { success: true } {
+  reorderMenuOptionsAtomic(input)
   return { success: true }
 }
