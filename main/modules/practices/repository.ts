@@ -1,4 +1,4 @@
-import { count, like, eq, desc } from 'drizzle-orm'
+import { count, like, eq, desc, and } from 'drizzle-orm'
 import { getDb } from '../../database/connection'
 import {
   practices,
@@ -10,7 +10,7 @@ import {
   professionisti,
   collaboratori,
 } from '../../database/schema'
-import type { NewHistoryEventRow } from '../../database/schema'
+import type { NewHistoryEventRow, PracticeRow } from '../../database/schema'
 import type { PracticeListItem } from '../../../shared/ipc'
 
 export function countPracticesByYear(year: number): number {
@@ -112,6 +112,85 @@ export function insertPecRecipients(
     .insert(pecRecipients)
     .values(indirizzi.map(indirizzo => ({ practiceId, contesto, indirizzo })))
     .run()
+}
+
+export interface PracticeDetailRow {
+  practice: PracticeRow
+  currentPhaseKey: string | null
+  currentPhaseDisplayName: string | null
+  currentPhaseCategory: string | null
+  currentPhaseIsFinal: boolean | null
+  collaboratoreDenominazione: string | null
+  professionistaDenominazione: string | null
+}
+
+export function findPracticeDetailById(id: number): PracticeDetailRow | null {
+  const row = getDb()
+    .select({
+      practice:                practices,
+      currentPhaseKey:         phases.key,
+      currentPhaseDisplayName: phases.displayName,
+      currentPhaseCategory:    phases.category,
+      currentPhaseIsFinal:     phases.isFinal,
+      collaboratoreDenominazione:  collaboratori.denominazione,
+      professionistaDenominazione: professionisti.denominazione,
+    })
+    .from(practices)
+    .leftJoin(phases, eq(practices.currentPhaseId, phases.id))
+    .leftJoin(professionisti, eq(practices.professionistaId, professionisti.id))
+    .leftJoin(collaboratori, eq(practices.collaboratoreId, collaboratori.id))
+    .where(eq(practices.id, id))
+    .get()
+
+  if (!row) return null
+  return {
+    practice:                    row.practice,
+    currentPhaseKey:             row.currentPhaseKey ?? null,
+    currentPhaseDisplayName:     row.currentPhaseDisplayName ?? null,
+    currentPhaseCategory:        row.currentPhaseCategory ?? null,
+    currentPhaseIsFinal:         row.currentPhaseIsFinal ?? null,
+    collaboratoreDenominazione:  row.collaboratoreDenominazione ?? null,
+    professionistaDenominazione: row.professionistaDenominazione ?? null,
+  }
+}
+
+// Mappa id → displayName di tutte le fasi (tabella piccola): risolve i nomi
+// fase di provenienza e from/to degli HistoryEvent senza doppi join aliasati.
+export function findPhaseNameMap(): Map<number, string> {
+  const rows = getDb()
+    .select({ id: phases.id, displayName: phases.displayName })
+    .from(phases)
+    .all()
+  return new Map(rows.map(r => [r.id, r.displayName]))
+}
+
+export function findHistoryEventsByPractice(practiceId: number) {
+  return getDb()
+    .select({
+      id:          historyEvents.id,
+      timestamp:   historyEvents.timestamp,
+      type:        historyEvents.type,
+      title:       historyEvents.title,
+      fromPhaseId: historyEvents.fromPhaseId,
+      toPhaseId:   historyEvents.toPhaseId,
+      note:        historyEvents.note,
+    })
+    .from(historyEvents)
+    .where(eq(historyEvents.practiceId, practiceId))
+    .orderBy(historyEvents.timestamp, historyEvents.id)
+    .all()
+}
+
+export function findPecDepositoAddresses(practiceId: number): string[] {
+  return getDb()
+    .select({ indirizzo: pecRecipients.indirizzo })
+    .from(pecRecipients)
+    .where(and(
+      eq(pecRecipients.practiceId, practiceId),
+      eq(pecRecipients.contesto, 'deposito'),
+    ))
+    .all()
+    .map(r => r.indirizzo)
 }
 
 export function findAllActivePractices(): PracticeListItem[] {

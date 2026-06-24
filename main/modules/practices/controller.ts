@@ -5,8 +5,9 @@ import type {
   GenerateCodiceIstanzaResponse,
   CreatePracticeResponse,
   PracticesListResponse,
+  GetPracticeResponse,
 } from '../../../shared/ipc'
-import { generateCodiceIstanza, createPractice, listActivePractices } from './service'
+import { generateCodiceIstanza, createPractice, listActivePractices, getPracticeDetail } from './service'
 import { logger } from '../../utils/logger'
 
 function parseOrThrow<T>(schema: z.ZodType<T>, input: unknown): T {
@@ -23,6 +24,10 @@ const generateCodiceSchema = z.object({
   dataUdienza: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'dataUdienza deve essere nel formato YYYY-MM-DD')
+})
+
+const getPracticeSchema = z.object({
+  id: z.number().int().positive()
 })
 
 const createPracticeSchema = z.object({
@@ -66,6 +71,15 @@ export function registerPracticesHandlers(): void {
       logger.debug('IPC', IPC_CHANNELS.PRACTICES_CREATE)
       const parsed = parseOrThrow(createPracticeSchema, input)
       return createPractice(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.PRACTICES_GET,
+    (_, input: unknown): GetPracticeResponse => {
+      logger.debug('IPC', IPC_CHANNELS.PRACTICES_GET)
+      const parsed = parseOrThrow(getPracticeSchema, input)
+      return getPracticeDetail(parsed)
     }
   )
 }

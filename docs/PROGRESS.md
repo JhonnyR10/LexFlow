@@ -28,7 +28,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S4.1   | Generazione codice istanza                                   | FATTO    | Schema practices (22 col, FK a phases/professionisti/collaboratori), siglaCodice in AppSettings, migrazione 0003_*.sql, IPC practices:generateCodiceIstanza, formato AAAAMMGG_SIGLA_NNN.                                 |
 | S4.2   | Form Nuova pratica                                           | FATTO    | Modal Nuova pratica: 6 sezioni, campi fissi + campi custom generali + PEC deposito. Backend: createPractice con transazione, auto-transizione depositata→in_attesa_decreto, HistoryEvent. Nuove tabelle: history_events, pec_recipients. Migrazione 0004_*.sql. |                                                                                                                                                                                                                          |
 | S4.3   | Modifica pratica + storico                                   | TODO     |                                                                                                                                                                                                                          |
-| S5.1   | Dettaglio pratica                                            | TODO     |                                                                                                                                                                                                                          |
+| S5.1   | Dettaglio pratica                                            | FATTO    | IPC `practices:getPractice` (detail con join fasi/anagrafiche, history, PEC deposito). DettaglioPraticaPage read-only: intestazione, dati generali, soggetti, importi, campi personalizzati risolti, workflow, storico/timeline, documenti (stub E7). Pulsanti transizione = S5.2.                                                                          |
 | S5.2   | Pulsanti dinamici = transizioni                              | TODO     |                                                                                                                                                                                                                          |
 | S5.3   | Form dinamico fase + salvataggio                             | TODO     |                                                                                                                                                                                                                          |
 | S5.4   | Guard coerenza stati                                         | TODO     |                                                                                                                                                                                                                          |
@@ -593,6 +593,34 @@ Nota: le transizioni → Sospesa e → Annullata dei rami post-decreto usano but
 5. Guard pratiche: TODO documentato (E4)
 
 **Verifiche:** `npm run typecheck` ✓ · `npm run build` ✓
+
+---
+
+### 2026-06-25 — S5.1: Dettaglio pratica (read-only)
+
+**Nessuna migrazione DB** — schema invariato, solo nuove query di lettura.
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `shared/ipc.ts` | + canale `PRACTICES_GET`; tipi `GetPracticeInput`, `PracticeDetail`, `PracticeDetailPhase`, `PracticeDetailHistoryItem`, `GetPracticeResponse`; esteso `LexFlowApi.practices` con `getPractice` |
+| `main/modules/practices/repository.ts` | + `import { and }`; `PracticeDetailRow`; `findPracticeDetailById` (LEFT JOIN phases/professionisti/collaboratori); `findPhaseNameMap` (id→displayName, risolve from/to/previous senza join aliasati); `findHistoryEventsByPractice` (ordinati timestamp ASC, id ASC); `findPecDepositoAddresses` (and: practiceId + contesto='deposito') |
+| `main/modules/practices/service.ts` | + `getPracticeDetail` (NotFoundError se assente; `parseCustomValues` robusto a JSON invalido; compone detail con history e PEC) |
+| `main/modules/practices/controller.ts` | + handler `PRACTICES_GET` con schema zod `{ id: positive int }` |
+| `main/preload.ts` | + `practices.getPractice` nel bridge |
+| `src/api/practices.ts` | + `getPractice(input)` |
+| `src/features/practices/usePractices.ts` | + `usePracticeDetail(id)` (queryKey `['practice', id]`, enabled se id != null); aggiunti tipi di ritorno espliciti agli hook esistenti (pulizia lint del file toccato) |
+| `src/pages/DettaglioPraticaPage.tsx` | Placeholder → vista reale: helper formato (data/dataora/importo/`textOrAbsent`), `resolveCustomValue` (menu→label opzione, si_no→Sì/No, importo/data formattati), componenti `PhaseBadge`/`Section`/`FieldGrid`/`Field`, sezioni `CustomFieldsSection` e `TimelineSection`; stati loading/empty(id non valido)/error(404 "Pratica non trovata"). Campi assenti → "Non presente"; data deposito assente → "Data deposito non presente". |
+
+**Decisioni implementative:**
+- Timeline read-only inclusa già in S5.1 (i dati `HistoryEvent` esistono da S4.2). S5.5 la raffinerà.
+- 4 importi: solo `importoRichiesto` reale; Concesso/Fatturato/Liquidato mostrano "Non presente" (placeholder E6).
+- Pulsanti transizione, form di transizione, modifica e documenti restano a S5.2/S5.3/S4.3/E7 (placeholder espliciti in pagina).
+- Risoluzione campi personalizzati nel renderer riusando `useFields({ scope: 'general' })` e `useMenuSets()` (nessuna nuova logica backend). Chiavi orfane in `customValues` (campo poi disattivato) mostrate comunque per non nascondere dati.
+- `getPractice` non filtra `isTrashed` (dettaglio consultabile anche dal cestino in E10); `isTrashed` esposto nel detail per usi futuri.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run build` ✓ · `npm run desktop` ✓ (boot pulito: migrazioni + seed 13 fasi/40 transizioni/5 menu, IPC registrati, nessun errore runtime) · forma SQL delle 4 query nuove validata contro il DB di sviluppo reale (join e nomi colonna corretti) ✓ · `npm run lint`: i nuovi file (`DettaglioPraticaPage.tsx`, `usePractices.ts`) sono puliti; restano **15 errori lint pre-esistenti** in `NuovaPraticaModal.tsx`, `PraticheTable.tsx`, `PratichePage.tsx` (introdotti in S3.1/S4.2, che verificarono solo typecheck+build) — verificato che erano già rossi su HEAD prima di S5.1. **TODO qualità (S13):** bonificare il lint di quei 3 file (tipi di ritorno mancanti + `set-state-in-effect` in NuovaPraticaModal).
 
 ---
 

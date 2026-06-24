@@ -52,7 +52,8 @@ export const IPC_CHANNELS = {
   ANAGRAFICHE_SET_COLLABORATORE_ACTIVE: 'anagrafiche:setCollaboratoreActive',
   PRACTICES_GENERATE_CODICE: 'practices:generateCodiceIstanza',
   PRACTICES_CREATE: 'practices:createPractice',
-  PRACTICES_LIST: 'practices:listPractices'
+  PRACTICES_LIST: 'practices:listPractices',
+  PRACTICES_GET: 'practices:getPractice'
 } as const
 
 export type AppGetVersionResponse = string
@@ -442,6 +443,56 @@ export interface PracticeListItem {
 
 export type PracticesListResponse = PracticeListItem[]
 
+export interface GetPracticeInput {
+  id: number
+}
+
+export interface PracticeDetailHistoryItem {
+  id: number
+  timestamp: string
+  type: string
+  title: string
+  fromPhaseDisplayName: string | null
+  toPhaseDisplayName: string | null
+  note: string | null
+}
+
+export interface PracticeDetailPhase {
+  id: number
+  key: string | null
+  displayName: string | null
+  category: string | null
+  isFinal: boolean
+}
+
+export interface PracticeDetail {
+  id: number
+  codiceIstanza: string
+  nomeIstanza: string
+  tipologiaAttivita: string | null
+  dataUdienza: string | null
+  competenza: string | null
+  autoritaGiudiziaria: string | null
+  dataDeposito: string | null
+  modalitaDeposito: string | null
+  importoRichiesto: number | null
+  note: string | null
+  customValues: Record<string, unknown>
+  currentPhase: PracticeDetailPhase
+  previousPhaseDisplayName: string | null
+  collaboratoreId: number | null
+  collaboratoreDenominazione: string | null
+  professionistaId: number | null
+  professionistaDenominazione: string | null
+  pecDepositoDestinatari: string[]
+  history: PracticeDetailHistoryItem[]
+  isTrashed: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type GetPracticeResponse = PracticeDetail
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
@@ -475,6 +526,7 @@ export interface LexFlowApi {
     generateCodiceIstanza(input: GenerateCodiceIstanzaInput): Promise<GenerateCodiceIstanzaResponse>
     createPractice(input: CreatePracticeInput): Promise<CreatePracticeResponse>
     listPractices(): Promise<PracticesListResponse>
+    getPractice(input: GetPracticeInput): Promise<GetPracticeResponse>
   }
   anagrafiche: {
     listProfessionisti(): Promise<AnagraficheListProfessionistiResponse>

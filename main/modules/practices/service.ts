@@ -4,6 +4,9 @@ import type {
   CreatePracticeInput,
   CreatePracticeResponse,
   PracticesListResponse,
+  GetPracticeInput,
+  GetPracticeResponse,
+  PracticeDetailHistoryItem,
 } from '../../../shared/ipc'
 import {
   countPracticesByYear,
@@ -16,6 +19,10 @@ import {
   insertHistoryEvent,
   insertPecRecipients,
   findAllActivePractices,
+  findPracticeDetailById,
+  findPhaseNameMap,
+  findHistoryEventsByPractice,
+  findPecDepositoAddresses,
 } from './repository'
 import { getDb } from '../../database/connection'
 import { ValidationError, NotFoundError } from '../../errors/AppError'
@@ -57,6 +64,70 @@ function buildCode(dateStr: string, sigla: string, n: number): string {
 
 export function listActivePractices(): PracticesListResponse {
   return findAllActivePractices()
+}
+
+function parseCustomValues(raw: string): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>
+    }
+  } catch {
+    // payload non valido: trattato come vuoto, mai propagato come errore alla UI
+  }
+  return {}
+}
+
+export function getPracticeDetail(input: GetPracticeInput): GetPracticeResponse {
+  const row = findPracticeDetailById(input.id)
+  if (!row) {
+    throw new NotFoundError('Pratica non trovata')
+  }
+
+  const p = row.practice
+  const phaseNames = findPhaseNameMap()
+
+  const history: PracticeDetailHistoryItem[] = findHistoryEventsByPractice(p.id).map(e => ({
+    id:        e.id,
+    timestamp: e.timestamp,
+    type:      e.type,
+    title:     e.title,
+    fromPhaseDisplayName: e.fromPhaseId != null ? (phaseNames.get(e.fromPhaseId) ?? null) : null,
+    toPhaseDisplayName:   e.toPhaseId != null ? (phaseNames.get(e.toPhaseId) ?? null) : null,
+    note:      e.note ?? null,
+  }))
+
+  return {
+    id:                  p.id,
+    codiceIstanza:       p.codiceIstanza,
+    nomeIstanza:         p.nomeIstanza,
+    tipologiaAttivita:   p.tipologiaAttivita ?? null,
+    dataUdienza:         p.dataUdienza ?? null,
+    competenza:          p.competenza ?? null,
+    autoritaGiudiziaria: p.autoritaGiudiziaria ?? null,
+    dataDeposito:        p.dataDeposito ?? null,
+    modalitaDeposito:    p.modalitaDeposito ?? null,
+    importoRichiesto:    p.importoRichiesto ?? null,
+    note:                p.note ?? null,
+    customValues:        parseCustomValues(p.customValues),
+    currentPhase: {
+      id:          p.currentPhaseId,
+      key:         row.currentPhaseKey,
+      displayName: row.currentPhaseDisplayName,
+      category:    row.currentPhaseCategory,
+      isFinal:     row.currentPhaseIsFinal ?? false,
+    },
+    previousPhaseDisplayName: p.previousPhaseId != null ? (phaseNames.get(p.previousPhaseId) ?? null) : null,
+    collaboratoreId:             p.collaboratoreId ?? null,
+    collaboratoreDenominazione:  row.collaboratoreDenominazione,
+    professionistaId:            p.professionistaId ?? null,
+    professionistaDenominazione: row.professionistaDenominazione,
+    pecDepositoDestinatari:      findPecDepositoAddresses(p.id),
+    history,
+    isTrashed:  p.isTrashed,
+    createdAt:  p.createdAt,
+    updatedAt:  p.updatedAt,
+  }
 }
 
 export function createPractice(input: CreatePracticeInput): CreatePracticeResponse {

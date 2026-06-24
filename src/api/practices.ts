@@ -4,6 +4,8 @@ import type {
   CreatePracticeInput,
   CreatePracticeResponse,
   PracticesListResponse,
+  GetPracticeInput,
+  GetPracticeResponse,
 } from '../../shared/ipc'
 
 export const practicesApi = {
@@ -19,4 +21,7 @@ export const practicesApi = {
 
   listPractices: (): Promise<PracticesListResponse> =>
     window.api.practices.listPractices(),
+
+  getPractice: (input: GetPracticeInput): Promise<GetPracticeResponse> =>
+    window.api.practices.getPractice(input),
 }
