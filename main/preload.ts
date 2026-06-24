@@ -7,7 +7,12 @@ const api: LexFlowApi = {
   },
   config: {
     listPhases: () => ipcRenderer.invoke('config:listPhases'),
-    listTransitions: () => ipcRenderer.invoke('config:listTransitions')
+    listAllPhases: () => ipcRenderer.invoke('config:listAllPhases'),
+    listTransitions: () => ipcRenderer.invoke('config:listTransitions'),
+    createPhase: (input) => ipcRenderer.invoke('config:createPhase', input),
+    updatePhase: (input) => ipcRenderer.invoke('config:updatePhase', input),
+    setPhaseActive: (input) => ipcRenderer.invoke('config:setPhaseActive', input),
+    reorderPhases: (input) => ipcRenderer.invoke('config:reorderPhases', input)
   }
 }
 

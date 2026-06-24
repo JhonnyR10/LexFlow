@@ -1,7 +1,7 @@
-import PlaceholderPage from './pages/PlaceholderPage'
+import { Router } from './routes/Router'
 
 function App(): React.JSX.Element {
-  return <PlaceholderPage />
+  return <Router />
 }
 
 export default App

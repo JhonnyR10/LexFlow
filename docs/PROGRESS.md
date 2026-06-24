@@ -14,7 +14,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S0.2   | Bridge IPC tipizzato                                         | TODO     |                                                                                                                                                |
 | S0.3   | Config zod + logging strutturato                             | IN CORSO | config/startup.ts (validazione zod + check scrittura) e utils/logger.ts fatti. Resto (gestione errori tipizzata, ErrorBoundary renderer) dopo. |
 | S0.4   | Migrazioni Drizzle + seed (fasi/menu standard)               | FATTO    | DB aperto in userData, migrazioni auto, seed idempotente verificato. Riallineato al modello canonico (13 fasi, 40 transizioni) il 2026-06-24.  |
-| S1.1   | CRUD fasi                                                    | TODO     |                                                                                                                                                |
+| S1.1   | CRUD fasi + guscio applicativo                               | FATTO    | Routing HashRouter, sidebar, 6 pagine, QueryClientProvider. CRUD fasi completo. Guard disattivazione unica fase iniziale attivo; guard pratiche (TODO) documentato. Delete fisica rinviata (FK constraints). |
 | S1.2   | CRUD transizioni                                             | TODO     |                                                                                                                                                |
 | S1.3   | CRUD campi generali e campi fase                             | TODO     |                                                                                                                                                |
 | S1.4   | CRUD menu a tendina                                          | TODO     |                                                                                                                                                |
@@ -81,6 +81,56 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-24 — S1.1: Guscio applicativo + CRUD Fasi
+
+**Dipendenze aggiunte:**
+- `react-router-dom` v7 (prod) — routing HashRouter lato renderer
+- `@tanstack/react-query` v5 (prod) — gestione dati asincroni e cache lato renderer
+
+**File nuovi:**
+
+| File | Descrizione |
+|------|-------------|
+| `main/errors/AppError.ts` | Gerarchia errori tipizzati: AppError, NotFoundError, ConflictError, ValidationError |
+| `src/styles/global.css` | CSS custom properties (tema chiaro base, colori semantici fissi, badge) |
+| `src/components/layout/Sidebar.tsx` | Sidebar di navigazione con NavLink attivo e link Diagnostica IPC |
+| `src/components/layout/AppLayout.tsx` | Layout root: sidebar + `<Outlet />` scrollabile |
+| `src/routes/Router.tsx` | HashRouter con 7 route (dashboard, pratiche, report, impostazioni-istanze, impostazioni-app, cestino, dev/ipc) |
+| `src/pages/PlaceholderSection.tsx` | Componente placeholder riutilizzabile "Sezione in costruzione" |
+| `src/pages/DashboardPage.tsx` | Placeholder Dashboard |
+| `src/pages/PratichePage.tsx` | Placeholder Pratiche |
+| `src/pages/ReportPage.tsx` | Placeholder Report |
+| `src/pages/AppSettingsPage.tsx` | Placeholder Impostazioni app |
+| `src/pages/CestinoPage.tsx` | Placeholder Cestino |
+| `src/pages/IpcDemoPage.tsx` | Demo IPC spostata da PlaceholderPage (route `/dev/ipc`) |
+| `src/pages/InstanceSettingsPage.tsx` | Pagina Impostazioni istanze: sezione Fasi + segnaposto Transizioni/Campi/Menu/Anagrafiche |
+| `src/features/config/phases/usePhases.ts` | TanStack Query hooks: useAllPhases, useCreatePhase, useUpdatePhase, useSetPhaseActive, useReorderPhases |
+| `src/features/config/phases/PhaseFormModal.tsx` | Modale crea/modifica fase con validazione zod lato renderer |
+| `src/features/config/phases/PhasesSection.tsx` | Sezione fasi: tabella ordinata, badge, pulsanti su/giù, Attiva/Disattiva con guard inline |
+| `src/utils/ipcError.ts` | Helper per estrarre il messaggio utente dagli errori IPC di Electron |
+
+**File modificati:**
+
+| File | Modifica |
+|------|----------|
+| `shared/ipc.ts` | Aggiunto `PhaseCategory`, `PHASE_CATEGORIES`, 5 nuovi canali IPC, tipi input/output CRUD fasi, esteso `LexFlowApi.config` |
+| `main/modules/config/repository.ts` | Aggiunto `findAllPhases`, `findPhaseById`, `findMaxOrder`, `countActiveInitialPhases`, `keyExists`, `createPhaseAtomic`, `updatePhaseAtomic`, `setPhaseIsActive`, `reorderPhasesAtomic`; rimosso explicit `.select()` da `findActivePhases` (ora usa `toListItem`) |
+| `main/modules/config/service.ts` | Aggiunto `listAllPhases`, `createPhase`, `updatePhase`, `setPhaseActive`, `reorderPhases`; helper `slugify`, `generateUniqueKey`, `assertCanDeactivate` (con TODO guard pratiche) |
+| `main/modules/config/controller.ts` | Aggiunto 5 handler IPC con validazione zod; helper `parseOrThrow` |
+| `main/preload.ts` | Aggiunto 5 metodi config nel bridge contextBridge |
+| `src/api/config.ts` | Aggiunto 5 metodi client IPC |
+| `src/App.tsx` | Sostituito `<PlaceholderPage />` con `<Router />` |
+| `src/main.tsx` | Aggiunto `QueryClientProvider` e import `global.css` |
+
+**Decisioni implementative:**
+- Transazioni nelle operazioni composite (`createPhaseAtomic`, `updatePhaseAtomic`, `reorderPhasesAtomic`) usando `getDb().transaction((tx) => {...})` con `tx` per garantire atomicità.
+- La `key` viene generata via `slugify(displayName)` alla creazione e non è mai aggiornata in `updatePhase` (colonna `key` esclusa dal SET).
+- Guard "non disattivare l'unica fase iniziale" attivo in `assertCanDeactivate`. Guard "non disattivare se usata da pratiche" lasciato come TODO documentato.
+- Delete fisica delle fasi NON implementata: le FK con `transitions` e l'uso futuro nelle pratiche lo rendono rischioso. Disponibile solo attiva/disattiva.
+- Messaggi di errore IPC puliti via `ipcErrorMessage()` che rimuove il prefisso "Error invoking remote method '...': ErrorClass: ".
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · avvio Electron ✓ · 13 fasi visibili in tabella ✓ · creazione fase nuova (category custom, key auto-generata) ✓ · persistenza al riavvio ✓ · guard unica fase iniziale mostra errore chiaro ✓
 
 ### 2026-06-24 — S0.4 (riallineamento): Schema canonico workflow (13 fasi, 40 transizioni)
 
