@@ -19,7 +19,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S1.3   | CRUD campi configurabili (generali e per transizione)        | FATTO    | Schema migrato: scope general\|transition, transitionId (FK transitions) sostituisce phaseId. Migrazioni rigenerate, DB dev resettato. Delete fisica e guard d'uso rinviati (TODO con tabella practices).                |
 | S1.4   | CRUD menu a tendina                                          | FATTO    | Backend: 7 canali IPC con invarianti (key immutabile, value univoco/immutabile). UI: layout due livelli, 5 set standard visibili. Delete fisica e guard d'uso rinviati (TODO).                                           |
 | S1.5   | Regola PEC condizionale                                      | FATTO    | Schema migrato: tipo pec + conditionalOnFieldId/conditionalValue. Visibilità condizionale nel form campo, badge nella tabella, pulsante convenience PEC.                                                                  |
-| S2.1   | CRUD Professionisti                                          | TODO     |                                                                                                                                                                                                                          |
+| S2.1   | CRUD Professionisti                                          | FATTO    | Nuovo modulo anagrafiche (IPC namespace `anagrafiche:`), schema Drizzle + migrazione incrementale 0001_*.sql, CRUD completo, denominazione auto-derivata da cognome+nome, validazione CF/email morbida.                  |
 | S2.2   | CRUD Collaboratori                                           | TODO     |                                                                                                                                                                                                                          |
 | S3.1   | Tabella pratiche attive                                      | TODO     |                                                                                                                                                                                                                          |
 | S3.2   | Ricerca globale                                              | TODO     |                                                                                                                                                                                                                          |
@@ -84,6 +84,47 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-24 — S2.1: CRUD Professionisti
+
+**Migrazione DB:** incrementale `drizzle/0001_safe_black_bolt.sql` (`CREATE TABLE professionisti`, 11 colonne). Nessun reset — dati dev esistenti conservati.
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `main/database/schema/professionisti.ts` | Schema Drizzle: id, nome, cognome, denominazione, codiceFiscale, email, pec, telefono, ruolo, note, isActive |
+| `main/modules/anagrafiche/repository.ts` | findAllProfessionisti (ordinati per denominazione ASC), findProfessionistaById, insertProfessionista, updateProfessionistaFields, setProfessionistaIsActive |
+| `main/modules/anagrafiche/service.ts` | listProfessionisti, createProfessionista, updateProfessionista, setProfessionistaActive + invarianti; TODO guard pratiche documentato |
+| `main/modules/anagrafiche/controller.ts` | registerAnagraficheHandlers: 4 handler IPC con zod inline |
+| `src/api/anagrafiche.ts` | Client IPC renderer (wrapper window.api.anagrafiche.*) |
+| `src/features/anagrafiche/professionisti/useProfessionisti.ts` | TanStack Query: useAllProfessionisti, useCreateProfessionista, useUpdateProfessionista, useSetProfessionistaActive |
+| `src/features/anagrafiche/professionisti/ProfessionistaFormModal.tsx` | Modal crea/modifica: 9 campi, denominazione auto-sync da cognome+nome (sbloccabile svuotando), isActive solo in edit |
+| `src/features/anagrafiche/professionisti/ProfessionistiSection.tsx` | Tabella (denominazione, ruolo, contatti, stato, azioni), loading/empty/error, toggle attiva/disattiva con confirm |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `main/database/schema/index.ts` | `export * from './professionisti'` |
+| `shared/ipc.ts` | 4 canali `anagrafiche:*`, tipi Professionista, `LexFlowApi.anagrafiche` |
+| `main/preload.ts` | Sezione `anagrafiche:` nel contextBridge |
+| `main/server.ts` | `registerAnagraficheHandlers()` |
+| `src/pages/InstanceSettingsPage.tsx` | Placeholder → `<ProfessionistiSection />`; placeholder Collaboratori rimasto per S2.2 |
+
+**Invarianti service:**
+1. `nome` non vuoto → ValidationError
+2. `cognome` non vuoto → ValidationError
+3. `denominazione` null/vuota → generata da `${cognome} ${nome}` (validata poi)
+4. `codiceFiscale` se valorizzato: `/^[A-Za-z0-9]{11}$|^[A-Za-z0-9]{16}$/` (CF 16 o PI 11) → ValidationError
+5. `email` / `pec` se valorizzati: formato email base → ValidationError
+6. Guard pratiche: TODO documentato (E4)
+
+**Struttura modulo:** `main/modules/anagrafiche/` progettato per ospitare anche S2.2 Collaboratori (stesso repository/service/controller, funzioni aggiuntive).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run build` ✓
+
+---
 
 ### 2026-06-24 — Riconciliazione documentale post-audit (nessuna modifica al codice applicativo)
 

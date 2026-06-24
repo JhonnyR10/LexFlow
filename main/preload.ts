@@ -29,6 +29,16 @@ const api: LexFlowApi = {
     updateField: (input) => ipcRenderer.invoke('config:updateField', input),
     setFieldActive: (input) => ipcRenderer.invoke('config:setFieldActive', input),
     reorderFields: (input) => ipcRenderer.invoke('config:reorderFields', input)
+  },
+  anagrafiche: {
+    listProfessionisti: () =>
+      ipcRenderer.invoke('anagrafiche:listProfessionisti'),
+    createProfessionista: (input) =>
+      ipcRenderer.invoke('anagrafiche:createProfessionista', input),
+    updateProfessionista: (input) =>
+      ipcRenderer.invoke('anagrafiche:updateProfessionista', input),
+    setProfessionistaActive: (input) =>
+      ipcRenderer.invoke('anagrafiche:setProfessionistaActive', input)
   }
 }
 

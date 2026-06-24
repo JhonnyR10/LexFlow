@@ -41,7 +41,11 @@ export const IPC_CHANNELS = {
   CONFIG_CREATE_FIELD: 'config:createField',
   CONFIG_UPDATE_FIELD: 'config:updateField',
   CONFIG_SET_FIELD_ACTIVE: 'config:setFieldActive',
-  CONFIG_REORDER_FIELDS: 'config:reorderFields'
+  CONFIG_REORDER_FIELDS: 'config:reorderFields',
+  ANAGRAFICHE_LIST_PROFESSIONISTI: 'anagrafiche:listProfessionisti',
+  ANAGRAFICHE_CREATE_PROFESSIONISTA: 'anagrafiche:createProfessionista',
+  ANAGRAFICHE_UPDATE_PROFESSIONISTA: 'anagrafiche:updateProfessionista',
+  ANAGRAFICHE_SET_PROFESSIONISTA_ACTIVE: 'anagrafiche:setProfessionistaActive'
 } as const
 
 export type AppGetVersionResponse = string
@@ -285,6 +289,58 @@ export type ConfigUpdateFieldResponse = FieldDefListItem
 export type ConfigSetFieldActiveResponse = { success: true }
 export type ConfigReorderFieldsResponse = { success: true }
 
+// ---------- Anagrafiche — Professionisti ----------
+
+export interface ProfessionistaListItem {
+  id: number
+  nome: string
+  cognome: string
+  denominazione: string
+  codiceFiscale: string | null
+  email: string | null
+  pec: string | null
+  telefono: string | null
+  ruolo: string | null
+  note: string | null
+  isActive: boolean
+}
+
+export interface CreateProfessionistaInput {
+  nome: string
+  cognome: string
+  denominazione: string | null
+  codiceFiscale: string | null
+  email: string | null
+  pec: string | null
+  telefono: string | null
+  ruolo: string | null
+  note: string | null
+}
+
+export interface UpdateProfessionistaInput {
+  id: number
+  nome: string
+  cognome: string
+  denominazione: string | null
+  codiceFiscale: string | null
+  email: string | null
+  pec: string | null
+  telefono: string | null
+  ruolo: string | null
+  note: string | null
+  isActive: boolean
+}
+
+export interface SetProfessionistaActiveInput {
+  id: number
+  isActive: boolean
+}
+
+export type AnagraficheListProfessionistiResponse = ProfessionistaListItem[]
+export type AnagraficheCreateProfessionistaResponse = ProfessionistaListItem
+export type AnagraficheUpdateProfessionistaResponse = ProfessionistaListItem
+export type AnagraficheSetProfessionistaActiveResponse = { success: true }
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
@@ -313,5 +369,11 @@ export interface LexFlowApi {
     updateField(input: UpdateFieldInput): Promise<ConfigUpdateFieldResponse>
     setFieldActive(input: SetFieldActiveInput): Promise<ConfigSetFieldActiveResponse>
     reorderFields(input: ReorderFieldsInput): Promise<ConfigReorderFieldsResponse>
+  }
+  anagrafiche: {
+    listProfessionisti(): Promise<AnagraficheListProfessionistiResponse>
+    createProfessionista(input: CreateProfessionistaInput): Promise<AnagraficheCreateProfessionistaResponse>
+    updateProfessionista(input: UpdateProfessionistaInput): Promise<AnagraficheUpdateProfessionistaResponse>
+    setProfessionistaActive(input: SetProfessionistaActiveInput): Promise<AnagraficheSetProfessionistaActiveResponse>
   }
 }

@@ -2,6 +2,7 @@ import { PhasesSection } from '../features/config/phases/PhasesSection'
 import { TransitionsSection } from '../features/config/transitions/TransitionsSection'
 import { FieldsSection } from '../features/config/fields/FieldsSection'
 import { MenusSection } from '../features/config/menus/MenusSection'
+import { ProfessionistiSection } from '../features/anagrafiche/professionisti/ProfessionistiSection'
 
 const pageStyle: React.CSSProperties = {
   padding: '28px 32px',
@@ -51,7 +52,11 @@ export function InstanceSettingsPage(): React.JSX.Element {
       </div>
 
       <div style={sectionGapStyle}>
-        <div style={comingSoonStyle}>Anagrafiche (Professionisti e Collaboratori) — in arrivo (S2)</div>
+        <ProfessionistiSection />
+      </div>
+
+      <div style={sectionGapStyle}>
+        <div style={comingSoonStyle}>Collaboratori — in arrivo (S2.2)</div>
       </div>
     </div>
   )
