@@ -9,6 +9,7 @@ export const appSettings = sqliteTable('app_settings', {
   assistant: text('assistant').notNull(),
   dataPath: text('data_path').notNull(),
   appVersion: text('app_version').notNull(),
+  siglaCodice: text('sigla_codice').notNull().default('NP'),
   backup: text('backup').notNull(),
   security: text('security').notNull()
 })

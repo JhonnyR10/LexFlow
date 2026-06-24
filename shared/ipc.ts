@@ -49,7 +49,8 @@ export const IPC_CHANNELS = {
   ANAGRAFICHE_LIST_COLLABORATORI: 'anagrafiche:listCollaboratori',
   ANAGRAFICHE_CREATE_COLLABORATORE: 'anagrafiche:createCollaboratore',
   ANAGRAFICHE_UPDATE_COLLABORATORE: 'anagrafiche:updateCollaboratore',
-  ANAGRAFICHE_SET_COLLABORATORE_ACTIVE: 'anagrafiche:setCollaboratoreActive'
+  ANAGRAFICHE_SET_COLLABORATORE_ACTIVE: 'anagrafiche:setCollaboratoreActive',
+  PRACTICES_GENERATE_CODICE: 'practices:generateCodiceIstanza'
 } as const
 
 export type AppGetVersionResponse = string
@@ -385,6 +386,16 @@ export type AnagraficheCreateCollaboratoreResponse = CollaboratoreListItem
 export type AnagraficheUpdateCollaboratoreResponse = CollaboratoreListItem
 export type AnagraficheSetCollaboratoreActiveResponse = { success: true }
 
+// ---------- Practices ----------
+
+export interface GenerateCodiceIstanzaInput {
+  dataUdienza: string  // ISO YYYY-MM-DD, obbligatoria
+}
+
+export interface GenerateCodiceIstanzaResponse {
+  codice: string  // formato AAAAMMGG_SIGLA_NNN — pre-riempimento UI; il codice definitivo è generato/verificato inside la transazione di insert in S4.2
+}
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
@@ -413,6 +424,9 @@ export interface LexFlowApi {
     updateField(input: UpdateFieldInput): Promise<ConfigUpdateFieldResponse>
     setFieldActive(input: SetFieldActiveInput): Promise<ConfigSetFieldActiveResponse>
     reorderFields(input: ReorderFieldsInput): Promise<ConfigReorderFieldsResponse>
+  }
+  practices: {
+    generateCodiceIstanza(input: GenerateCodiceIstanzaInput): Promise<GenerateCodiceIstanzaResponse>
   }
   anagrafiche: {
     listProfessionisti(): Promise<AnagraficheListProfessionistiResponse>

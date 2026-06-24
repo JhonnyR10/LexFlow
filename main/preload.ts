@@ -5,6 +5,10 @@ const api: LexFlowApi = {
   app: {
     getVersion: (): Promise<string> => ipcRenderer.invoke('app:getVersion')
   },
+  practices: {
+    generateCodiceIstanza: (input) =>
+      ipcRenderer.invoke('practices:generateCodiceIstanza', input)
+  },
   config: {
     listPhases: () => ipcRenderer.invoke('config:listPhases'),
     listAllPhases: () => ipcRenderer.invoke('config:listAllPhases'),

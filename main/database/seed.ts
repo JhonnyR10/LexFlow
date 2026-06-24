@@ -241,8 +241,9 @@ export function runSeed(): void {
           apiKeyRef:    null,
           instructions: null
         }),
-        dataPath:   userDataPath,
-        appVersion: app.getVersion(),
+        dataPath:    userDataPath,
+        siglaCodice: 'NP',
+        appVersion:  app.getVersion(),
         backup: JSON.stringify({
           autoEnabled:    true,
           trigger:        'onClose',

@@ -25,7 +25,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S3.2   | Ricerca globale                                              | TODO     |                                                                                                                                                                                                                          |
 | S3.3   | Filtri base                                                  | TODO     |                                                                                                                                                                                                                          |
 | S3.4   | Ordinamento + selezione multipla                             | TODO     |                                                                                                                                                                                                                          |
-| S4.1   | Generazione codice istanza                                   | TODO     |                                                                                                                                                                                                                          |
+| S4.1   | Generazione codice istanza                                   | FATTO    | Schema practices (22 col, FK a phases/professionisti/collaboratori), siglaCodice in AppSettings, migrazione 0003_*.sql, IPC practices:generateCodiceIstanza, formato AAAAMMGG_SIGLA_NNN.                                 |
 | S4.2   | Form Nuova pratica                                           | TODO     |                                                                                                                                                                                                                          |
 | S4.3   | Modifica pratica + storico                                   | TODO     |                                                                                                                                                                                                                          |
 | S5.1   | Dettaglio pratica                                            | TODO     |                                                                                                                                                                                                                          |
@@ -591,5 +591,44 @@ Nota: le transizioni → Sospesa e → Annullata dei rami post-decreto usano but
 3. `denominazione` null/vuota → generata da `${cognome} ${nome}`
 4. `codiceInterno`: opzionale, nessun formato imposto (max 50 chars)
 5. Guard pratiche: TODO documentato (E4)
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run build` ✓
+
+---
+
+### 2026-06-24 — S4.1: Generazione codice istanza automatica
+
+**Obiettivo:** infrastruttura backend necessaria prima del form Nuova pratica (S4.2): schema `practices`, campo `siglaCodice` in AppSettings, algoritmo di generazione codice, IPC esposto.
+
+**Migrazione DB:** incrementale `drizzle/0003_melted_nighthawk.sql` (CREATE TABLE practices 22 colonne + FK; ALTER TABLE app_settings ADD COLUMN sigla_codice). Nessun reset.
+
+**Formato codice confermato dall'utente:** `AAAAMMGG_SIGLA_NNN` (underscore) es. `20260624_NP_001`. Progressivo annuale (COUNT delle pratiche con codice che inizia per AAAA + 1).
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `main/database/schema/practices.ts` | Schema Drizzle completo Practice (22 colonne, FK a phases/professionisti/collaboratori, dataUdienza nullable in DB ma obbligatoria per business — vincolo imposto in S4.2) |
+| `main/modules/practices/repository.ts` | `countPracticesByYear`, `existsCodiceIstanza`, `getSiglaCodice` |
+| `main/modules/practices/service.ts` | `generateCodiceIstanza` — pre-riempimento UI; TODO: rigenerare dentro la transazione di insert in S4.2 |
+| `main/modules/practices/controller.ts` | `registerPracticesHandlers` + IPC `practices:generateCodiceIstanza`; validazione zod: dataUdienza regex YYYY-MM-DD |
+| `src/api/practices.ts` | Client IPC renderer |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `main/database/schema/appSettings.ts` | + `siglaCodice: text('sigla_codice').notNull().default('NP')` |
+| `main/database/schema/index.ts` | + `export * from './practices'` |
+| `main/database/seed.ts` | + `siglaCodice: 'NP'` nel blocco insert AppSettings |
+| `shared/ipc.ts` | + canale `PRACTICES_GENERATE_CODICE`, tipi `GenerateCodiceIstanzaInput/Response`, `LexFlowApi.practices` |
+| `main/preload.ts` | + sezione `practices:` nel contextBridge |
+| `main/server.ts` | + `registerPracticesHandlers()` |
+| `docs/02-data-model.md` | + `siglaCodice` ad AppSettings (formato codice, default NP, configurabile in E11) |
+
+**Decisioni:**
+- `dataUdienza` obbligatoria per il generatore (e per la pratica): vincolo di business documentato nel service e nel controller; il vincolo NOT NULL nel form arriva in S4.2.
+- Il codice generato via IPC è da considerarsi _preview_; il codice definitivo va rigenerato/verificato inside la transazione di insert in S4.2.
+- `importoRichiesto` memorizzato come `real` (SQLite float); nessun calcolo fiscale automatico.
 
 **Verifiche:** `npm run typecheck` ✓ · `npm run build` ✓
