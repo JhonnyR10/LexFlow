@@ -25,7 +25,11 @@ export const IPC_CHANNELS = {
   CONFIG_CREATE_PHASE: 'config:createPhase',
   CONFIG_UPDATE_PHASE: 'config:updatePhase',
   CONFIG_SET_PHASE_ACTIVE: 'config:setPhaseActive',
-  CONFIG_REORDER_PHASES: 'config:reorderPhases'
+  CONFIG_REORDER_PHASES: 'config:reorderPhases',
+  CONFIG_CREATE_TRANSITION: 'config:createTransition',
+  CONFIG_UPDATE_TRANSITION: 'config:updateTransition',
+  CONFIG_SET_TRANSITION_ACTIVE: 'config:setTransitionActive',
+  CONFIG_REORDER_TRANSITIONS: 'config:reorderTransitions'
 } as const
 
 export type AppGetVersionResponse = string
@@ -48,8 +52,11 @@ export interface TransitionListItem {
   id: number
   fromPhaseId: number
   fromPhaseKey: string
+  fromPhaseDisplayName: string
+  fromPhaseOrder: number
   toPhaseId: number | null
   toPhaseKey: string | null
+  toPhaseDisplayName: string | null
   buttonLabel: string
   order: number
   isActive: boolean
@@ -59,6 +66,39 @@ export interface TransitionListItem {
 }
 
 export type ConfigListTransitionsResponse = TransitionListItem[]
+
+export interface CreateTransitionInput {
+  fromPhaseId: number
+  toPhaseId: number | null
+  buttonLabel: string
+  isRepeatable: boolean
+  isAutomatic: boolean
+  isResume: boolean
+  isActive: boolean
+}
+
+export interface UpdateTransitionInput {
+  id: number
+  fromPhaseId: number
+  toPhaseId: number | null
+  buttonLabel: string
+  isRepeatable: boolean
+  isAutomatic: boolean
+  isResume: boolean
+  isActive: boolean
+}
+
+export interface SetTransitionActiveInput {
+  id: number
+  isActive: boolean
+}
+
+export type ReorderTransitionsInput = { id: number; order: number }[]
+
+export type ConfigCreateTransitionResponse = TransitionListItem
+export type ConfigUpdateTransitionResponse = TransitionListItem
+export type ConfigSetTransitionActiveResponse = { success: true }
+export type ConfigReorderTransitionsResponse = { success: true }
 
 export interface CreatePhaseInput {
   displayName: string
@@ -101,5 +141,9 @@ export interface LexFlowApi {
     updatePhase(input: UpdatePhaseInput): Promise<ConfigUpdatePhaseResponse>
     setPhaseActive(input: SetPhaseActiveInput): Promise<ConfigSetPhaseActiveResponse>
     reorderPhases(input: ReorderPhasesInput): Promise<ConfigReorderPhasesResponse>
+    createTransition(input: CreateTransitionInput): Promise<ConfigCreateTransitionResponse>
+    updateTransition(input: UpdateTransitionInput): Promise<ConfigUpdateTransitionResponse>
+    setTransitionActive(input: SetTransitionActiveInput): Promise<ConfigSetTransitionActiveResponse>
+    reorderTransitions(input: ReorderTransitionsInput): Promise<ConfigReorderTransitionsResponse>
   }
 }

@@ -3,6 +3,7 @@ import { getDb } from '../../database/connection'
 import { phases, transitions } from '../../database/schema'
 import type { PhaseListItem, TransitionListItem } from '../../../shared/ipc'
 import type { NewPhase } from '../../database/schema/phases'
+import type { NewTransition, Transition } from '../../database/schema/transitions'
 
 function toListItem(row: typeof phases.$inferSelect): PhaseListItem {
   return {
@@ -117,6 +118,8 @@ export function findTransitions(): TransitionListItem[] {
       id: transitions.id,
       fromPhaseId: transitions.fromPhaseId,
       fromPhaseKey: phases.key,
+      fromPhaseDisplayName: phases.displayName,
+      fromPhaseOrder: phases.order,
       toPhaseId: transitions.toPhaseId,
       buttonLabel: transitions.buttonLabel,
       order: transitions.order,
@@ -127,14 +130,143 @@ export function findTransitions(): TransitionListItem[] {
     })
     .from(transitions)
     .innerJoin(phases, eq(transitions.fromPhaseId, phases.id))
-    .orderBy(transitions.fromPhaseId, transitions.order)
+    .orderBy(asc(phases.order), asc(transitions.order))
     .all()
 
-  const allPhases = db.select({ id: phases.id, key: phases.key }).from(phases).all()
-  const phaseKeyById = new Map<number, string>(allPhases.map((p) => [p.id, p.key]))
+  const allPhases = db
+    .select({ id: phases.id, key: phases.key, displayName: phases.displayName })
+    .from(phases)
+    .all()
+  const phaseInfoById = new Map(allPhases.map((p) => [p.id, { key: p.key, displayName: p.displayName }]))
 
   return rows.map((r) => ({
     ...r,
-    toPhaseKey: r.toPhaseId != null ? (phaseKeyById.get(r.toPhaseId) ?? null) : null
+    toPhaseKey: r.toPhaseId != null ? (phaseInfoById.get(r.toPhaseId)?.key ?? null) : null,
+    toPhaseDisplayName: r.toPhaseId != null ? (phaseInfoById.get(r.toPhaseId)?.displayName ?? null) : null
   }))
+}
+
+export function findTransitionById(id: number): Transition | undefined {
+  return getDb().select().from(transitions).where(eq(transitions.id, id)).get()
+}
+
+export function findTransitionEnrichedById(id: number): TransitionListItem | undefined {
+  const db = getDb()
+
+  const row = db
+    .select({
+      id: transitions.id,
+      fromPhaseId: transitions.fromPhaseId,
+      fromPhaseKey: phases.key,
+      fromPhaseDisplayName: phases.displayName,
+      fromPhaseOrder: phases.order,
+      toPhaseId: transitions.toPhaseId,
+      buttonLabel: transitions.buttonLabel,
+      order: transitions.order,
+      isActive: transitions.isActive,
+      isRepeatable: transitions.isRepeatable,
+      isAutomatic: transitions.isAutomatic,
+      isResume: transitions.isResume
+    })
+    .from(transitions)
+    .innerJoin(phases, eq(transitions.fromPhaseId, phases.id))
+    .where(eq(transitions.id, id))
+    .get()
+
+  if (!row) return undefined
+
+  const toPhase =
+    row.toPhaseId != null
+      ? db
+          .select({ key: phases.key, displayName: phases.displayName })
+          .from(phases)
+          .where(eq(phases.id, row.toPhaseId))
+          .get()
+      : null
+
+  return {
+    ...row,
+    toPhaseKey: toPhase?.key ?? null,
+    toPhaseDisplayName: toPhase?.displayName ?? null
+  }
+}
+
+export function findMaxTransitionOrderForPhase(fromPhaseId: number): number {
+  const result = getDb()
+    .select({ maxOrder: sql<number>`MAX(${transitions.order})` })
+    .from(transitions)
+    .where(eq(transitions.fromPhaseId, fromPhaseId))
+    .get()
+  return result?.maxOrder ?? 0
+}
+
+export function countActiveAutomaticTransitionsForPhase(
+  fromPhaseId: number,
+  excludeId?: number
+): number {
+  const result = getDb()
+    .select({ c: sql<number>`COUNT(*)` })
+    .from(transitions)
+    .where(
+      and(
+        eq(transitions.fromPhaseId, fromPhaseId),
+        eq(transitions.isAutomatic, true),
+        eq(transitions.isActive, true),
+        excludeId !== undefined ? ne(transitions.id, excludeId) : undefined
+      )
+    )
+    .get()
+  return result?.c ?? 0
+}
+
+export function transitionLabelExists(
+  fromPhaseId: number,
+  buttonLabel: string,
+  excludeId?: number
+): boolean {
+  return (
+    getDb()
+      .select({ id: transitions.id })
+      .from(transitions)
+      .where(
+        and(
+          eq(transitions.fromPhaseId, fromPhaseId),
+          eq(transitions.buttonLabel, buttonLabel),
+          excludeId !== undefined ? ne(transitions.id, excludeId) : undefined
+        )
+      )
+      .get() != null
+  )
+}
+
+export function insertTransition(data: NewTransition): number {
+  const [row] = getDb().insert(transitions).values(data).returning({ id: transitions.id }).all()
+  return row.id
+}
+
+export function updateTransitionFields(
+  id: number,
+  data: {
+    fromPhaseId: number
+    toPhaseId: number | null
+    buttonLabel: string
+    isRepeatable: boolean
+    isAutomatic: boolean
+    isResume: boolean
+    isActive: boolean
+  }
+): void {
+  getDb().update(transitions).set(data).where(eq(transitions.id, id)).run()
+}
+
+export function setTransitionIsActive(id: number, isActive: boolean): void {
+  getDb().update(transitions).set({ isActive }).where(eq(transitions.id, id)).run()
+}
+
+export function reorderTransitionsAtomic(items: { id: number; order: number }[]): void {
+  getDb().transaction((tx) => {
+    for (const item of items) {
+      tx.update(transitions).set({ order: item.order }).where(eq(transitions.id, item.id)).run()
+    }
+  })
 }

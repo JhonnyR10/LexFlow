@@ -15,7 +15,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S0.3   | Config zod + logging strutturato                             | IN CORSO | config/startup.ts (validazione zod + check scrittura) e utils/logger.ts fatti. Resto (gestione errori tipizzata, ErrorBoundary renderer) dopo. |
 | S0.4   | Migrazioni Drizzle + seed (fasi/menu standard)               | FATTO    | DB aperto in userData, migrazioni auto, seed idempotente verificato. Riallineato al modello canonico (13 fasi, 40 transizioni) il 2026-06-24.  |
 | S1.1   | CRUD fasi + guscio applicativo                               | FATTO    | Routing HashRouter, sidebar, 6 pagine, QueryClientProvider. CRUD fasi completo. Guard disattivazione unica fase iniziale attivo; guard pratiche (TODO) documentato. Delete fisica rinviata (FK constraints). |
-| S1.2   | CRUD transizioni                                             | TODO     |                                                                                                                                                |
+| S1.2   | CRUD transizioni                                             | FATTO    | Backend: createTransition/updateTransition/setTransitionActive/reorderTransitions con invarianti; UI: elenco raggruppato per fase, modale create/edit, riordino scoped, attiva/disattiva. Delete fisica rinviata (TODO). |
 | S1.3   | CRUD campi generali e campi fase                             | TODO     |                                                                                                                                                |
 | S1.4   | CRUD menu a tendina                                          | TODO     |                                                                                                                                                |
 | S1.5   | Regola PEC condizionale                                      | TODO     |                                                                                                                                                |
@@ -81,6 +81,42 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-24 — S1.2: CRUD Transizioni
+
+**File nuovi:**
+
+| File | Descrizione |
+|------|-------------|
+| `src/features/config/transitions/useTransitions.ts` | TanStack Query hooks: useAllTransitions, useCreateTransition, useUpdateTransition, useSetTransitionActive, useReorderTransitions |
+| `src/features/config/transitions/TransitionFormModal.tsx` | Modale crea/modifica transizione con validazione zod lato renderer; fromPhaseId readonly in edit mode |
+| `src/features/config/transitions/TransitionsSection.tsx` | Sezione transizioni: elenco raggruppato per fase (header MAIUSCOLO), badge flag, riordino ▲/▼ scoped per gruppo, attiva/disattiva con confirm |
+
+**File modificati:**
+
+| File | Modifica |
+|------|----------|
+| `shared/ipc.ts` | 4 nuovi canali IPC; esteso `TransitionListItem` con `fromPhaseDisplayName`, `fromPhaseOrder`, `toPhaseDisplayName`; aggiunto `CreateTransitionInput`, `UpdateTransitionInput`, `SetTransitionActiveInput`, `ReorderTransitionsInput` e relativi response type; esteso `LexFlowApi.config` |
+| `main/modules/config/repository.ts` | Aggiornato `findTransitions()` (ora include displayName/order da phases, ordina per `phases.order` anziché `fromPhaseId`); aggiunti `findTransitionById`, `findTransitionEnrichedById`, `findMaxTransitionOrderForPhase`, `countActiveAutomaticTransitionsForPhase`, `transitionLabelExists`, `insertTransition`, `updateTransitionFields`, `setTransitionIsActive`, `reorderTransitionsAtomic` |
+| `main/modules/config/service.ts` | Aggiunto helper privato `assertTransitionInputValid` con tutte le invarianti; aggiunti `createTransition`, `updateTransition`, `setTransitionActive`, `reorderTransitions` |
+| `main/modules/config/controller.ts` | Aggiunto 4 handler IPC con schemi zod |
+| `main/preload.ts` | Aggiunto 4 metodi config nel bridge |
+| `src/api/config.ts` | Aggiunto 4 metodi client IPC |
+| `src/pages/InstanceSettingsPage.tsx` | Sostituito segnaposto S1.2 con `<TransitionsSection />` |
+
+**Invarianti implementate nel service:**
+1. `fromPhase` non può essere finale (`isFinal=true`) → ValidationError
+2. `toPhase` non può essere inattiva (`isActive=false`) → ValidationError
+3. `isResume=true`: `toPhaseId` deve essere null; `fromPhase` deve avere `category=suspended`; `buttonLabel` obbligatorio → ValidationError
+4. `isResume=false`: `toPhaseId` obbligatorio → ValidationError
+5. `isAutomatic=true && isActive=true`: max 1 automatica attiva per `fromPhase` → ConflictError
+6. `isAutomatic=false`: `buttonLabel` obbligatorio → ValidationError
+7. Unicità `(fromPhaseId, buttonLabel)` quando label non vuota → ConflictError (con excludeId per update)
+8. `fromPhaseId == toPhaseId`: `isRepeatable` forzato a `true` automaticamente nel service
+
+**Delete fisica:** NON implementata (TODO documentato); solo attiva/disattiva coerente con fasi.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · avvio Electron ✓ · 40 transizioni canoniche raggruppate visibili ✓ · modale crea/modifica ✓ · validazione frontend ("Seleziona la fase di partenza") ✓ · fromPhase select esclude fasi finali ✓ · badge Ripetibile/Automatica/Ripresa ✓ · label "(automatica)" per transizioni senza label ✓ · "(resta nella fase)" per self-transition ✓ · "↩ fase di provenienza" per isResume ✓
 
 ### 2026-06-24 — S1.1: Guscio applicativo + CRUD Fasi
 

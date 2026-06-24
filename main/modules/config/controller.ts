@@ -8,7 +8,11 @@ import type {
   ConfigCreatePhaseResponse,
   ConfigUpdatePhaseResponse,
   ConfigSetPhaseActiveResponse,
-  ConfigReorderPhasesResponse
+  ConfigReorderPhasesResponse,
+  ConfigCreateTransitionResponse,
+  ConfigUpdateTransitionResponse,
+  ConfigSetTransitionActiveResponse,
+  ConfigReorderTransitionsResponse
 } from '../../../shared/ipc'
 import {
   listActivePhases,
@@ -17,7 +21,11 @@ import {
   createPhase,
   updatePhase,
   setPhaseActive,
-  reorderPhases
+  reorderPhases,
+  createTransition,
+  updateTransition,
+  setTransitionActive,
+  reorderTransitions
 } from './service'
 import { logger } from '../../utils/logger'
 
@@ -107,6 +115,72 @@ export function registerConfigHandlers(): void {
       logger.debug('IPC', IPC_CHANNELS.CONFIG_REORDER_PHASES)
       const parsed = parseOrThrow(reorderPhasesSchema, input)
       return reorderPhases(parsed)
+    }
+  )
+
+  const createTransitionSchema = z.object({
+    fromPhaseId: z.number().int().positive(),
+    toPhaseId: z.number().int().positive().nullable(),
+    buttonLabel: z.string().max(100),
+    isRepeatable: z.boolean(),
+    isAutomatic: z.boolean(),
+    isResume: z.boolean(),
+    isActive: z.boolean()
+  })
+
+  const updateTransitionSchema = z.object({
+    id: z.number().int().positive(),
+    fromPhaseId: z.number().int().positive(),
+    toPhaseId: z.number().int().positive().nullable(),
+    buttonLabel: z.string().max(100),
+    isRepeatable: z.boolean(),
+    isAutomatic: z.boolean(),
+    isResume: z.boolean(),
+    isActive: z.boolean()
+  })
+
+  const setTransitionActiveSchema = z.object({
+    id: z.number().int().positive(),
+    isActive: z.boolean()
+  })
+
+  const reorderTransitionsSchema = z
+    .array(z.object({ id: z.number().int().positive(), order: z.number().int().nonnegative() }))
+    .min(1)
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONFIG_CREATE_TRANSITION,
+    (_, input: unknown): ConfigCreateTransitionResponse => {
+      logger.debug('IPC', IPC_CHANNELS.CONFIG_CREATE_TRANSITION)
+      const parsed = parseOrThrow(createTransitionSchema, input)
+      return createTransition(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONFIG_UPDATE_TRANSITION,
+    (_, input: unknown): ConfigUpdateTransitionResponse => {
+      logger.debug('IPC', IPC_CHANNELS.CONFIG_UPDATE_TRANSITION)
+      const parsed = parseOrThrow(updateTransitionSchema, input)
+      return updateTransition(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONFIG_SET_TRANSITION_ACTIVE,
+    (_, input: unknown): ConfigSetTransitionActiveResponse => {
+      logger.debug('IPC', IPC_CHANNELS.CONFIG_SET_TRANSITION_ACTIVE)
+      const parsed = parseOrThrow(setTransitionActiveSchema, input)
+      return setTransitionActive(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.CONFIG_REORDER_TRANSITIONS,
+    (_, input: unknown): ConfigReorderTransitionsResponse => {
+      logger.debug('IPC', IPC_CHANNELS.CONFIG_REORDER_TRANSITIONS)
+      const parsed = parseOrThrow(reorderTransitionsSchema, input)
+      return reorderTransitions(parsed)
     }
   )
 }

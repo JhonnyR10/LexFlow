@@ -6,10 +6,18 @@ import type {
   ConfigUpdatePhaseResponse,
   ConfigSetPhaseActiveResponse,
   ConfigReorderPhasesResponse,
+  ConfigCreateTransitionResponse,
+  ConfigUpdateTransitionResponse,
+  ConfigSetTransitionActiveResponse,
+  ConfigReorderTransitionsResponse,
   CreatePhaseInput,
   UpdatePhaseInput,
   SetPhaseActiveInput,
-  ReorderPhasesInput
+  ReorderPhasesInput,
+  CreateTransitionInput,
+  UpdateTransitionInput,
+  SetTransitionActiveInput,
+  ReorderTransitionsInput
 } from '../../shared/ipc'
 
 export const configApi = {
@@ -24,5 +32,13 @@ export const configApi = {
   setPhaseActive: (input: SetPhaseActiveInput): Promise<ConfigSetPhaseActiveResponse> =>
     window.api.config.setPhaseActive(input),
   reorderPhases: (input: ReorderPhasesInput): Promise<ConfigReorderPhasesResponse> =>
-    window.api.config.reorderPhases(input)
+    window.api.config.reorderPhases(input),
+  createTransition: (input: CreateTransitionInput): Promise<ConfigCreateTransitionResponse> =>
+    window.api.config.createTransition(input),
+  updateTransition: (input: UpdateTransitionInput): Promise<ConfigUpdateTransitionResponse> =>
+    window.api.config.updateTransition(input),
+  setTransitionActive: (input: SetTransitionActiveInput): Promise<ConfigSetTransitionActiveResponse> =>
+    window.api.config.setTransitionActive(input),
+  reorderTransitions: (input: ReorderTransitionsInput): Promise<ConfigReorderTransitionsResponse> =>
+    window.api.config.reorderTransitions(input)
 }
