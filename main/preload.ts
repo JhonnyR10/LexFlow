@@ -6,7 +6,8 @@ const api: LexFlowApi = {
     getVersion: (): Promise<string> => ipcRenderer.invoke('app:getVersion')
   },
   config: {
-    listPhases: () => ipcRenderer.invoke('config:listPhases')
+    listPhases: () => ipcRenderer.invoke('config:listPhases'),
+    listTransitions: () => ipcRenderer.invoke('config:listTransitions')
   }
 }
 

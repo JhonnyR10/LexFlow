@@ -30,14 +30,13 @@ Nessun calcolo fiscale automatico. Calcolate solo le differenze (vedi data-model
 
 ## Stati/fasi standard (categorie logiche)
 
-`Depositata, In attesa di decreto, Sollecito effettuato, Integrazione richiesta, Integrazione inviata, Rifiutata, Decreto ricevuto, Correzione decreto richiesta, Impugnazione decreto depositata, Invio a SCP, In attesa di liquidazione SCP, Liquidata, Chiusa, Sospesa, Annullata`.
+13 fasi canoniche (vedi `docs/03-workflow-engine.md` e `docs/07-workflow-tree.md`): Depositata, In attesa di decreto, In attesa di integrazione, Decreto ricevuto, In attesa di esito correzione decreto, In attesa di esito impugnazione, In attesa di liquidazione SCP, In attesa di integrazione SCP, Liquidata, Chiusa, Rifiutata, Sospesa, Annullata.
 
-**Rami post-decreto** (category `custom`, configurabili, NON compaiono nel form Nuova pratica, solo come pulsanti nel dettaglio quando la fase corrente è `Decreto ricevuto`):
+**Eventi, NON fasi:** sollecito (ripetibile, resta nella fase), richiesta/invio integrazione, invio a SCP, correzione/impugnazione registrate. Sono transizioni che producono eventi di timeline; alcune restano nella stessa fase, altre spostano in una fase di attesa.
 
-- **Correzione decreto richiesta** — richiesta di correzione del decreto; rientra nel flusso (nuovo decreto / attesa decreto / sollecito).
-- **Impugnazione decreto depositata** — reclamo/impugnazione del decreto; rientra nel flusso analogamente. Può partire anche da `Rifiutata` se questa è trattata come non terminale (decisione di prodotto, vedi PROGRESS).
+Finali: **Chiusa** (positiva), **Rifiutata** e **Annullata** (negative). `Liquidata` non è finale (porta a Chiusa). `Sospesa` è reversibile e ricorda la fase di provenienza.
 
-Iter tipico: creazione → Depositata → In attesa di decreto → (sollecito / integrazione / rifiuto) → Decreto ricevuto → (eventuale correzione/impugnazione) → Invio SCP → In attesa di liquidazione SCP → Liquidata → Chiusa. Nella versione configurabile questi sono `Phase` con `category` stabile e `displayName` rinominabile.
+Iter tipico positivo: Depositata → (auto) In attesa di decreto → Decreto ricevuto → (eventuale correzione/impugnazione) → In attesa di liquidazione SCP → Liquidata → Chiusa.
 
 ## Vincolo di coerenza chiave
 

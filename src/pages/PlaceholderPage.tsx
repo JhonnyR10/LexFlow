@@ -1,20 +1,22 @@
 import { useEffect, useState } from 'react'
 import { appApi } from '../api/app'
 import { configApi } from '../api/config'
-import type { PhaseListItem } from '../../shared/ipc'
+import type { PhaseListItem, TransitionListItem } from '../../shared/ipc'
 
 function PlaceholderPage(): React.JSX.Element {
   const [version, setVersion] = useState<string>('')
   const [phases, setPhases] = useState<PhaseListItem[]>([])
+  const [transitions, setTransitions] = useState<TransitionListItem[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     appApi.getVersion().then(setVersion).catch(console.error)
-    configApi
-      .listPhases()
-      .then((data) => {
-        setPhases(data)
+
+    Promise.all([configApi.listPhases(), configApi.listTransitions()])
+      .then(([phasesData, transitionsData]) => {
+        setPhases(phasesData)
+        setTransitions(transitionsData)
         setLoading(false)
       })
       .catch((err: unknown) => {
@@ -40,12 +42,12 @@ function PlaceholderPage(): React.JSX.Element {
         <p style={{ marginTop: '0.5rem', color: '#666', fontSize: '0.9rem' }}>v{version}</p>
       )}
 
-      <div style={{ marginTop: '2rem', width: '100%', maxWidth: '480px' }}>
+      <div style={{ marginTop: '2rem', width: '100%', maxWidth: '520px' }}>
         <h2 style={{ fontSize: '1rem', fontWeight: 600, color: '#444', marginBottom: '0.75rem' }}>
           Fasi workflow (da DB)
         </h2>
 
-        {loading && <p style={{ color: '#888', fontSize: '0.9rem' }}>Caricamento fasi…</p>}
+        {loading && <p style={{ color: '#888', fontSize: '0.9rem' }}>Caricamento…</p>}
 
         {!loading && error && (
           <p style={{ color: '#c00', fontSize: '0.9rem' }}>Errore: {error}</p>
@@ -56,19 +58,23 @@ function PlaceholderPage(): React.JSX.Element {
         )}
 
         {!loading && !error && phases.length > 0 && (
-          <ol style={{ margin: 0, padding: '0 0 0 1.25rem', fontSize: '0.9rem', lineHeight: '1.8' }}>
-            {phases.map((p) => (
-              <li key={p.id} style={{ color: p.isFinal ? '#888' : '#222' }}>
-                {p.displayName}
-                <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: '#999' }}>
-                  [{p.category}
-                  {p.isInitial ? ' · iniziale' : ''}
-                  {p.isFinal ? ' · finale' : ''}
-                  {p.pecEnabled ? ' · PEC' : ''}]
-                </span>
-              </li>
-            ))}
-          </ol>
+          <>
+            <ol style={{ margin: 0, padding: '0 0 0 1.25rem', fontSize: '0.9rem', lineHeight: '1.8' }}>
+              {phases.map((p) => (
+                <li key={p.id} style={{ color: p.isFinal ? '#888' : '#222' }}>
+                  {p.displayName}
+                  <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: '#999' }}>
+                    [{p.category}
+                    {p.isInitial ? ' · iniziale' : ''}
+                    {p.isFinal ? ' · finale' : ''}]
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: '#555' }}>
+              {phases.length} fasi · {transitions.length} transizioni
+            </p>
+          </>
         )}
       </div>
     </div>

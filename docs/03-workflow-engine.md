@@ -1,61 +1,82 @@
 # 03 — Motore di workflow configurabile
 
-È la parte centrale e più rischiosa dell'app. Tutto (pratiche, dettaglio, dashboard, alert, report) si appoggia qui. La UI **non contiene fasi né pulsanti hard-coded**: legge la configurazione e genera tutto a runtime.
+Parte centrale e più rischiosa dell'app. Tutto (pratiche, dettaglio, dashboard, alert, report) si appoggia qui. La UI **non contiene fasi né pulsanti hard-coded**: legge la configurazione (Phase, Transition) dal DB e genera tutto a runtime.
 
-## Principio
+**Fonte di verità del workflow standard:** `docs/07-workflow-tree.md` (albero completo fasi/transizioni/timeline). In caso di dubbio sul flusso, quel file prevale. Questo documento descrive il *motore* che lo implementa.
 
-La configurazione (Phase, Transition, FieldDef, MenuSet) è dato in DB, non codice. Aggiungere una fase "Impugnazione decreto depositata" o "Correzione decreto richiesta" non richiede modifiche al codice: si crea la fase, le sue transizioni e i suoi campi dalle Impostazioni istanze, e compaiono automaticamente nel dettaglio pratica e in dashboard.
+## Tre concetti distinti
 
-## Modello logico
+- **(F) Fase** — stato in cui la pratica *resta*. La pratica ha sempre **una sola** fase corrente (`practice.currentPhaseId`).
+- **(T) Transizione** — pulsante/azione disponibile da una fase. Definita in tabella `transitions` (from, to, label, flag).
+- **(TL) Evento di timeline** — record storico prodotto **da ogni** transizione (`HistoryEvent`). I dati compilati nell'azione (date, importi, modalità, PEC, note) vivono nel payload dell'evento; i valori chiave (importi, date rilevanti) vengono anche denormalizzati sulla pratica per filtri e riepiloghi.
 
-- **Phase**: nodo del grafo. Ha `category` (semantica stabile per dashboard/alert), `isInitial`, `isFinal`, `pecEnabled`.
-- **Transition**: arco diretto `from → to` con `buttonLabel`. Definisce i pulsanti disponibili.
-- **FieldDef (scope=phase)**: campi da compilare quando si registra quella fase.
-- **PhaseRecord**: istanza registrata di una fase su una pratica (ripetibile).
+Conseguenza critica (correzione rispetto a una bozza precedente): **solleciti e integrazioni NON sono fasi.** Un sollecito è una transizione ripetibile che resta nella stessa fase e produce un evento. "Integrazione richiesta" è una transizione che porta a `In attesa di integrazione`; "Integrazione inviata" è una transizione che riporta a `In attesa di decreto`. "Invio a SCP" è una transizione che porta a `In attesa di liquidazione SCP`, non una fase.
 
-## Ciclo di avanzamento (UC4)
+## Fasi standard (13)
+
+key (immutabile) — displayName — category — finale?
+
+- `depositata` — Depositata — deposited — iniziale, non finale
+- `in_attesa_decreto` — In attesa di decreto — awaiting_decree — no
+- `in_attesa_integrazione` — In attesa di integrazione — awaiting_integration — no
+- `decreto_ricevuto` — Decreto ricevuto — decree_received — no
+- `in_attesa_esito_correzione` — In attesa di esito correzione decreto — awaiting_correction — no
+- `in_attesa_esito_impugnazione` — In attesa di esito impugnazione — awaiting_appeal — no
+- `in_attesa_liquidazione_scp` — In attesa di liquidazione SCP — awaiting_liquidation — no
+- `in_attesa_integrazione_scp` — In attesa di integrazione SCP — awaiting_integration_scp — no
+- `liquidata` — Liquidata — liquidated — **no** (ha "Chiudi pratica")
+- `chiusa` — Chiusa — closed — **finale (+)**
+- `rifiutata` — Rifiutata — refused — **finale (-)**
+- `sospesa` — Sospesa — suspended — no (temporanea/reversibile)
+- `annullata` — Annullata — annulled — **finale (-)**
+
+Fasi finali (nessuna transizione ordinaria in uscita): **chiusa, rifiutata, annullata**. La pratica resta consultabile con tutta la timeline.
+
+## Transizioni: campi e flag
+
+Tabella `transitions`: `id, fromPhaseId, toPhaseId (nullable), buttonLabel, order, isActive` più tre flag:
+
+- `isRepeatable` (bool) — l'azione può essere eseguita più volte e resta disponibile (solleciti, proroga termine). Tipicamente `fromPhaseId == toPhaseId`.
+- `isAutomatic` (bool) — eseguita automaticamente dal motore, senza pulsante (es. Depositata -> In attesa di decreto subito dopo la creazione).
+- `isResume` (bool) — destinazione **dinamica**: il motore imposta `currentPhaseId = practice.previousPhaseId`. Usata solo da "Riprendi pratica" da `Sospesa`. Quando `isResume = true`, `toPhaseId` è null.
+
+Transizione che "resta nella fase": `fromPhaseId == toPhaseId`. Il motore registra l'evento e NON cambia `currentPhaseId`.
+
+## Ciclo di avanzamento
 
 1. Il dettaglio pratica legge `currentPhaseId`.
-2. Recupera le `Transition` attive con `fromPhaseId = currentPhaseId`, ordinate per `order` → genera un pulsante per ciascuna (`buttonLabel`).
-3. L'utente clicca un pulsante → si apre il **form dinamico** della fase di destinazione, costruito dalle `FieldDef(scope=phase, phaseId=to)`.
-4. Validazione zod dei campi (obbligatori, formati, regola PEC condizionale).
-5. Al salvataggio, in transazione:
-   - crea `PhaseRecord(practiceId, phaseId=to, values, note)`;
-   - aggiorna `practice.currentPhaseId = to` (se la transizione cambia la fase logica; le fasi ripetibili come Sollecito possono non cambiarla);
-   - scrive `HistoryEvent(type, title, fromPhaseId, toPhaseId, note, payload)`;
+2. Recupera le `transitions` attive con `fromPhaseId = currentPhaseId` (escluse le `isAutomatic`), ordinate -> genera un pulsante per ciascuna.
+3. L'utente clicca -> form dinamico con i campi configurati per quella transizione (vedi campi configurabili, E1) -> validazione zod (incluso blocco PEC condizionale).
+4. Al salvataggio, in transazione:
+   - se `isResume`: `currentPhaseId = previousPhaseId`, azzera `previousPhaseId`;
+   - se `fromPhaseId == toPhaseId`: nessun cambio di fase;
+   - se transizione verso `sospesa`: salva `previousPhaseId = currentPhaseId`, poi `currentPhaseId = sospesa`;
+   - altrimenti: `currentPhaseId = toPhaseId`;
+   - scrive sempre un `HistoryEvent` (TL) con titolo e payload;
+   - denormalizza sulla pratica i valori chiave (importi, date) dove serve;
    - incrementa `version`.
-6. Dashboard, alert e report riflettono il nuovo stato automaticamente perché leggono `currentPhaseId`/`category`.
+5. Dashboard, alert, report riflettono il nuovo stato perché leggono `currentPhaseId`/`category`.
 
-## Form dinamico — tipi di campo
+## Sospensione e ripresa
 
-`testo_breve, testo_lungo, numero, importo, data, menu (da MenuSet), si_no, note, file`. Ogni campo rispetta `required`, `order`, e il proprio menu se `type=menu`.
+Da **qualsiasi fase aperta** (non finale) è disponibile "Sospendi pratica" -> `sospesa`, salvando `previousPhaseId`. Da `sospesa`: "Riprendi pratica" (`isResume`, torna a `previousPhaseId`) oppure "Annulla pratica" (-> `annullata`). Questo richiede il campo `previousPhaseId` sulla pratica (vedi `02-data-model.md`).
 
-## Regola PEC condizionale
+## Creazione e transizione automatica
 
-Se un campo "modalità" (deposito o invio SCP) ha valore `PEC` **e** la fase ha `pecEnabled=true`, compaiono i campi PEC: uno o più `PecRecipient` con `contesto` coerente (`deposito` o `scp`). Se la modalità non è PEC, i campi PEC restano nascosti e non obbligatori. **PEC deposito e PEC SCP sono separate** perché appartengono a fasi diverse.
+Alla creazione la pratica nasce in `depositata` con i dati di deposito; il motore registra l'evento "Pratica depositata" ed esegue subito la transizione `isAutomatic` `depositata -> in_attesa_decreto` (evento "Pratica posta in attesa di decreto"). Stato di riposo effettivo dopo la creazione: `in_attesa_decreto`.
 
-## Codice istanza — generazione
+## PEC (condizionale, guidata dai campi)
 
-Formato: `AAAAMMGG` (da `dataUdienza`) + sigla configurabile (default `NP`) + progressivo annuale a 3 cifre. Esempio: `20260517NP001`. Il progressivo è per anno di riferimento. La generazione deve essere atomica e anti-duplicato (transazione + controllo univocità). La sigla è un'impostazione, non una costante nel codice.
+La PEC non è un flag di fase. È guidata dai campi della transizione: quando un campo "modalità" (deposito / invio / invio SCP / invio integrazione, ecc.) ha valore `PEC`, compaiono i campi PEC (uno o più destinatari) con `contesto` coerente. Si configura in E1 (campi della transizione) e si valida in E5.
 
-## Coerenza degli stati (guard)
+## Coerenza degli stati
 
-Le transizioni invalide non esistono nel grafo, quindi non producono pulsanti. In più, vincoli di business espliciti nel service, es.: non si raggiunge una fase `category=liquidated` se non risultano registrati decreto (`decree_received`) e invio SCP (`scp_sent`). I guard stanno nel **service**, non nei componenti.
+Le transizioni invalide non esistono nel grafo, quindi non producono pulsanti. Guard di business aggiuntivi nel service (es. non si raggiunge `liquidata` senza che risultino registrati decreto e invio a SCP). I guard stanno nel service, non nei componenti.
 
-## Categorie e fasi finali
+## Dashboard e report (derivati)
 
-`category` è l'unico riferimento semantico stabile. Fasi finali standard: `closed, liquidated, refused, annulled`. Le fasi non finali (incluse le personalizzate) sono considerate aperte salvo configurazione contraria, e possono generare alert se superano le soglie temporali.
+Card per fase: una per ogni fase con pratiche attive (escluse le cestinate). Gli alert anzianità riguardano le fasi aperte (non finali). "Vedi pratiche" su una card -> Pratiche filtrate per quella fase. Le nuove fasi configurate dall'utente entrano automaticamente in card, filtri e report.
 
-## Dashboard e alert (derivati dal workflow)
+## Estensione configurabile
 
-- Card per fase: una card/conteggio per ogni fase con pratiche **attive** in quella fase; le card dinamiche compaiono/scompaiono in base alle pratiche reali.
-- Alert: generati per pratica attiva, poi **aggregati in un solo box per pratica** con severità massima (soglie 30/60/90) e più motivazioni nello stesso box. Colori semantici fissi (vedi `06-ui-ux.md`).
-- "Vedi pratiche" su una card → apre Pratiche con il filtro di quella fase.
-
-## Eliminazione/disattivazione fasi
-
-Una fase usata da pratiche attive non si elimina: si disattiva. Una fase disattivata senza pratiche attive non compare più nei riepiloghi ordinari. Le transizioni verso fasi inattive sono escluse.
-
-## Compatibilità con campi esistenti
-
-Aggiungere un nuovo `FieldDef` (generale o di fase) lo rende disponibile anche alle pratiche già esistenti come campo vuoto e compilabile, senza alterare i dati precedenti e senza duplicare pratiche.
+L'utente può aggiungere fasi (`category = custom`) e transizioni dalle Impostazioni istanze senza toccare il codice. La nuova fase non deve comparire nel form Nuova pratica: appare solo come pulsante nel dettaglio quando la fase corrente la consente.

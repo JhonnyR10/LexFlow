@@ -6,23 +6,25 @@ CREATE TABLE `phases` (
 	`is_initial` integer DEFAULT false NOT NULL,
 	`is_final` integer DEFAULT false NOT NULL,
 	`is_active` integer DEFAULT true NOT NULL,
-	`order` integer NOT NULL,
-	`pec_enabled` integer DEFAULT false NOT NULL
+	`order` integer NOT NULL
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `phases_key_unique` ON `phases` (`key`);--> statement-breakpoint
 CREATE TABLE `transitions` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`from_phase_id` integer NOT NULL,
-	`to_phase_id` integer NOT NULL,
+	`to_phase_id` integer,
 	`button_label` text NOT NULL,
 	`order` integer NOT NULL,
 	`is_active` integer DEFAULT true NOT NULL,
+	`is_repeatable` integer DEFAULT false NOT NULL,
+	`is_automatic` integer DEFAULT false NOT NULL,
+	`is_resume` integer DEFAULT false NOT NULL,
 	FOREIGN KEY (`from_phase_id`) REFERENCES `phases`(`id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`to_phase_id`) REFERENCES `phases`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `transitions_from_to_idx` ON `transitions` (`from_phase_id`,`to_phase_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `transitions_from_label_idx` ON `transitions` (`from_phase_id`,`button_label`);--> statement-breakpoint
 CREATE TABLE `field_defs` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`scope` text NOT NULL,

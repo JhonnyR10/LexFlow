@@ -8,9 +8,12 @@ export const phases = sqliteTable('phases', {
     enum: [
       'deposited',
       'awaiting_decree',
+      'awaiting_integration',
       'decree_received',
-      'scp_sent',
+      'awaiting_correction',
+      'awaiting_appeal',
       'awaiting_liquidation',
+      'awaiting_integration_scp',
       'liquidated',
       'closed',
       'refused',
@@ -22,8 +25,7 @@ export const phases = sqliteTable('phases', {
   isInitial: integer('is_initial', { mode: 'boolean' }).notNull().default(false),
   isFinal: integer('is_final', { mode: 'boolean' }).notNull().default(false),
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
-  order: integer('order').notNull(),
-  pecEnabled: integer('pec_enabled', { mode: 'boolean' }).notNull().default(false)
+  order: integer('order').notNull()
 })
 
 export type Phase = typeof phases.$inferSelect

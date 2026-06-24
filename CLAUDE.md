@@ -65,6 +65,7 @@ Note: con electron-vite, `dev`/`desktop` avviano **sia** il main process Electro
 - `01-architecture.md` — stack, layer, struttura cartelle, bridge IPC, scelta DB. **Leggi prima di toccare struttura o configurazione.**
 - `02-data-model.md` — entità, relazioni, regole di integrità. **Leggi prima di modificare lo schema o un repository.**
 - `03-workflow-engine.md` — motore workflow configurabile (fasi, transizioni, form dinamici, regola PEC). **Leggi prima di lavorare su pratiche, dettaglio pratica, dashboard.**
+- `07-workflow-tree.md` — albero canonico completo fasi/transizioni/timeline. **Fonte di verità del workflow: prevale in caso di dubbio sul flusso.**
 - `04-conventions.md` — convenzioni codice, naming, struttura cartelle frontend/backend, Git.
 - `05-domain-glossary.md` — termini del dominio legale.
 - `06-ui-ux.md` — temi, alert, dashboard, stati vuoti, layout responsive.

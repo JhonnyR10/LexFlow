@@ -23,6 +23,7 @@ Entità centrale. Una pratica è **un'unica entità**: non si duplica mai al cam
 | importoRichiesto | decimal | unico importo "generale" |
 | note | text | |
 | currentPhaseId | FK → Phase | fase corrente |
+| previousPhaseId | FK → Phase, nullable | fase di provenienza salvata alla sospensione; usata da "Riprendi pratica" |
 | customValues | json | valori dei campi generali configurabili, keyed by fieldKey |
 | isTrashed | bool | soft delete |
 | trashedAt | datetime | |
@@ -36,17 +37,24 @@ Entità centrale. Una pratica è **un'unica entità**: non si duplica mai al cam
 | id | PK | |
 | key | text unique | tecnica, immutabile |
 | displayName | text | modificabile |
-| category | enum | `deposited, awaiting_decree, decree_received, scp_sent, awaiting_liquidation, liquidated, closed, refused, suspended, annulled, custom` |
-| isInitial | bool | **una sola** fase iniziale |
-| isFinal | bool | fasi finali standard: closed, liquidated, refused, annulled |
+| category | enum | `deposited, awaiting_decree, awaiting_integration, decree_received, awaiting_correction, awaiting_appeal, awaiting_liquidation, awaiting_integration_scp, liquidated, closed, refused, suspended, annulled, custom` |
+| isInitial | bool | **una sola** fase iniziale (`depositata`) |
+| isFinal | bool | finali standard: **closed, refused, annulled** (NON liquidated, che ha "Chiudi pratica") |
 | isActive | bool | |
 | order | int | |
-| pecEnabled | bool | abilita blocco PEC condizionale |
 
-La Dashboard e gli alert ragionano sulla **category**, non sul `displayName`: rinominare "Liquidata" in "Pagata" non rompe i conteggi.
+(La PEC non è più un flag di fase: è guidata dai campi della transizione — vedi `03-workflow-engine.md`.)
+
+La Dashboard e gli alert ragionano sulla **category**, non sul `displayName`: rinominare "Liquidata" in "Pagata" non rompe i conteggi. Elenco completo delle 13 fasi standard, con key e finalità, in `docs/03-workflow-engine.md`; flusso canonico in `docs/07-workflow-tree.md`.
 
 ### Transition
-`id, fromPhaseId, toPhaseId, buttonLabel, order, isActive`. Definisce quali pulsanti compaiono nel dettaglio pratica in base a `currentPhaseId`. Vietata transizione verso fase inattiva.
+`id, fromPhaseId, toPhaseId (nullable), buttonLabel, order, isActive, isRepeatable (bool), isAutomatic (bool), isResume (bool)`. Definisce quali pulsanti compaiono nel dettaglio in base a `currentPhaseId`. Regole:
+- `fromPhaseId == toPhaseId` → la transizione resta nella stessa fase (solleciti, proroga termine). Tipicamente `isRepeatable = true`.
+- `isAutomatic = true` → eseguita dal motore senza pulsante (es. `depositata → in_attesa_decreto` post creazione).
+- `isResume = true` → destinazione dinamica = `practice.previousPhaseId` (solo "Riprendi pratica" da `sospesa`); `toPhaseId` null.
+- Vietata transizione verso fase inattiva. Le fasi finali (closed/refused/annulled) non hanno transizioni ordinarie in uscita.
+
+**Nota:** solleciti e integrazioni NON sono fasi. Sono transizioni/eventi. La timeline è data dagli `HistoryEvent` (uno per transizione).
 
 ### FieldDef (definizione campo configurabile)
 `id, scope (general|phase), phaseId (null se general), key, label, type, required, visibleInTable, usableInFilter, includeInExport, order, isActive, menuSetId (null)`.

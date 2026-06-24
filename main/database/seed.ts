@@ -5,72 +5,103 @@ import { phases, transitions, menuSets, menuOptions, appSettings } from './schem
 import type { NewPhase, NewTransition, NewMenuSet, NewMenuOption } from './schema'
 import { logger } from '../utils/logger'
 
-// ---------- Fasi standard ----------
+// ---------- Fasi canoniche (13) ----------
+// Chiave tecnica immutabile. pecEnabled rimosso: la PEC è guidata dai campi della transizione.
 
 const SEED_PHASES: NewPhase[] = [
-  { key: 'deposited', displayName: 'Depositata', category: 'deposited', isInitial: true, isFinal: false, isActive: true, order: 1, pecEnabled: true },
-  { key: 'awaiting_decree', displayName: 'In attesa di decreto', category: 'awaiting_decree', isInitial: false, isFinal: false, isActive: true, order: 2, pecEnabled: false },
-  { key: 'sollecito_effettuato', displayName: 'Sollecito effettuato', category: 'custom', isInitial: false, isFinal: false, isActive: true, order: 3, pecEnabled: false },
-  { key: 'integrazione_richiesta', displayName: 'Integrazione richiesta', category: 'custom', isInitial: false, isFinal: false, isActive: true, order: 4, pecEnabled: false },
-  { key: 'integrazione_inviata', displayName: 'Integrazione inviata', category: 'custom', isInitial: false, isFinal: false, isActive: true, order: 5, pecEnabled: false },
-  { key: 'refused', displayName: 'Rifiutata', category: 'refused', isInitial: false, isFinal: true, isActive: true, order: 6, pecEnabled: false },
-  { key: 'decree_received', displayName: 'Decreto ricevuto', category: 'decree_received', isInitial: false, isFinal: false, isActive: true, order: 7, pecEnabled: false },
-  { key: 'scp_sent', displayName: 'Invio a SCP', category: 'scp_sent', isInitial: false, isFinal: false, isActive: true, order: 8, pecEnabled: true },
-  { key: 'awaiting_liquidation', displayName: 'In attesa di liquidazione SCP', category: 'awaiting_liquidation', isInitial: false, isFinal: false, isActive: true, order: 9, pecEnabled: false },
-  { key: 'liquidated', displayName: 'Liquidata', category: 'liquidated', isInitial: false, isFinal: true, isActive: true, order: 10, pecEnabled: false },
-  { key: 'closed', displayName: 'Chiusa', category: 'closed', isInitial: false, isFinal: true, isActive: true, order: 11, pecEnabled: false },
-  { key: 'suspended', displayName: 'Sospesa', category: 'suspended', isInitial: false, isFinal: false, isActive: true, order: 12, pecEnabled: false },
-  { key: 'annulled', displayName: 'Annullata', category: 'annulled', isInitial: false, isFinal: true, isActive: true, order: 13, pecEnabled: false }
+  { key: 'depositata',                  displayName: 'Depositata',                           category: 'deposited',               isInitial: true,  isFinal: false, isActive: true, order: 1  },
+  { key: 'in_attesa_decreto',           displayName: 'In attesa di decreto',                 category: 'awaiting_decree',          isInitial: false, isFinal: false, isActive: true, order: 2  },
+  { key: 'in_attesa_integrazione',      displayName: 'In attesa di integrazione',            category: 'awaiting_integration',     isInitial: false, isFinal: false, isActive: true, order: 3  },
+  { key: 'decreto_ricevuto',            displayName: 'Decreto ricevuto',                     category: 'decree_received',          isInitial: false, isFinal: false, isActive: true, order: 4  },
+  { key: 'in_attesa_esito_correzione',  displayName: 'In attesa di esito correzione decreto',category: 'awaiting_correction',      isInitial: false, isFinal: false, isActive: true, order: 5  },
+  { key: 'in_attesa_esito_impugnazione',displayName: 'In attesa di esito impugnazione',      category: 'awaiting_appeal',          isInitial: false, isFinal: false, isActive: true, order: 6  },
+  { key: 'in_attesa_liquidazione_scp',  displayName: 'In attesa di liquidazione SCP',        category: 'awaiting_liquidation',     isInitial: false, isFinal: false, isActive: true, order: 7  },
+  { key: 'in_attesa_integrazione_scp',  displayName: 'In attesa di integrazione SCP',        category: 'awaiting_integration_scp', isInitial: false, isFinal: false, isActive: true, order: 8  },
+  { key: 'liquidata',                   displayName: 'Liquidata',                            category: 'liquidated',               isInitial: false, isFinal: false, isActive: true, order: 9  },
+  { key: 'chiusa',                      displayName: 'Chiusa',                               category: 'closed',                   isInitial: false, isFinal: true,  isActive: true, order: 10 },
+  { key: 'rifiutata',                   displayName: 'Rifiutata',                            category: 'refused',                  isInitial: false, isFinal: true,  isActive: true, order: 11 },
+  { key: 'sospesa',                     displayName: 'Sospesa',                              category: 'suspended',                isInitial: false, isFinal: false, isActive: true, order: 12 },
+  { key: 'annullata',                   displayName: 'Annullata',                            category: 'annulled',                 isInitial: false, isFinal: true,  isActive: true, order: 13 }
 ]
 
-// ---------- Transizioni standard (fromKey → toKey) ----------
+// ---------- Transizioni canoniche (40) ----------
+// Chiave idempotenza: (fromKey, buttonLabel).
+// self = fromKey == toKey (la fase rimane invariata, viene registrato un evento).
+// isResume = true → toKey null (il motore riporta la pratica alla previousPhase).
 
 interface TransitionSeed {
   fromKey: string
-  toKey: string
+  toKey: string | null
   buttonLabel: string
   order: number
+  isRepeatable?: boolean
+  isAutomatic?: boolean
+  isResume?: boolean
 }
 
-// Fasi non finali che ricevono le transizioni universali → Sospesa e → Annullata
-// (Sospesa non riceve → Sospesa, ma riceve → Annullata come fase non finale)
-const NON_FINAL_KEYS_FOR_SUSPENSION = [
-  'deposited',
-  'awaiting_decree',
-  'sollecito_effettuato',
-  'integrazione_richiesta',
-  'integrazione_inviata',
-  'decree_received',
-  'scp_sent',
-  'awaiting_liquidation'
-]
+const SEED_TRANSITIONS: TransitionSeed[] = [
+  // depositata
+  { fromKey: 'depositata',                   toKey: 'in_attesa_decreto',           buttonLabel: '',                                        order: 1, isAutomatic: true },
 
-const BASE_TRANSITIONS: TransitionSeed[] = [
-  { fromKey: 'deposited', toKey: 'awaiting_decree', buttonLabel: 'In attesa di decreto', order: 1 },
-  { fromKey: 'awaiting_decree', toKey: 'sollecito_effettuato', buttonLabel: 'Registra sollecito', order: 1 },
-  { fromKey: 'awaiting_decree', toKey: 'integrazione_richiesta', buttonLabel: 'Integrazione richiesta', order: 2 },
-  { fromKey: 'awaiting_decree', toKey: 'decree_received', buttonLabel: 'Decreto ricevuto', order: 3 },
-  { fromKey: 'awaiting_decree', toKey: 'refused', buttonLabel: 'Rifiutata', order: 4 },
-  { fromKey: 'integrazione_richiesta', toKey: 'integrazione_inviata', buttonLabel: 'Integrazione inviata', order: 1 },
-  { fromKey: 'integrazione_inviata', toKey: 'awaiting_decree', buttonLabel: 'Torna in attesa di decreto', order: 1 },
-  { fromKey: 'sollecito_effettuato', toKey: 'awaiting_decree', buttonLabel: 'Torna in attesa di decreto', order: 1 },
-  { fromKey: 'decree_received', toKey: 'scp_sent', buttonLabel: 'Invia a SCP', order: 1 },
-  { fromKey: 'scp_sent', toKey: 'awaiting_liquidation', buttonLabel: 'In attesa di liquidazione SCP', order: 1 },
-  { fromKey: 'awaiting_liquidation', toKey: 'liquidated', buttonLabel: 'Liquidata', order: 1 },
-  { fromKey: 'liquidated', toKey: 'closed', buttonLabel: 'Chiudi', order: 1 },
-  // Da Sospesa: Riattiva e Annulla
-  { fromKey: 'suspended', toKey: 'awaiting_decree', buttonLabel: 'Riattiva', order: 1 },
-  { fromKey: 'suspended', toKey: 'annulled', buttonLabel: 'Annulla', order: 91 }
-]
+  // in_attesa_decreto
+  { fromKey: 'in_attesa_decreto',            toKey: 'in_attesa_decreto',           buttonLabel: 'Registra sollecito',                      order: 1, isRepeatable: true },
+  { fromKey: 'in_attesa_decreto',            toKey: 'in_attesa_integrazione',      buttonLabel: 'Registra richiesta di integrazione',       order: 2 },
+  { fromKey: 'in_attesa_decreto',            toKey: 'decreto_ricevuto',            buttonLabel: 'Registra decreto',                         order: 3 },
+  { fromKey: 'in_attesa_decreto',            toKey: 'rifiutata',                   buttonLabel: 'Segna come rifiutata',                     order: 4 },
+  { fromKey: 'in_attesa_decreto',            toKey: 'sospesa',                     buttonLabel: 'Sospendi pratica',                         order: 5 },
+  { fromKey: 'in_attesa_decreto',            toKey: 'annullata',                   buttonLabel: 'Annulla pratica',                          order: 6 },
 
-function buildAllTransitions(): TransitionSeed[] {
-  const all = [...BASE_TRANSITIONS]
-  for (const fromKey of NON_FINAL_KEYS_FOR_SUSPENSION) {
-    all.push({ fromKey, toKey: 'suspended', buttonLabel: 'Sospendi', order: 90 })
-    all.push({ fromKey, toKey: 'annulled', buttonLabel: 'Annulla', order: 91 })
-  }
-  return all
-}
+  // in_attesa_integrazione
+  { fromKey: 'in_attesa_integrazione',       toKey: 'in_attesa_integrazione',      buttonLabel: 'Registra sollecito integrazione',          order: 1, isRepeatable: true },
+  { fromKey: 'in_attesa_integrazione',       toKey: 'in_attesa_integrazione',      buttonLabel: 'Aggiorna richiesta / proroga termine',     order: 2, isRepeatable: true },
+  { fromKey: 'in_attesa_integrazione',       toKey: 'in_attesa_decreto',           buttonLabel: 'Registra invio integrazione',              order: 3 },
+  { fromKey: 'in_attesa_integrazione',       toKey: 'sospesa',                     buttonLabel: 'Sospendi pratica',                         order: 4 },
+  { fromKey: 'in_attesa_integrazione',       toKey: 'annullata',                   buttonLabel: 'Annulla pratica',                          order: 5 },
+
+  // decreto_ricevuto
+  { fromKey: 'decreto_ricevuto',             toKey: 'in_attesa_liquidazione_scp',  buttonLabel: 'Registra invio a SCP',                     order: 1 },
+  { fromKey: 'decreto_ricevuto',             toKey: 'in_attesa_esito_correzione',  buttonLabel: 'Richiedi correzione decreto',               order: 2 },
+  { fromKey: 'decreto_ricevuto',             toKey: 'in_attesa_esito_impugnazione',buttonLabel: 'Registra impugnazione',                    order: 3 },
+  { fromKey: 'decreto_ricevuto',             toKey: 'sospesa',                     buttonLabel: 'Sospendi pratica',                         order: 4 },
+  { fromKey: 'decreto_ricevuto',             toKey: 'annullata',                   buttonLabel: 'Annulla pratica',                          order: 5 },
+
+  // in_attesa_esito_correzione
+  { fromKey: 'in_attesa_esito_correzione',   toKey: 'in_attesa_esito_correzione',  buttonLabel: 'Registra sollecito correzione',            order: 1, isRepeatable: true },
+  { fromKey: 'in_attesa_esito_correzione',   toKey: 'decreto_ricevuto',            buttonLabel: 'Registra decreto corretto',                order: 2 },
+  { fromKey: 'in_attesa_esito_correzione',   toKey: 'decreto_ricevuto',            buttonLabel: 'Chiudi correzione senza nuovo decreto',    order: 3 },
+  { fromKey: 'in_attesa_esito_correzione',   toKey: 'sospesa',                     buttonLabel: 'Sospendi pratica',                         order: 4 },
+  { fromKey: 'in_attesa_esito_correzione',   toKey: 'annullata',                   buttonLabel: 'Annulla pratica',                          order: 5 },
+
+  // in_attesa_esito_impugnazione
+  { fromKey: 'in_attesa_esito_impugnazione', toKey: 'in_attesa_esito_impugnazione',buttonLabel: 'Registra sollecito impugnazione',          order: 1, isRepeatable: true },
+  { fromKey: 'in_attesa_esito_impugnazione', toKey: 'decreto_ricevuto',            buttonLabel: 'Registra nuovo decreto',                   order: 2 },
+  { fromKey: 'in_attesa_esito_impugnazione', toKey: 'decreto_ricevuto',            buttonLabel: 'Registra rigetto impugnazione',            order: 3 },
+  { fromKey: 'in_attesa_esito_impugnazione', toKey: 'decreto_ricevuto',            buttonLabel: 'Ritira impugnazione',                      order: 4 },
+  { fromKey: 'in_attesa_esito_impugnazione', toKey: 'sospesa',                     buttonLabel: 'Sospendi pratica',                         order: 5 },
+  { fromKey: 'in_attesa_esito_impugnazione', toKey: 'annullata',                   buttonLabel: 'Annulla pratica',                          order: 6 },
+
+  // in_attesa_liquidazione_scp
+  { fromKey: 'in_attesa_liquidazione_scp',   toKey: 'in_attesa_liquidazione_scp',  buttonLabel: 'Registra sollecito SCP',                   order: 1, isRepeatable: true },
+  { fromKey: 'in_attesa_liquidazione_scp',   toKey: 'in_attesa_integrazione_scp',  buttonLabel: 'Registra richiesta di integrazione SCP',   order: 2 },
+  { fromKey: 'in_attesa_liquidazione_scp',   toKey: 'liquidata',                   buttonLabel: 'Registra liquidazione',                    order: 3 },
+  { fromKey: 'in_attesa_liquidazione_scp',   toKey: 'sospesa',                     buttonLabel: 'Sospendi pratica',                         order: 4 },
+  { fromKey: 'in_attesa_liquidazione_scp',   toKey: 'annullata',                   buttonLabel: 'Annulla pratica',                          order: 5 },
+
+  // in_attesa_integrazione_scp
+  { fromKey: 'in_attesa_integrazione_scp',   toKey: 'in_attesa_integrazione_scp',  buttonLabel: 'Registra sollecito integrazione SCP',      order: 1, isRepeatable: true },
+  { fromKey: 'in_attesa_integrazione_scp',   toKey: 'in_attesa_liquidazione_scp',  buttonLabel: 'Registra invio integrazione SCP',          order: 2 },
+  { fromKey: 'in_attesa_integrazione_scp',   toKey: 'sospesa',                     buttonLabel: 'Sospendi pratica',                         order: 3 },
+  { fromKey: 'in_attesa_integrazione_scp',   toKey: 'annullata',                   buttonLabel: 'Annulla pratica',                          order: 4 },
+
+  // liquidata
+  { fromKey: 'liquidata',                    toKey: 'chiusa',                      buttonLabel: 'Chiudi pratica',                           order: 1 },
+
+  // sospesa
+  { fromKey: 'sospesa',                      toKey: null,                          buttonLabel: 'Riprendi pratica',                         order: 1, isResume: true },
+  { fromKey: 'sospesa',                      toKey: 'annullata',                   buttonLabel: 'Annulla pratica',                          order: 2 }
+
+  // Nessuna transizione in uscita da: chiusa, rifiutata, annullata
+]
 
 // ---------- Menu standard ----------
 
@@ -120,7 +151,7 @@ const SEED_MENU_SETS: MenuSeedSet[] = [
   {
     key: 'autorita_giudiziaria',
     label: 'Autorità giudiziaria',
-    options: [] // nessuna opzione di default — l'utente le aggiungerà
+    options: []
   }
 ]
 
@@ -130,25 +161,39 @@ export function runSeed(): void {
   const db = getDb()
   logger.info('SEED_START')
 
-  // 1. Fasi (idempotente per key unique)
+  // 1. Fasi (idempotente per key unique — onConflictDoNothing se già esiste)
   db.insert(phases).values(SEED_PHASES).onConflictDoNothing().run()
   logger.debug('SEED_PHASES_OK', `${SEED_PHASES.length} fasi`)
 
-  // 2. Leggo le fasi per ricavare gli ID necessari alle transizioni
+  // 2. Recupera gli ID fase per costruire le transizioni
   const phaseRows = db.select({ id: phases.id, key: phases.key }).from(phases).all()
   const phaseIdByKey = new Map<string, number>(phaseRows.map((r) => [r.key, r.id]))
 
-  // 3. Transizioni (idempotente per unique(fromPhaseId, toPhaseId))
-  const allTransitions = buildAllTransitions()
-  const transitionRows: NewTransition[] = allTransitions
-    .map(({ fromKey, toKey, buttonLabel, order }): NewTransition | null => {
-      const fromPhaseId = phaseIdByKey.get(fromKey)
-      const toPhaseId = phaseIdByKey.get(toKey)
-      if (fromPhaseId === undefined || toPhaseId === undefined) {
-        logger.warn('SEED_TRANSITION_SKIP', `fase non trovata: ${fromKey} → ${toKey}`)
+  // 3. Transizioni (idempotente per unique(fromPhaseId, buttonLabel))
+  const transitionRows: NewTransition[] = SEED_TRANSITIONS
+    .map((t): NewTransition | null => {
+      const fromPhaseId = phaseIdByKey.get(t.fromKey)
+      const toPhaseId   = t.toKey != null ? phaseIdByKey.get(t.toKey) : undefined
+
+      if (fromPhaseId === undefined) {
+        logger.warn('SEED_TRANSITION_SKIP', `fase fromKey non trovata: ${t.fromKey}`)
         return null
       }
-      return { fromPhaseId, toPhaseId, buttonLabel, order, isActive: true }
+      if (t.toKey != null && toPhaseId === undefined) {
+        logger.warn('SEED_TRANSITION_SKIP', `fase toKey non trovata: ${t.toKey}`)
+        return null
+      }
+
+      return {
+        fromPhaseId,
+        toPhaseId:   t.toKey != null ? toPhaseId! : null,
+        buttonLabel: t.buttonLabel,
+        order:       t.order,
+        isActive:    true,
+        isRepeatable: t.isRepeatable ?? false,
+        isAutomatic:  t.isAutomatic  ?? false,
+        isResume:     t.isResume     ?? false
+      }
     })
     .filter((t): t is NewTransition => t !== null)
 
@@ -167,10 +212,10 @@ export function runSeed(): void {
       if (setRecord) {
         const optRows: NewMenuOption[] = setDef.options.map((o) => ({
           menuSetId: setRecord.id,
-          label: o.label,
-          value: o.value,
-          order: o.order,
-          isActive: true
+          label:     o.label,
+          value:     o.value,
+          order:     o.order,
+          isActive:  true
         }))
         db.insert(menuOptions).values(optRows).onConflictDoNothing().run()
       }
@@ -186,25 +231,25 @@ export function runSeed(): void {
       .insert(appSettings)
       .values({
         theme: 'light',
-        alertsEnabled: JSON.stringify({ giallo: true, arancione: true, rosso: true }),
+        alertsEnabled:   JSON.stringify({ giallo: true, arancione: true, rosso: true }),
         alertThresholds: JSON.stringify({ giallo: 30, arancione: 60, rosso: 90 }),
         assistant: JSON.stringify({
           localEnabled: false,
-          apiEnabled: false,
-          provider: null,
-          model: null,
-          apiKeyRef: null,
+          apiEnabled:   false,
+          provider:     null,
+          model:        null,
+          apiKeyRef:    null,
           instructions: null
         }),
-        dataPath: userDataPath,
+        dataPath:   userDataPath,
         appVersion: app.getVersion(),
         backup: JSON.stringify({
-          autoEnabled: true,
-          trigger: 'onClose',
-          intervalHours: 24,
+          autoEnabled:    true,
+          trigger:        'onClose',
+          intervalHours:  24,
           retentionCount: 10,
-          backupPath: userDataPath,
-          lastBackupAt: null
+          backupPath:     userDataPath,
+          lastBackupAt:   null
         }),
         security: JSON.stringify({ lockEnabled: false, encryptionEnabled: false })
       })
@@ -214,12 +259,7 @@ export function runSeed(): void {
     logger.debug('SEED_SETTINGS_SKIP', 'riga già presente')
   }
 
-  // Aggiorna appVersion se l'app è stata aggiornata
-  db
-    .update(appSettings)
-    .set({ appVersion: app.getVersion() })
-    .where(sql`1=1`)
-    .run()
+  db.update(appSettings).set({ appVersion: app.getVersion() }).where(sql`1=1`).run()
 
   logger.info('SEED_DONE')
 }
