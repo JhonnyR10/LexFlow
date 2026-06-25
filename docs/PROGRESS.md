@@ -24,7 +24,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S3.1   | Tabella pratiche attive                                      | FATTO    | IPC practices:listPractices, LEFT JOIN phases/professionisti/collaboratori, PraticheTable con 7 colonne, route /pratiche/:id con DettaglioPraticaPage placeholder.                                                        |
 | S3.2   | Ricerca globale                                              | FATTO    | Barra di ricerca in `PratichePage`, filtro client-side in `PraticheTable` (case/accent-insensitive) su codice, nome, soggetti, autorità, note. `note` esposto in `PracticeListItem`. Stato filtrato-vuoto distinto. Procedimenti multipli fuori MVP. |
 | S3.3   | Filtri base                                                  | FATTO    | Filtri client-side combinabili (fase, collaboratore, professionista, data deposito da/a, importo richiesto min/max) + Azzera. Opzioni menu derivate dalle pratiche presenti. `practiceFilters.ts` (logica pura) + `PraticheFilters.tsx`. Importi concesso/fatturato/liquidato → E6. |
-| S3.4   | Ordinamento + selezione multipla                             | TODO     |                                                                                                                                                                                                                          |
+| S3.4   | Ordinamento + selezione multipla                             | FATTO    | **E3 (Elenco e ricerca) COMPLETATA.** Ordinamento per colonna (toggle asc/desc, nulli in fondo, collation it+numeric); selezione multipla con checkbox limitata al filtrato, "seleziona tutto" solo sul filtrato; toolbar conteggio + deseleziona. Azioni bulk effettive rinviate (E10 cestino). |
 | S4.1   | Generazione codice istanza                                   | FATTO    | Schema practices (22 col, FK a phases/professionisti/collaboratori), siglaCodice in AppSettings, migrazione 0003_*.sql, IPC practices:generateCodiceIstanza, formato AAAAMMGG_SIGLA_NNN.                                 |
 | S4.2   | Form Nuova pratica                                           | FATTO    | Modal Nuova pratica: 6 sezioni, campi fissi + campi custom generali + PEC deposito. Backend: createPractice con transazione, auto-transizione depositata→in_attesa_decreto, HistoryEvent. Nuove tabelle: history_events, pec_recipients. Migrazione 0004_*.sql. |                                                                                                                                                                                                                          |
 | S4.3   | Modifica pratica + storico                                   | TODO     |                                                                                                                                                                                                                          |
@@ -84,6 +84,29 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-25 — S3.4: Ordinamento + selezione multipla — **E3 (Elenco e ricerca) COMPLETATA**
+
+**Nessuna modifica schema, nessuna migrazione.** Solo `PraticheTable.tsx`
+(renderer). Stato locale di ordinamento e selezione; tutti gli hook dichiarati
+prima degli early-return.
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `src/features/practices/PraticheTable.tsx` | Ordinamento per colonna (`SortColumn`/`SortDir`, `comparePractices`, `SortHeader` con indicatore ▲/▼); selezione multipla (`selectedIds: Set`, checkbox per riga + "seleziona tutto"); toolbar conteggio selezionate + "Deseleziona tutto" |
+
+**Regole / decisioni:**
+1. **Ordinamento:** click sull'intestazione ordina; ri-click inverte la direzione; cambio colonna riparte da `asc`. Valori `null` sempre in fondo. Confronto: numerico per gli importi, `localeCompare('it', {numeric:true})` per le stringhe (ordinamento naturale del codice istanza). Senza colonna attiva resta l'ordine backend (`createdAt` desc).
+2. **Selezione limitata al filtrato:** le righe considerate selezionate sono l'intersezione tra `selectedIds` e le righe visibili (filtrate+ordinate); "seleziona tutto" agisce solo sul filtrato corrente; lo stato `indeterminate` riflette la selezione parziale. Nessun `set-state-in-effect`: la selezione effettiva è derivata in render.
+3. **Azioni bulk:** la selezione è il meccanismo; le operazioni di massa effettive (es. sposta nel cestino) arriveranno con E10. Per ora la toolbar mostra conteggio + deseleziona.
+
+**Confine di storia:** E3 è completa. Prossima epica per ordine di costruzione: E6 (Importi) / E7 (Documenti).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` da verificare interattivamente.
+
+---
 
 ### 2026-06-25 — S3.3: Filtri base
 
