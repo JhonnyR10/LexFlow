@@ -54,7 +54,8 @@ export const IPC_CHANNELS = {
   PRACTICES_CREATE: 'practices:createPractice',
   PRACTICES_LIST: 'practices:listPractices',
   PRACTICES_GET: 'practices:getPractice',
-  PRACTICES_LIST_AVAILABLE_TRANSITIONS: 'practices:listAvailableTransitions'
+  PRACTICES_LIST_AVAILABLE_TRANSITIONS: 'practices:listAvailableTransitions',
+  PRACTICES_EXECUTE_TRANSITION: 'practices:executeTransition'
 } as const
 
 export type AppGetVersionResponse = string
@@ -513,6 +514,22 @@ export interface AvailableTransition {
 
 export type PracticesListAvailableTransitionsResponse = AvailableTransition[]
 
+// --- Esecuzione di una transizione (S5.3) ---
+// `values` è keyed by fieldKey: contiene i valori del form dinamico della
+// transizione (compresi gli array di indirizzi per i campi di tipo `pec`).
+export interface ExecuteTransitionInput {
+  practiceId: number
+  transitionId: number
+  values: Record<string, unknown>
+  note?: string | null
+}
+
+export interface ExecuteTransitionResponse {
+  transitionRecordId: number
+  currentPhaseId: number
+  phaseChanged: boolean
+}
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
@@ -548,6 +565,7 @@ export interface LexFlowApi {
     listPractices(): Promise<PracticesListResponse>
     getPractice(input: GetPracticeInput): Promise<GetPracticeResponse>
     listAvailableTransitions(input: ListAvailableTransitionsInput): Promise<PracticesListAvailableTransitionsResponse>
+    executeTransition(input: ExecuteTransitionInput): Promise<ExecuteTransitionResponse>
   }
   anagrafiche: {
     listProfessionisti(): Promise<AnagraficheListProfessionistiResponse>

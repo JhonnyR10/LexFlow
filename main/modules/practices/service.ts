@@ -9,6 +9,8 @@ import type {
   PracticeDetailHistoryItem,
   ListAvailableTransitionsInput,
   PracticesListAvailableTransitionsResponse,
+  ExecuteTransitionInput,
+  ExecuteTransitionResponse,
 } from '../../../shared/ipc'
 import {
   countPracticesByYear,
@@ -20,12 +22,20 @@ import {
   updatePracticeCurrentPhase,
   insertHistoryEvent,
   insertPecRecipients,
+  insertPecRecipientsForTransition,
   findAllActivePractices,
   findAvailableTransitionsFromPhase,
   findPracticeDetailById,
+  findPracticeCoreById,
   findPhaseNameMap,
   findHistoryEventsByPractice,
   findPecDepositoAddresses,
+  findTransitionForExecution,
+  findActiveTransitionFields,
+  findActiveMenuOptionValues,
+  insertTransitionRecord,
+  advancePractice,
+  type TransitionFieldRow,
 } from './repository'
 import { getDb } from '../../database/connection'
 import { ValidationError, NotFoundError } from '../../errors/AppError'
@@ -248,4 +258,203 @@ export function createPractice(input: CreatePracticeInput): CreatePracticeRespon
   })
 
   return result!
+}
+
+// ---------- S5.3: esecuzione transizione (form dinamico + salvataggio) ----------
+
+// Un campo condizionato è visibile solo se il suo controllore (campo menu dello
+// stesso contenitore) ha, tra i valori inviati, esattamente il conditionalValue.
+// Un campo nascosto non è mai obbligatorio (precisazione 4).
+function isFieldVisible(
+  field: TransitionFieldRow,
+  fieldsById: Map<number, TransitionFieldRow>,
+  values: Record<string, unknown>
+): boolean {
+  if (field.conditionalOnFieldId == null || field.conditionalValue == null) return true
+  const controller = fieldsById.get(field.conditionalOnFieldId)
+  if (!controller) return true  // controllore assente/disattivato: nessun vincolo di visibilità
+  return values[controller.key] === field.conditionalValue
+}
+
+// Estrae gli indirizzi PEC non vuoti da un valore di campo `pec`.
+function extractPecAddresses(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((a): a is string => typeof a === 'string')
+    .map(a => a.trim())
+    .filter(a => a.length > 0)
+}
+
+// Un valore è "vuoto" ai fini dell'obbligatorietà. `si_no` (booleano) ha sempre
+// un valore; `pec` è vuoto se non contiene almeno un indirizzo non vuoto.
+function isEmptyValue(type: string, value: unknown): boolean {
+  if (type === 'si_no') return false
+  if (type === 'pec') return extractPecAddresses(value).length === 0
+  if (value == null) return true
+  if (typeof value === 'string') return value.trim() === ''
+  return false
+}
+
+// Validazione lato main (fonte autorevole) dei valori del form dinamico contro
+// le definizioni dei campi della transizione. Restituisce i valori normalizzati.
+function validateTransitionValues(
+  fields: TransitionFieldRow[],
+  rawValues: Record<string, unknown>
+): Record<string, unknown> {
+  const fieldsById = new Map(fields.map(f => [f.id, f]))
+  const clean: Record<string, unknown> = {}
+
+  for (const field of fields) {
+    const visible = isFieldVisible(field, fieldsById, rawValues)
+    if (!visible) continue  // campo nascosto: ignorato (non obbligatorio, non salvato)
+
+    const value = rawValues[field.key]
+
+    if (field.type === 'pec') {
+      const addresses = extractPecAddresses(value)
+      if (field.required && addresses.length === 0) {
+        throw new ValidationError(`Indicare almeno un indirizzo PEC per «${field.label}»`)
+      }
+      clean[field.key] = addresses
+      continue
+    }
+
+    if (field.required && isEmptyValue(field.type, value)) {
+      throw new ValidationError(`Il campo «${field.label}» è obbligatorio`)
+    }
+
+    // Validazione valore menu: deve essere un'opzione attiva del set (se valorizzato)
+    if (field.type === 'menu' && field.menuSetId != null && !isEmptyValue('menu', value)) {
+      const allowed = findActiveMenuOptionValues(field.menuSetId)
+      if (!allowed.includes(String(value))) {
+        throw new ValidationError(`Valore non valido per «${field.label}»`)
+      }
+    }
+
+    if (value !== undefined) clean[field.key] = value
+  }
+
+  return clean
+}
+
+// Deriva il contesto della PEC dalla fase di destinazione (precisazione 1).
+// TODO (post-MVP): rendere il contesto configurabile direttamente sul campo `pec`.
+function derivePecContesto(toPhaseCategory: string | null): 'deposito' | 'scp' | 'altro' {
+  if (toPhaseCategory === 'awaiting_liquidation') return 'scp'
+  if (toPhaseCategory === 'deposited') return 'deposito'
+  return 'altro'
+}
+
+export function executeTransition(input: ExecuteTransitionInput): ExecuteTransitionResponse {
+  const transition = findTransitionForExecution(input.transitionId)
+  if (!transition) {
+    throw new NotFoundError('Transizione non trovata')
+  }
+  if (!transition.isActive) {
+    throw new ValidationError('La transizione non è attiva')
+  }
+  if (transition.isAutomatic) {
+    throw new ValidationError('Le transizioni automatiche non si eseguono manualmente')
+  }
+
+  // Validazione dei valori del form contro la configurazione (fuori transazione:
+  // non dipende dallo stato della pratica).
+  const fields = findActiveTransitionFields(transition.id)
+  const cleanValues = validateTransitionValues(fields, input.values ?? {})
+  const note = input.note?.trim() ? input.note.trim() : null
+
+  const now = new Date().toISOString()
+  let response: ExecuteTransitionResponse
+
+  getDb().transaction(() => {
+    // Precisazione 5: rilettura dello stato reale + controllo "dalla fase corrente"
+    // e calcolo destinazione tutti dentro la transazione.
+    const core = findPracticeCoreById(input.practiceId)
+    if (!core) {
+      throw new NotFoundError('Pratica non trovata')
+    }
+    if (core.isTrashed) {
+      throw new ValidationError('Impossibile avanzare una pratica nel cestino')
+    }
+    if (transition.fromPhaseId !== core.currentPhaseId) {
+      throw new ValidationError('La transizione non è disponibile dalla fase corrente della pratica')
+    }
+
+    // Risoluzione della destinazione (docs/03-workflow-engine.md §Ciclo di avanzamento, passo 4)
+    let newCurrentPhaseId: number
+    let newPreviousPhaseId: number | null
+    let phaseChanged: boolean
+
+    if (transition.isResume) {
+      if (core.previousPhaseId == null) {
+        throw new ValidationError('Nessuna fase di provenienza da ripristinare')
+      }
+      newCurrentPhaseId = core.previousPhaseId
+      newPreviousPhaseId = null
+      phaseChanged = true
+    } else {
+      if (transition.toPhaseId == null) {
+        throw new ValidationError('Transizione senza fase di destinazione')
+      }
+      if (transition.toPhaseIsActive === false) {
+        throw new ValidationError('La fase di destinazione non è attiva')
+      }
+      if (transition.toPhaseId === core.currentPhaseId) {
+        // Self/ripetibile (es. sollecito): resta nella fase, nessun cambio.
+        newCurrentPhaseId = core.currentPhaseId
+        newPreviousPhaseId = core.previousPhaseId
+        phaseChanged = false
+      } else if (transition.toPhaseCategory === 'suspended') {
+        // Sospensione: memorizza la fase di provenienza per la futura ripresa.
+        newPreviousPhaseId = core.currentPhaseId
+        newCurrentPhaseId = transition.toPhaseId
+        phaseChanged = true
+      } else {
+        newCurrentPhaseId = transition.toPhaseId
+        newPreviousPhaseId = core.previousPhaseId
+        phaseChanged = true
+      }
+    }
+
+    const transitionRecordId = insertTransitionRecord({
+      practiceId:   input.practiceId,
+      transitionId: transition.id,
+      fromPhaseId:  core.currentPhaseId,
+      toPhaseId:    newCurrentPhaseId,
+      recordedAt:   now,
+      values:       JSON.stringify(cleanValues),
+      note,
+    })
+
+    if (phaseChanged) {
+      advancePractice(input.practiceId, newCurrentPhaseId, newPreviousPhaseId, now)
+    }
+
+    // Precisazione 3: le transizioni self/ripetibili producono un evento SENZA
+    // cambio fase (type 'event', nessuna toPhase sull'evento).
+    insertHistoryEvent({
+      practiceId:  input.practiceId,
+      timestamp:   now,
+      type:        phaseChanged ? 'phase_changed' : 'event',
+      title:       transition.buttonLabel,
+      fromPhaseId: core.currentPhaseId,
+      toPhaseId:   phaseChanged ? newCurrentPhaseId : null,
+      note,
+      payload:     JSON.stringify({ transitionId: transition.id, transitionRecordId }),
+    })
+
+    // PEC raccolte nei campi `pec` della transizione: salvate anche come
+    // PecRecipient, con contesto derivato dalla fase di destinazione (precisazione 1).
+    const pecAddresses = fields
+      .filter(f => f.type === 'pec')
+      .flatMap(f => extractPecAddresses(cleanValues[f.key]))
+    if (pecAddresses.length > 0) {
+      const contesto = derivePecContesto(transition.toPhaseCategory)
+      insertPecRecipientsForTransition(input.practiceId, transitionRecordId, pecAddresses, contesto)
+    }
+
+    response = { transitionRecordId, currentPhaseId: newCurrentPhaseId, phaseChanged }
+  })
+
+  return response!
 }

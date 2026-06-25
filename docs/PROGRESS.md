@@ -30,7 +30,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S4.3   | Modifica pratica + storico                                   | TODO     |                                                                                                                                                                                                                          |
 | S5.1   | Dettaglio pratica                                            | FATTO    | IPC `practices:getPractice` (detail con join fasi/anagrafiche, history, PEC deposito). DettaglioPraticaPage read-only: intestazione, dati generali, soggetti, importi, campi personalizzati risolti, workflow, storico/timeline, documenti (stub E7). Pulsanti transizione = S5.2.                                                                          |
 | S5.2   | Pulsanti dinamici = transizioni                              | FATTO    | IPC `practices:listAvailableTransitions` (attive, non automatiche, dalla fase corrente; fase finale → nessuna azione). Componente `WorkflowActions` nel dettaglio: pulsanti generati dalla config, loading/empty/error. Form+salvataggio = S5.3.                                                                                              |
-| S5.3   | Form dinamico fase + salvataggio                             | TODO     |                                                                                                                                                                                                                          |
+| S5.3   | Form dinamico fase + salvataggio                             | FATTO    | Nuova tabella `transition_records` (migrazione 0005, incrementale). IPC `practices:executeTransition`: validazione campi lato main (required+condizionale+menu+pec), calcolo destinazione dentro transazione (self/sospensione/resume), TransitionRecord+HistoryEvent+PEC, version++. `TransitionFormModal` + `DynamicField`/`PecBlock` estratti in modulo condiviso. Guard liquidata = S5.4. |
 | S5.4   | Guard coerenza stati                                         | TODO     |                                                                                                                                                                                                                          |
 | S5.5   | Storico/timeline                                             | TODO     |                                                                                                                                                                                                                          |
 | S6.1   | Quattro importi                                              | TODO     |                                                                                                                                                                                                                          |
@@ -84,6 +84,49 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-25 — S5.3: Form dinamico fase + salvataggio
+
+**Migrazione DB:** incrementale `drizzle/0005_yellow_sunset_bain.sql` (`CREATE TABLE transition_records`, 8 colonne, 4 FK). Nessun reset — dati dev conservati. La colonna `pec_recipients.transition_record_id` (già presente) viene ora popolata (nessun vincolo FK aggiunto, per evitare il recreate-table di SQLite).
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `main/database/schema/transitionRecords.ts` | Schema Drizzle `transition_records`: practiceId, transitionId, fromPhaseId, toPhaseId (nullable, destinazione risolta), recordedAt, values (JSON keyed by fieldKey), note |
+| `src/features/practices/dynamicFields.tsx` | Componenti condivisi `DynamicField` e `PecBlock` (estratti da NuovaPraticaModal): rendering campi configurabili + visibilità condizionale + blocco PEC |
+| `src/features/practices/menuHelpers.ts` | Helper puri `getMenuOptions`/`getMenuOptionsBySetId` (separati dai componenti per react-refresh/only-export-components) |
+| `src/features/practices/TransitionFormModal.tsx` | Modale form dinamico transizione: carica i campi `scope='transition'`, validazione client leggera (required+condizionale+pec), note, salva via `useExecuteTransition`; stati loading/empty/error |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `main/database/schema/index.ts` | `export * from './transitionRecords'` |
+| `main/modules/practices/repository.ts` | `findPracticeCoreById`, `findTransitionForExecution` (join toPhase per category/isActive), `findActiveTransitionFields`, `findActiveMenuOptionValues`, `insertTransitionRecord`, `advancePractice` (version++ via sql), `insertPecRecipientsForTransition` |
+| `main/modules/practices/service.ts` | `executeTransition` + helper `validateTransitionValues`/`isFieldVisible`/`isEmptyValue`/`extractPecAddresses`/`derivePecContesto` |
+| `main/modules/practices/controller.ts` | Handler `practices:executeTransition` con schema zod |
+| `shared/ipc.ts` | Canale `PRACTICES_EXECUTE_TRANSITION`; tipi `ExecuteTransitionInput`/`ExecuteTransitionResponse`; esteso `LexFlowApi.practices` |
+| `main/preload.ts` | Metodo `practices.executeTransition` nel bridge |
+| `src/api/practices.ts` | Client `executeTransition` |
+| `src/features/practices/usePractices.ts` | Hook `useExecuteTransition` (invalida `['practice', id]`, `['practice', id, 'transitions']`, `['practices']`) |
+| `src/features/practices/NuovaPraticaModal.tsx` | Rimosse le definizioni locali di `DynamicField`/`PecBlock`/helper menu; ora importate dai moduli condivisi (forma e stili invariati) |
+| `src/features/practices/WorkflowActions.tsx` | Il click apre `TransitionFormModal` (rimosso il placeholder S5.3) |
+
+**Invarianti / regole motore (docs/03-workflow-engine.md §Ciclo di avanzamento):**
+1. Guard di disponibilità: transizione `isActive`, non `isAutomatic`, e `fromPhaseId === currentPhaseId` — controllo **dentro la transazione** sul currentPhaseId reale (riletto con `findPracticeCoreById`).
+2. Pratica nel cestino → avanzamento bloccato.
+3. Calcolo destinazione: `isResume` → torna a `previousPhaseId` (errore se assente) e azzera; toPhase `category='suspended'` → salva `previousPhaseId=current`; `toPhaseId===current` (self/ripetibile) → nessun cambio fase; altrimenti → `toPhaseId`. `toPhase` inattiva (non-resume) → errore.
+4. Self/ripetibili producono `HistoryEvent` type `event` **senza** toPhase (nessun cambio fase); le altre type `phase_changed` con from/to.
+5. Validazione campi lato main (fonte autorevole): campo nascosto dalla condizione **non** obbligatorio; campo `pec` obbligatorio solo se il blocco è visibile; value `menu` deve essere un'opzione attiva del set.
+6. PEC dei campi transizione salvate in `TransitionRecord.values` **e** come `PecRecipient`, con contesto derivato dalla toPhase (`awaiting_liquidation`→`scp`, `deposited`→`deposito`, altrimenti `altro`). TODO: rendere il contesto configurabile sul campo `pec`.
+7. `version` incrementato su avanzamento (`version = version + 1`).
+
+**Confine di storia:** i **guard di business** (es. niente «Liquidata» senza decreto+SCP registrati) sono **S5.4**; la **denormalizzazione dei 4 importi** sulle colonne pratica è **E6** (per ora i valori vivono in `TransitionRecord.values`); l'upload file resta stub E7.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓ (boot pulito, migrazione 0005 applicata, tabella `transition_records` verificata nel DB dev). Verifica interattiva GUI dell'avanzamento (sollecito ripetibile, cambio fase, sospendi/riprendi, PEC condizionale) da completare manualmente.
+
+---
 
 ### 2026-06-25 — S5.2: Pulsanti dinamici = transizioni
 

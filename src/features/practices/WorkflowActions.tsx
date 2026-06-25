@@ -1,12 +1,12 @@
 import React from 'react'
 import { useAvailableTransitions } from './usePractices'
+import { TransitionFormModal } from './TransitionFormModal'
 import type { AvailableTransition } from '../../../shared/ipc'
 
 // S5.2 — Pulsanti dinamici = transizioni configurate dalla fase corrente.
-// Nessun pulsante hard-coded: l'elenco arriva interamente dal motore di
-// workflow (docs/03-workflow-engine.md). Il form di compilazione e il
-// salvataggio della transizione sono implementati in S5.3: qui il click
-// si limita a segnalare che l'azione sarà presto disponibile.
+// S5.3 — Il click apre il form dinamico della transizione: la compilazione e il
+// salvataggio (TransitionRecord + HistoryEvent + cambio fase) avvengono lì.
+// Nessun pulsante hard-coded: l'elenco arriva dal motore di workflow.
 
 const mutedNote: React.CSSProperties = {
   fontSize: '13px',
@@ -50,7 +50,7 @@ export function WorkflowActions({
   practiceId: number
   isFinal: boolean
 }): React.JSX.Element {
-  const [pendingLabel, setPendingLabel] = React.useState<string | null>(null)
+  const [active, setActive] = React.useState<AvailableTransition | null>(null)
   const { data: transitions, isLoading, isError } = useAvailableTransitions(
     isFinal ? null : practiceId,
   )
@@ -81,13 +81,16 @@ export function WorkflowActions({
     <div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
         {items.map(t => (
-          <TransitionButton key={t.id} transition={t} onClick={() => setPendingLabel(t.buttonLabel)} />
+          <TransitionButton key={t.id} transition={t} onClick={() => setActive(t)} />
         ))}
       </div>
-      {pendingLabel && (
-        <p style={{ ...mutedNote, marginTop: '12px' }}>
-          «{pendingLabel}»: la compilazione e il salvataggio della transizione saranno disponibili nella prossima storia (S5.3).
-        </p>
+      {active && (
+        <TransitionFormModal
+          practiceId={practiceId}
+          transition={active}
+          onClose={() => setActive(null)}
+          onDone={() => setActive(null)}
+        />
       )}
     </div>
   )

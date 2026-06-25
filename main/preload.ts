@@ -15,7 +15,9 @@ const api: LexFlowApi = {
     getPractice: (input) =>
       ipcRenderer.invoke('practices:getPractice', input),
     listAvailableTransitions: (input) =>
-      ipcRenderer.invoke('practices:listAvailableTransitions', input)
+      ipcRenderer.invoke('practices:listAvailableTransitions', input),
+    executeTransition: (input) =>
+      ipcRenderer.invoke('practices:executeTransition', input)
   },
   config: {
     listPhases: () => ipcRenderer.invoke('config:listPhases'),

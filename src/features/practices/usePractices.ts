@@ -12,6 +12,8 @@ import type {
   GetPracticeResponse,
   PracticesListResponse,
   PracticesListAvailableTransitionsResponse,
+  ExecuteTransitionInput,
+  ExecuteTransitionResponse,
 } from '../../../shared/ipc'
 
 export function useActivePractices(): UseQueryResult<PracticesListResponse, Error> {
@@ -44,6 +46,21 @@ export function useCreatePractice(): UseMutationResult<CreatePracticeResponse, E
   return useMutation({
     mutationFn: (input: CreatePracticeInput) => practicesApi.createPractice(input),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['practices'] })
+    },
+  })
+}
+
+export function useExecuteTransition(
+  practiceId: number
+): UseMutationResult<ExecuteTransitionResponse, Error, ExecuteTransitionInput, unknown> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: ExecuteTransitionInput) => practicesApi.executeTransition(input),
+    onSuccess: () => {
+      // La pratica cambia fase/storico e l'elenco azioni disponibili va ricalcolato.
+      queryClient.invalidateQueries({ queryKey: ['practice', practiceId] })
+      queryClient.invalidateQueries({ queryKey: ['practice', practiceId, 'transitions'] })
       queryClient.invalidateQueries({ queryKey: ['practices'] })
     },
   })

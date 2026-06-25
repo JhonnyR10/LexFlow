@@ -8,6 +8,8 @@ import type {
   GetPracticeResponse,
   ListAvailableTransitionsInput,
   PracticesListAvailableTransitionsResponse,
+  ExecuteTransitionInput,
+  ExecuteTransitionResponse,
 } from '../../shared/ipc'
 
 export const practicesApi = {
@@ -31,4 +33,9 @@ export const practicesApi = {
     input: ListAvailableTransitionsInput
   ): Promise<PracticesListAvailableTransitionsResponse> =>
     window.api.practices.listAvailableTransitions(input),
+
+  executeTransition: (
+    input: ExecuteTransitionInput
+  ): Promise<ExecuteTransitionResponse> =>
+    window.api.practices.executeTransition(input),
 }
