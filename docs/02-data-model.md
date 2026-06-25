@@ -107,7 +107,9 @@ Il contratto è la **chiave del campo** (uniche per contenitore/transizione nell
 
 ### Document
 
-`id, practiceId, phaseRecordId (null), kind (decreto|fattura|pec|altro), filePath, originalName, metadata (json), createdAt`. File su filesystem in `<percorsoDati>/documenti/<codiceIstanza>/`; in DB solo il riferimento. Decreto → fase decreto; fattura → fase SCP.
+`id, practiceId, transitionRecordId (null), kind (decreto|fattura|pec|altro), filePath, originalName, metadata (json), createdAt`. File su filesystem in `<percorsoDati>/documenti/<codiceIstanza>/`; in DB solo il riferimento. Decreto → fase decreto; fattura → fase SCP.
+
+**Storage (E7/S7.1).** Nell'MVP `kind` esposto in UI è `decreto | fattura` (una sola istanza per tipo: l'upload sostituisce). `filePath` è salvato **relativo** alla radice documenti (`<codiceIstanza>/<filename>`) e risolto in assoluto a runtime contro la radice `<percorsoDati>/documenti/`: percorso portabile per backup/ripristino (E11.3) e per il percorso dati configurabile (E11.2). Finché E11.2 non introduce `AppSettings.dataPath`, la radice è `app.getPath('userData')/documenti/`. `transitionRecordId` resta nullable e non popolato in S7.1. Ogni upload/sostituzione/eliminazione scrive un `HistoryEvent` (regola 9). I file **non** vengono toccati alla cestinazione: sopravvivono a cestino + ripristino.
 
 ### MenuSet / MenuOption
 

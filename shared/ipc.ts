@@ -56,7 +56,11 @@ export const IPC_CHANNELS = {
   PRACTICES_GET: 'practices:getPractice',
   PRACTICES_LIST_AVAILABLE_TRANSITIONS: 'practices:listAvailableTransitions',
   PRACTICES_EXECUTE_TRANSITION: 'practices:executeTransition',
-  PRACTICES_UPDATE: 'practices:updatePractice'
+  PRACTICES_UPDATE: 'practices:updatePractice',
+  DOCUMENTS_LIST: 'documents:listByPractice',
+  DOCUMENTS_UPLOAD: 'documents:upload',
+  DOCUMENTS_DELETE: 'documents:delete',
+  DOCUMENTS_OPEN: 'documents:open'
 } as const
 
 export type AppGetVersionResponse = string
@@ -561,6 +565,50 @@ export interface ExecuteTransitionResponse {
   phaseChanged: boolean
 }
 
+// --- Documenti (S7.1) ---
+// Decreto e fattura caricati su una pratica. Nell'MVP un solo documento per
+// `kind` (l'upload sostituisce). I file vivono su filesystem; in DB resta solo
+// il riferimento. L'upload usa un file dialog nativo nel main (nessun byte sul
+// bridge): se l'utente annulla il dialog la risposta è `{ canceled: true }`.
+export type DocumentKind = 'decreto' | 'fattura'
+export const DOCUMENT_KINDS: readonly DocumentKind[] = ['decreto', 'fattura'] as const
+
+export interface DocumentItem {
+  id: number
+  practiceId: number
+  kind: DocumentKind
+  originalName: string
+  size: number | null
+  createdAt: string
+}
+
+export interface ListDocumentsInput {
+  practiceId: number
+}
+export type ListDocumentsResponse = DocumentItem[]
+
+export interface UploadDocumentInput {
+  practiceId: number
+  kind: DocumentKind
+}
+export type UploadDocumentResponse =
+  | { canceled: true }
+  | { canceled: false; document: DocumentItem }
+
+export interface DeleteDocumentInput {
+  id: number
+}
+export interface DeleteDocumentResponse {
+  id: number
+}
+
+export interface OpenDocumentInput {
+  id: number
+}
+export interface OpenDocumentResponse {
+  opened: boolean
+}
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
@@ -598,6 +646,12 @@ export interface LexFlowApi {
     getPractice(input: GetPracticeInput): Promise<GetPracticeResponse>
     listAvailableTransitions(input: ListAvailableTransitionsInput): Promise<PracticesListAvailableTransitionsResponse>
     executeTransition(input: ExecuteTransitionInput): Promise<ExecuteTransitionResponse>
+  }
+  documents: {
+    listByPractice(input: ListDocumentsInput): Promise<ListDocumentsResponse>
+    upload(input: UploadDocumentInput): Promise<UploadDocumentResponse>
+    delete(input: DeleteDocumentInput): Promise<DeleteDocumentResponse>
+    open(input: OpenDocumentInput): Promise<OpenDocumentResponse>
   }
   anagrafiche: {
     listProfessionisti(): Promise<AnagraficheListProfessionistiResponse>

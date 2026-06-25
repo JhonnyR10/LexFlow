@@ -110,7 +110,7 @@ Priorità MoSCoW. `MVP` = nel primo rilascio usabile end-to-end.
 
 ### E7 — Documenti `MVP` (Must)
 
-- **S7.1** Upload/sostituzione/eliminazione decreto e fattura, salvati per codice istanza, collegati alla fase. _AC:_ dopo upload, il controllo "decreto mancante" sparisce; documenti restano dopo cestino+ripristino.
+- **S7.1** Upload/sostituzione/eliminazione decreto e fattura, salvati per codice istanza, collegati alla fase. L'upload avviene tramite **file dialog nativo** del main process (nessun byte sul bridge IPC, nessun accesso filesystem dal renderer): il file scelto è copiato in `<percorsoDati>/documenti/<codiceIstanza>/`; in DB si salva il solo riferimento con `filePath` **relativo** alla radice documenti. Un solo decreto e una sola fattura per pratica: ricaricare un tipo già presente lo **sostituisce** (vecchio file rimosso). Ogni operazione scrive un `HistoryEvent`; su pratica nel cestino upload/eliminazione sono bloccati (lista e apertura restano consentite). _AC:_ dopo upload, il controllo "decreto mancante" sparisce; documenti restano dopo cestino+ripristino; nessun `NaN`/percorso assoluto fragile salvato in DB.
 
 ### E8 — Dashboard `MVP` (Must)
 

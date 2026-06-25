@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { usePracticeDetail } from '../features/practices/usePractices'
 import { WorkflowActions } from '../features/practices/WorkflowActions'
 import { ModificaPraticaModal } from '../features/practices/ModificaPraticaModal'
+import { DocumentsSection } from '../features/documents/DocumentsSection'
 import { useFields } from '../features/config/fields/useFields'
 import { useMenuSets } from '../features/config/menus/useMenus'
 import { computeImportoDifferences } from '../features/practices/importoCalc'
@@ -425,11 +426,7 @@ export function DettaglioPraticaPage(): React.JSX.Element {
       <TimelineSection history={practice.history} />
 
       {/* Documenti */}
-      <Section title="Documenti">
-        <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>
-          Gestione documenti (decreto, fattura) disponibile in E7.
-        </p>
-      </Section>
+      <DocumentsSection practiceId={practice.id} isTrashed={practice.isTrashed} />
     </div>
   )
 }

@@ -35,7 +35,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S5.5   | Storico/timeline                                             | TODO     |                                                                                                                                                                                                                          |
 | S6.1   | Quattro importi                                              | FATTO    | concesso/fatturato/liquidato denormalizzati da `TransitionRecord.values` su 3 colonne pratica (cache derivata, non editabili a mano). Mappatura esplicita field-key→colonna (3 voci) in `executeTransition`. Seed di 3 campi `importo` su Registra decreto/invio a SCP/liquidazione. Migrazione incrementale 0006. Differenze calcolate = S6.2. |
 | S6.2   | Differenze calcolate                                         | FATTO    | **E6 (Importi) COMPLETATA.** Helper puro `importoCalc.ts` (richiesto−concesso, % riduzione con guard div/0, concesso−fatturato, fatturato−liquidato, concesso−liquidato; null se operando mancante). Sottosezione «Differenze» nel dettaglio; «Non calcolabile» per i null, nessun NaN. Renderer-only, nessuna migrazione. |
-| S7.1   | Documenti decreto+fattura                                    | TODO     |                                                                                                                                                                                                                          |
+| S7.1   | Documenti decreto+fattura                                    | FATTO    | **E7 (Documenti) COMPLETATA.** Nuovo modulo `documents` (4 canali IPC), tabella `documents` (migrazione 0007). Upload via file dialog nativo nel main; file in `<userData>/documenti/<codiceIstanza>/`, `filePath` relativo in DB; sostituzione per kind (decreto/fattura); apri via shell; HistoryEvent su add/replace/remove; guard cestino su upload/elimina. `DocumentsSection` nel dettaglio (sostituisce stub). |
 | S8.1   | Card per fase dinamiche                                      | TODO     |                                                                                                                                                                                                                          |
 | S8.2   | Alert aggregato per pratica                                  | TODO     |                                                                                                                                                                                                                          |
 | S8.3   | Giorni da deposito                                           | TODO     |                                                                                                                                                                                                                          |
@@ -84,6 +84,50 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-25 — S7.1: Documenti decreto+fattura — **E7 (Documenti) COMPLETATA**
+
+**Migrazione DB:** incrementale `drizzle/0007_abandoned_blur.sql` (`CREATE TABLE documents`,
+8 colonne, 2 FK). Non distruttiva, nessun reset. Boot verificato: migrazione applicata,
+tabella `documents` presente nel DB dev.
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `main/database/schema/documents.ts` | Schema Drizzle `documents`: practiceId (FK), transitionRecordId (FK nullable, non popolato), kind, filePath (relativo alla radice documenti), originalName, metadata (JSON), createdAt |
+| `main/modules/documents/repository.ts` | `findPracticeRefForDocs`, `insertDocument`, `findDocumentsByPractice`, `findDocumentByKind`, `findDocumentById`, `deleteDocumentRow`, `insertHistoryEvent` (locale) |
+| `main/modules/documents/service.ts` | `getDocumentsRoot`/`resolveDocumentPath`; `uploadDocument` (dialog nativo → copia → replace in transazione → unlink vecchio file + HistoryEvent), `listDocuments`, `deleteDocument`, `openDocument` (shell.openPath); guard cestino |
+| `main/modules/documents/controller.ts` | `registerDocumentsHandlers`: 4 handler IPC con zod; finestra parente del dialog via `BrowserWindow.fromWebContents(event.sender)` |
+| `src/api/documents.ts` | Client renderer `window.api.documents.*` |
+| `src/features/documents/useDocuments.ts` | TanStack Query: `useDocuments`, `useUploadDocument`, `useDeleteDocument` (invalidano `['documents', id]` + `['practice', id]`) |
+| `src/features/documents/DocumentsSection.tsx` | Due righe (Decreto/Fattura): presente → nome+data+size + [Apri][Sostituisci][Elimina]; assente → «Non presente» + [Carica]; cestinata → sola lettura; loading/empty/error |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `main/database/schema/index.ts` | `export * from './documents'` |
+| `main/server.ts` | `registerDocumentsHandlers()` in bootstrap |
+| `main/preload.ts` | Namespace `documents: { listByPractice, upload, delete, open }` |
+| `shared/ipc.ts` | 4 canali `DOCUMENTS_*`; tipi `DocumentKind`/`DOCUMENT_KINDS`/`DocumentItem` + input/response; esteso `LexFlowApi.documents` |
+| `src/pages/DettaglioPraticaPage.tsx` | Stub «Documenti (E7)» sostituito da `<DocumentsSection>` |
+| `docs/02-data-model.md` | §Document: `phaseRecordId`→`transitionRecordId`, `filePath` relativo, kind MVP, persistenza al cestino |
+| `docs/00-backlog-mvp.md` | S7.1 AC esplicitati (dialog nativo, path relativo, sostituzione, evento, guard cestino) |
+
+**Invarianti / decisioni:**
+1. **Upload via file dialog nativo nel main** (no byte sul bridge, no filesystem nel renderer). Annullamento → `{ canceled: true }`, nessun errore.
+2. **Radice documenti** = `app.getPath('userData')/documenti/`; `filePath` salvato **relativo** (`<codiceIstanza>/<filename>`), risolto a runtime → portabile per backup (E11.3) e percorso dati configurabile (E11.2).
+3. **Sostituzione per kind**: un solo decreto e una sola fattura. Ordine: copia nuovo file → transazione DB (delete vecchia riga + insert + HistoryEvent) → unlink vecchio file fisico **dopo** il commit (best-effort). Le operazioni filesystem stanno **fuori** dalla transazione SQLite.
+4. **Guard cestino**: upload/elimina bloccati su pratica `isTrashed` (`ValidationError`); lista/apertura sempre consentite → i documenti **sopravvivono** a cestino+ripristino (file mai toccati alla cestinazione).
+5. **HistoryEvent** su ogni operazione (`document_added`/`document_replaced`/`document_removed`), `documentId` nel payload.
+6. `kind` vincolato a `decreto|fattura` lato zod; colonna text libera per kind futuri (`pec|altro`).
+
+**Confine di storia:** alert/aggregati «documenti mancanti» in Dashboard → E8; inclusione documenti in export/backup → E9.1/E11.3; collegamento esplicito al `transitionRecord` e kind `pec|altro` → non ora.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓ (boot pulito, migrazione 0007 applicata, tabella `documents` verificata nel DB dev). Verifica interattiva GUI (upload/sostituzione/eliminazione/apertura del decreto e della fattura) da completare manualmente.
+
+---
 
 ### 2026-06-25 — S6.2: Differenze calcolate — **E6 (Importi) COMPLETATA**
 

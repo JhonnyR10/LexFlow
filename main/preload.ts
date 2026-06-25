@@ -21,6 +21,16 @@ const api: LexFlowApi = {
     executeTransition: (input) =>
       ipcRenderer.invoke('practices:executeTransition', input)
   },
+  documents: {
+    listByPractice: (input) =>
+      ipcRenderer.invoke('documents:listByPractice', input),
+    upload: (input) =>
+      ipcRenderer.invoke('documents:upload', input),
+    delete: (input) =>
+      ipcRenderer.invoke('documents:delete', input),
+    open: (input) =>
+      ipcRenderer.invoke('documents:open', input)
+  },
   config: {
     listPhases: () => ipcRenderer.invoke('config:listPhases'),
     listAllPhases: () => ipcRenderer.invoke('config:listAllPhases'),
