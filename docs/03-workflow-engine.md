@@ -53,7 +53,7 @@ Transizione che "resta nella fase": `fromPhaseId == toPhaseId`. Il motore regist
    - se transizione verso `sospesa`: salva `previousPhaseId = currentPhaseId`, poi `currentPhaseId = sospesa`;
    - altrimenti: `currentPhaseId = toPhaseId`;
    - scrive sempre un `HistoryEvent` (TL) con titolo e payload;
-   - denormalizza sulla pratica i valori chiave (importi, date) dove serve;
+   - denormalizza sulla pratica i valori chiave: i campi `importo` mappati (`importo_concesso`→`importoConcesso`, `importo_fatturato`→`importoFatturato`, `importo_liquidato`→`importoLiquidato`) vengono copiati dalle `TransitionRecord.values` alle colonne omonime della pratica — cache derivata, fonte di verità nel record; mappatura esplicita a 3 voci, vedi `02-data-model.md` §TransitionRecord;
    - incrementa `version`.
 5. Dashboard, alert, report riflettono il nuovo stato perché leggono `currentPhaseId`/`category`.
 

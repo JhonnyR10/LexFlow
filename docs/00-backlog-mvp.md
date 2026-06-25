@@ -105,7 +105,7 @@ Priorità MoSCoW. `MVP` = nel primo rilascio usabile end-to-end.
 
 ### E6 — Importi `MVP` (Must)
 
-- **S6.1** Quattro importi (richiesto/concesso/fatturato/liquidato) inseriti a mano, niente calcolo fiscale.
+- **S6.1** Quattro importi (richiesto/concesso/fatturato/liquidato), niente calcolo fiscale. `importoRichiesto` si inserisce in Nuova/Modifica pratica; concesso/fatturato/liquidato si compilano nei campi `importo` delle rispettive transizioni (Registra decreto, Registra invio a SCP, Registra liquidazione): la fonte di verità è `TransitionRecord.values`, il service li denormalizza su tre colonne della pratica (cache derivata, **non** editabili a mano). Mappatura esplicita field-key→colonna in `02-data-model.md`. _AC:_ dopo «Registra decreto/invio a SCP/liquidazione» con importo compilato, il rispettivo valore compare nella sezione Importi del dettaglio; gli importi denormalizzati non sono modificabili dal modal Modifica pratica.
 - **S6.2** Differenze e % riduzione calcolate; mancanti → "Non calcolabile". _AC:_ nessun NaN.
 
 ### E7 — Documenti `MVP` (Must)

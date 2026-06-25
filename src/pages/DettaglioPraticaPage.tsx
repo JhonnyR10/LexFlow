@@ -362,9 +362,9 @@ export function DettaglioPraticaPage(): React.JSX.Element {
       <Section title="Importi">
         <FieldGrid>
           <Field label="Richiesto" value={formatImporto(practice.importoRichiesto)} />
-          <Field label="Concesso" value={ABSENT} />
-          <Field label="Fatturato" value={ABSENT} />
-          <Field label="Liquidato" value={ABSENT} />
+          <Field label="Concesso" value={formatImporto(practice.importoConcesso)} />
+          <Field label="Fatturato" value={formatImporto(practice.importoFatturato)} />
+          <Field label="Liquidato" value={formatImporto(practice.importoLiquidato)} />
         </FieldGrid>
       </Section>
 

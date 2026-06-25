@@ -510,6 +510,27 @@ export function updatePracticeFields(
     .run()
 }
 
+// Denormalizzazione importi (E6/S6.1): aggiorna le sole colonne importi presenti.
+// Cache derivata da TransitionRecord.values. Non incrementa `version` (lo fa già
+// advancePractice sul cambio fase della stessa transizione).
+export interface ImportiUpdate {
+  importoConcesso?: number
+  importoFatturato?: number
+  importoLiquidato?: number
+}
+
+export function updatePracticeImporti(
+  practiceId: number,
+  importi: ImportiUpdate,
+  updatedAt: string
+): void {
+  getDb()
+    .update(practices)
+    .set({ ...importi, updatedAt })
+    .where(eq(practices.id, practiceId))
+    .run()
+}
+
 // Sostituzione integrale dei destinatari PEC deposito di una pratica (S4.3).
 export function deletePecDepositoRecipients(practiceId: number): void {
   getDb()

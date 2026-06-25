@@ -33,7 +33,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S5.3   | Form dinamico fase + salvataggio                             | FATTO    | Nuova tabella `transition_records` (migrazione 0005, incrementale). IPC `practices:executeTransition`: validazione campi lato main (required+condizionale+menu+pec), calcolo destinazione dentro transazione (self/sospensione/resume), TransitionRecord+HistoryEvent+PEC, version++. `TransitionFormModal` + `DynamicField`/`PecBlock` estratti in modulo condiviso. Guard liquidata = S5.4. |
 | S5.4   | Guard coerenza stati                                         | FATTO    | Backend-only, nessuna migrazione. Guard di liquidazione in `executeTransition` (dentro la transazione): destinazione `category='liquidated'` richiede categorie raggiunte `decree_received` + `awaiting_liquidation` (via HistoryEvent.toPhaseId). Ragiona per category canonica, non per key; difesa in profondità. |
 | S5.5   | Storico/timeline                                             | TODO     |                                                                                                                                                                                                                          |
-| S6.1   | Quattro importi                                              | TODO     |                                                                                                                                                                                                                          |
+| S6.1   | Quattro importi                                              | FATTO    | concesso/fatturato/liquidato denormalizzati da `TransitionRecord.values` su 3 colonne pratica (cache derivata, non editabili a mano). Mappatura esplicita field-key→colonna (3 voci) in `executeTransition`. Seed di 3 campi `importo` su Registra decreto/invio a SCP/liquidazione. Migrazione incrementale 0006. Differenze calcolate = S6.2. |
 | S6.2   | Differenze calcolate                                         | TODO     |                                                                                                                                                                                                                          |
 | S7.1   | Documenti decreto+fattura                                    | TODO     |                                                                                                                                                                                                                          |
 | S8.1   | Card per fase dinamiche                                      | TODO     |                                                                                                                                                                                                                          |
@@ -84,6 +84,53 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-25 — S6.1: Quattro importi (denormalizzazione da transizione)
+
+**Decisione di prodotto (utente):** concesso/fatturato/liquidato **non** si inseriscono a
+mano sulla pratica. Si compilano nei campi `importo` delle transizioni del workflow; la
+**fonte di verità** è `TransitionRecord.values`. Il service li **denormalizza** su 3 colonne
+pratica (cache derivata, non editabili in Modifica pratica) tramite una **mappatura esplicita
+field-key→colonna (3 voci)**, non un motore generico. Differenze calcolate (S6.2) separate.
+
+**Migrazione DB:** incrementale `drizzle/0006_vengeful_rick_jones.sql` (ALTER TABLE ADD COLUMN
+×3 su `practices`). Nessun reset — dati dev conservati. Boot verificato: migrazione applicata,
+3 `field_defs` importo seminati sulle transizioni corrette, 3 colonne presenti nel DB dev.
+
+**Mappatura (il contratto):**
+
+| Transizione (fromKey, buttonLabel) | Field key | Colonna |
+| --- | --- | --- |
+| `in_attesa_decreto`, «Registra decreto» | `importo_concesso` | `importoConcesso` |
+| `decreto_ricevuto`, «Registra invio a SCP» | `importo_fatturato` | `importoFatturato` |
+| `in_attesa_liquidazione_scp`, «Registra liquidazione» | `importo_liquidato` | `importoLiquidato` |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `main/database/schema/practices.ts` | 3 colonne `real` nullable `importoConcesso/Fatturato/Liquidato` |
+| `main/database/seed.ts` | `SEED_IMPORTO_FIELDS` + step 3b: insert idempotente (select-then-insert) dei 3 campi `importo` su (fromPhaseId, buttonLabel) |
+| `main/modules/practices/repository.ts` | `updatePracticeImporti` + tipo `ImportiUpdate` (aggiorna solo le colonne presenti + `updatedAt`, no bump version) |
+| `main/modules/practices/service.ts` | costante `IMPORTO_FIELD_TO_COLUMN` + helper `deriveImportiUpdate`; chiamata in `executeTransition` dentro la transazione dopo `insertTransitionRecord`; mapping dei 3 importi in `getPracticeDetail` |
+| `shared/ipc.ts` | `PracticeDetail`: `importoConcesso/Fatturato/Liquidato: number \| null` |
+| `src/pages/DettaglioPraticaPage.tsx` | sezione Importi: i 3 segnaposto `ABSENT` → `formatImporto(...)` |
+| `docs/02-data-model.md` | 3 colonne denormalizzate in *Practice* + tabella mappatura in *TransitionRecord* |
+| `docs/03-workflow-engine.md` | §Ciclo di avanzamento: denormalizzazione importi esplicitata |
+| `docs/00-backlog-mvp.md` | S6.1 riscritta (inserimento via transizione, denormalizzato, AC) |
+
+**Invarianti / regole:**
+1. Fonte di verità = `TransitionRecord.values`; le colonne pratica sono **cache derivata**.
+2. Denormalizzazione solo per valori **numerici finiti**; valore vuoto/non numerico → colonna invariata (nessuna cancellazione via empty).
+3. Avviene **dentro la transazione** di `executeTransition`: coerente o rollback con record/evento.
+4. I 3 campi seminati sono `required=false` (non bloccano flussi/guard, non forzano l'inserimento).
+5. `ModificaPraticaModal` invariato: le 3 colonne non sono editabili a mano (single source of truth).
+
+**Confine di storia:** le **differenze calcolate** (richiesto−concesso, % riduzione, concesso−fatturato, fatturato−liquidato, concesso−liquidato) con «Non calcolabile» sono **S6.2**. Estensione di tabella/filtri elenco agli importi denormalizzati: fuori perimetro S6.1.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓ (boot pulito, migrazione 0006, 3 colonne + 3 field_defs verificati nel DB dev). Verifica interattiva GUI (compilazione importo in transizione → comparsa nel dettaglio) da completare manualmente.
+
+---
 
 ### 2026-06-25 — S4.3: Modifica pratica + storico — **E4 (Creazione/modifica pratica) COMPLETATA**
 

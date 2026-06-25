@@ -506,6 +506,9 @@ export interface PracticeDetail {
   dataDeposito: string | null
   modalitaDeposito: string | null
   importoRichiesto: number | null
+  importoConcesso: number | null
+  importoFatturato: number | null
+  importoLiquidato: number | null
   note: string | null
   customValues: Record<string, unknown>
   currentPhase: PracticeDetailPhase

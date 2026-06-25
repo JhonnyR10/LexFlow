@@ -40,8 +40,10 @@ import {
   findReachedPhaseCategories,
   findPracticeForEdit,
   updatePracticeFields,
+  updatePracticeImporti,
   deletePecDepositoRecipients,
   type TransitionFieldRow,
+  type ImportiUpdate,
 } from './repository'
 import { getDb } from '../../database/connection'
 import { ValidationError, NotFoundError } from '../../errors/AppError'
@@ -127,6 +129,9 @@ export function getPracticeDetail(input: GetPracticeInput): GetPracticeResponse 
     dataDeposito:        p.dataDeposito ?? null,
     modalitaDeposito:    p.modalitaDeposito ?? null,
     importoRichiesto:    p.importoRichiesto ?? null,
+    importoConcesso:     p.importoConcesso ?? null,
+    importoFatturato:    p.importoFatturato ?? null,
+    importoLiquidato:    p.importoLiquidato ?? null,
     note:                p.note ?? null,
     customValues:        parseCustomValues(p.customValues),
     currentPhase: {
@@ -507,6 +512,29 @@ function derivePecContesto(toPhaseCategory: string | null): 'deposito' | 'scp' |
   return 'altro'
 }
 
+// Denormalizzazione importi (E6/S6.1): mappatura esplicita e minimale field-key →
+// colonna pratica. La fonte di verità resta TransitionRecord.values; queste colonne
+// sono cache derivata. Le key sono uniche per contenitore (transizione) nella config
+// standard, quindi ciascuna esiste su una sola transizione (vedi 02-data-model.md).
+const IMPORTO_FIELD_TO_COLUMN: Record<string, keyof ImportiUpdate> = {
+  importo_concesso:  'importoConcesso',
+  importo_fatturato: 'importoFatturato',
+  importo_liquidato: 'importoLiquidato',
+}
+
+// Estrae dagli `values` puliti gli aggiornamenti delle colonne importi: solo i campi
+// mappati con valore numerico finito. Valore vuoto/non numerico → colonna invariata.
+function deriveImportiUpdate(values: Record<string, unknown>): ImportiUpdate {
+  const update: ImportiUpdate = {}
+  for (const [fieldKey, column] of Object.entries(IMPORTO_FIELD_TO_COLUMN)) {
+    const raw = values[fieldKey]
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+      update[column] = raw
+    }
+  }
+  return update
+}
+
 export function executeTransition(input: ExecuteTransitionInput): ExecuteTransitionResponse {
   const transition = findTransitionForExecution(input.transitionId)
   if (!transition) {
@@ -596,6 +624,13 @@ export function executeTransition(input: ExecuteTransitionInput): ExecuteTransit
 
     if (phaseChanged) {
       advancePractice(input.practiceId, newCurrentPhaseId, newPreviousPhaseId, now)
+    }
+
+    // Denormalizzazione importi (E6/S6.1): copia i campi `importo` mappati dai
+    // values della transizione alle colonne omonime della pratica (cache derivata).
+    const importiUpdate = deriveImportiUpdate(cleanValues)
+    if (Object.keys(importiUpdate).length > 0) {
+      updatePracticeImporti(input.practiceId, importiUpdate, now)
     }
 
     // Precisazione 3: le transizioni self/ripetibili producono un evento SENZA

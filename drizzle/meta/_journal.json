@@ -43,6 +43,13 @@
       "when": 1782388867617,
       "tag": "0005_yellow_sunset_bain",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1782408363676,
+      "tag": "0006_vengeful_rick_jones",
+      "breakpoints": true
     }
   ]
 }

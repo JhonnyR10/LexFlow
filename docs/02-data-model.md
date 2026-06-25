@@ -21,7 +21,10 @@ Entità centrale. Una pratica è **un'unica entità**: non si duplica mai al cam
 | autoritaGiudiziaria   | text (menu)          |                                                                           |
 | dataDeposito          | date                 | usata da alert/anzianità                                                  |
 | modalitaDeposito      | text (menu)          | PEC/A mano                                                                |
-| importoRichiesto      | decimal              | unico importo "generale"                                                  |
+| importoRichiesto      | decimal              | unico importo "generale", inserito in Nuova/Modifica pratica              |
+| importoConcesso       | decimal, nullable    | **denormalizzato** da `TransitionRecord.values` (non editabile a mano)    |
+| importoFatturato      | decimal, nullable    | **denormalizzato** da `TransitionRecord.values` (non editabile a mano)    |
+| importoLiquidato      | decimal, nullable    | **denormalizzato** da `TransitionRecord.values` (non editabile a mano)    |
 | note                  | text                 |                                                                           |
 | currentPhaseId        | FK → Phase           | fase corrente                                                             |
 | previousPhaseId       | FK → Phase, nullable | fase di provenienza salvata alla sospensione; usata da "Riprendi pratica" |
@@ -71,6 +74,16 @@ I campi `general` compaiono nel form Nuova pratica; i campi `transition` compaio
 ### TransitionRecord (registrazione di una transizione/evento)
 
 `id, practiceId, transitionId, fromPhaseId, toPhaseId, recordedAt, values (json keyed by fieldKey), note`. Ogni esecuzione di transizione (incluse quelle ripetibili come i solleciti, che restano nella stessa fase) crea un record. Gli importi (concesso, fatturato, liquidato) e le date rilevanti compilati nella transizione vivono qui, e i valori chiave vengono denormalizzati sulla pratica per filtri/riepiloghi. Relazione 1:1 con l'`HistoryEvent` corrispondente (da consolidare in E5). _(Sostituisce il precedente concetto "PhaseRecord" basato sulla fase.)_
+
+**Denormalizzazione degli importi (E6/S6.1).** `TransitionRecord.values` è la **fonte di verità** dei tre importi del ciclo di vita; le colonne omonime su `Practice` sono **cache derivata**, riscritta dal service all'esecuzione della transizione (dentro la stessa transazione). La mappatura è **esplicita e minimale**, basata sulla `key` del campo `importo` compilato:
+
+| Transizione (config standard) | Field key | Colonna `Practice` |
+| --- | --- | --- |
+| In attesa di decreto → «Registra decreto» | `importo_concesso` | `importoConcesso` |
+| Decreto ricevuto → «Registra invio a SCP» | `importo_fatturato` | `importoFatturato` |
+| In attesa di liquidazione SCP → «Registra liquidazione» | `importo_liquidato` | `importoLiquidato` |
+
+Il contratto è la **chiave del campo** (uniche per contenitore/transizione nella config di default); quando i `values` salvati contengono una di queste chiavi con valore numerico finito, la colonna corrispondente viene aggiornata. I tre campi `importo` sono creati dal seed sulle rispettive transizioni. Non c'è inserimento manuale degli importi denormalizzati: evitare una seconda fonte di verità.
 
 ### HistoryEvent (storico/timeline)
 

@@ -1,8 +1,8 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { app } from 'electron'
 import { getDb } from './connection'
-import { phases, transitions, menuSets, menuOptions, appSettings } from './schema'
-import type { NewPhase, NewTransition, NewMenuSet, NewMenuOption } from './schema'
+import { phases, transitions, fieldDefs, menuSets, menuOptions, appSettings } from './schema'
+import type { NewPhase, NewTransition, NewFieldDef, NewMenuSet, NewMenuOption } from './schema'
 import { logger } from '../utils/logger'
 
 // ---------- Fasi canoniche (13) ----------
@@ -103,6 +103,25 @@ const SEED_TRANSITIONS: TransitionSeed[] = [
   // Nessuna transizione in uscita da: chiusa, rifiutata, annullata
 ]
 
+// ---------- Campi `importo` denormalizzati (E6/S6.1) ----------
+// Tre campi `importo` sulle transizioni del ciclo importi. La loro `key` è il
+// contratto della denormalizzazione field-key→colonna (vedi 02-data-model.md).
+// Idempotenza per (transitionId, key) con select-then-insert: field_defs non ha
+// unique index su quella coppia.
+
+interface ImportoFieldSeed {
+  fromKey: string
+  buttonLabel: string
+  key: string
+  label: string
+}
+
+const SEED_IMPORTO_FIELDS: ImportoFieldSeed[] = [
+  { fromKey: 'in_attesa_decreto',          buttonLabel: 'Registra decreto',      key: 'importo_concesso',  label: 'Importo concesso (€)'  },
+  { fromKey: 'decreto_ricevuto',           buttonLabel: 'Registra invio a SCP',  key: 'importo_fatturato', label: 'Importo fatturato (€)' },
+  { fromKey: 'in_attesa_liquidazione_scp', buttonLabel: 'Registra liquidazione', key: 'importo_liquidato', label: 'Importo liquidato (€)'  }
+]
+
 // ---------- Menu standard ----------
 
 interface MenuSeedSet {
@@ -201,6 +220,49 @@ export function runSeed(): void {
     db.insert(transitions).values(transitionRows).onConflictDoNothing().run()
     logger.debug('SEED_TRANSITIONS_OK', `${transitionRows.length} transizioni`)
   }
+
+  // 3b. Campi `importo` denormalizzati (E6/S6.1) sulle transizioni del ciclo importi.
+  for (const f of SEED_IMPORTO_FIELDS) {
+    const fromPhaseId = phaseIdByKey.get(f.fromKey)
+    if (fromPhaseId === undefined) {
+      logger.warn('SEED_IMPORTO_FIELD_SKIP', `fase non trovata: ${f.fromKey}`)
+      continue
+    }
+    const transitionRow = db
+      .select({ id: transitions.id })
+      .from(transitions)
+      .where(and(eq(transitions.fromPhaseId, fromPhaseId), eq(transitions.buttonLabel, f.buttonLabel)))
+      .get()
+    if (!transitionRow) {
+      logger.warn('SEED_IMPORTO_FIELD_SKIP', `transizione non trovata: ${f.fromKey} / ${f.buttonLabel}`)
+      continue
+    }
+    const existing = db
+      .select({ id: fieldDefs.id })
+      .from(fieldDefs)
+      .where(and(eq(fieldDefs.transitionId, transitionRow.id), eq(fieldDefs.key, f.key)))
+      .get()
+    if (existing) continue
+
+    const fieldRow: NewFieldDef = {
+      scope:                'transition',
+      transitionId:         transitionRow.id,
+      key:                  f.key,
+      label:                f.label,
+      type:                 'importo',
+      required:             false,
+      visibleInTable:       false,
+      usableInFilter:       false,
+      includeInExport:      false,
+      order:                1,
+      isActive:             true,
+      menuSetId:            null,
+      conditionalOnFieldId: null,
+      conditionalValue:     null
+    }
+    db.insert(fieldDefs).values(fieldRow).run()
+  }
+  logger.debug('SEED_IMPORTO_FIELDS_OK', `${SEED_IMPORTO_FIELDS.length} campi importo`)
 
   // 4. Menu set e opzioni (idempotente per key unique / unique(menuSetId, value))
   for (const setDef of SEED_MENU_SETS) {

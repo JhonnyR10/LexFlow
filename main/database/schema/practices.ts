@@ -16,6 +16,10 @@ export const practices = sqliteTable('practices', {
   dataDeposito:        text('data_deposito'),          // ISO YYYY-MM-DD
   modalitaDeposito:    text('modalita_deposito'),
   importoRichiesto:    real('importo_richiesto'),
+  // Importi denormalizzati da TransitionRecord.values (cache derivata, non editabili a mano — vedi 02-data-model.md §TransitionRecord)
+  importoConcesso:     real('importo_concesso'),
+  importoFatturato:    real('importo_fatturato'),
+  importoLiquidato:    real('importo_liquidato'),
   note:                text('note'),
   currentPhaseId:      integer('current_phase_id').notNull().references(() => phases.id),
   previousPhaseId:     integer('previous_phase_id').references(() => phases.id),
