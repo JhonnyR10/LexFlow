@@ -5,6 +5,7 @@ import { WorkflowActions } from '../features/practices/WorkflowActions'
 import { ModificaPraticaModal } from '../features/practices/ModificaPraticaModal'
 import { useFields } from '../features/config/fields/useFields'
 import { useMenuSets } from '../features/config/menus/useMenus'
+import { computeImportoDifferences } from '../features/practices/importoCalc'
 import type {
   PracticeDetail,
   PracticeDetailHistoryItem,
@@ -15,6 +16,7 @@ import type {
 // ---------- Helper di formato ----------
 
 const ABSENT = 'Non presente'
+const NOT_CALCULABLE = 'Non calcolabile'
 
 function formatDate(iso: string | null): string {
   if (!iso) return ABSENT
@@ -42,6 +44,18 @@ function formatImporto(value: number | null): string {
 function textOrAbsent(value: string | null | undefined): string {
   const trimmed = (value ?? '').trim()
   return trimmed.length > 0 ? trimmed : ABSENT
+}
+
+// S6.2: differenze importi. Operando mancante → "Non calcolabile" (mai NaN).
+function formatImportoCalc(value: number | null): string {
+  return value == null ? NOT_CALCULABLE : formatImporto(value)
+}
+
+function formatPercentuale(value: number | null): string {
+  if (value == null) return NOT_CALCULABLE
+  return `${new Intl.NumberFormat('it-IT', {
+    minimumFractionDigits: 1, maximumFractionDigits: 1,
+  }).format(value)} %`
 }
 
 // ---------- Risoluzione valori campi personalizzati ----------
@@ -114,7 +128,7 @@ function FieldGrid({ children }: { children: React.ReactNode }): React.JSX.Eleme
 }
 
 function Field({ label, value }: { label: string; value: React.ReactNode }): React.JSX.Element {
-  const isAbsent = value === ABSENT
+  const isAbsent = value === ABSENT || value === NOT_CALCULABLE
   return (
     <div>
       <div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', color: 'var(--color-text-muted)', marginBottom: '3px' }}>
@@ -123,6 +137,28 @@ function Field({ label, value }: { label: string; value: React.ReactNode }): Rea
       <div style={{ fontSize: '14px', color: isAbsent ? 'var(--color-text-muted)' : 'var(--color-text)', fontStyle: isAbsent ? 'italic' : 'normal' }}>
         {value}
       </div>
+    </div>
+  )
+}
+
+// ---------- Differenze importi (S6.2) ----------
+
+// Sottoblocco calcolato della sezione Importi. Valori derivati al volo (non
+// persistiti); operando mancante → "Non calcolabile" (mai NaN).
+function ImportiDifferences({ practice }: { practice: PracticeDetail }): React.JSX.Element {
+  const d = computeImportoDifferences(practice)
+  return (
+    <div style={{ marginTop: '18px', paddingTop: '14px', borderTop: '1px solid var(--color-border)' }}>
+      <div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', color: 'var(--color-text-muted)', marginBottom: '10px' }}>
+        Differenze
+      </div>
+      <FieldGrid>
+        <Field label="Riduzione (richiesto − concesso)" value={formatImportoCalc(d.riduzioneRichiestoConcesso)} />
+        <Field label="% riduzione" value={formatPercentuale(d.percentualeRiduzione)} />
+        <Field label="Concesso − fatturato" value={formatImportoCalc(d.diffConcessoFatturato)} />
+        <Field label="Fatturato − liquidato" value={formatImportoCalc(d.diffFatturatoLiquidato)} />
+        <Field label="Concesso − liquidato" value={formatImportoCalc(d.diffConcessoLiquidato)} />
+      </FieldGrid>
     </div>
   )
 }
@@ -366,6 +402,7 @@ export function DettaglioPraticaPage(): React.JSX.Element {
           <Field label="Fatturato" value={formatImporto(practice.importoFatturato)} />
           <Field label="Liquidato" value={formatImporto(practice.importoLiquidato)} />
         </FieldGrid>
+        <ImportiDifferences practice={practice} />
       </Section>
 
       {/* Campi personalizzati */}

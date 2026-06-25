@@ -34,7 +34,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S5.4   | Guard coerenza stati                                         | FATTO    | Backend-only, nessuna migrazione. Guard di liquidazione in `executeTransition` (dentro la transazione): destinazione `category='liquidated'` richiede categorie raggiunte `decree_received` + `awaiting_liquidation` (via HistoryEvent.toPhaseId). Ragiona per category canonica, non per key; difesa in profondità. |
 | S5.5   | Storico/timeline                                             | TODO     |                                                                                                                                                                                                                          |
 | S6.1   | Quattro importi                                              | FATTO    | concesso/fatturato/liquidato denormalizzati da `TransitionRecord.values` su 3 colonne pratica (cache derivata, non editabili a mano). Mappatura esplicita field-key→colonna (3 voci) in `executeTransition`. Seed di 3 campi `importo` su Registra decreto/invio a SCP/liquidazione. Migrazione incrementale 0006. Differenze calcolate = S6.2. |
-| S6.2   | Differenze calcolate                                         | TODO     |                                                                                                                                                                                                                          |
+| S6.2   | Differenze calcolate                                         | FATTO    | **E6 (Importi) COMPLETATA.** Helper puro `importoCalc.ts` (richiesto−concesso, % riduzione con guard div/0, concesso−fatturato, fatturato−liquidato, concesso−liquidato; null se operando mancante). Sottosezione «Differenze» nel dettaglio; «Non calcolabile» per i null, nessun NaN. Renderer-only, nessuna migrazione. |
 | S7.1   | Documenti decreto+fattura                                    | TODO     |                                                                                                                                                                                                                          |
 | S8.1   | Card per fase dinamiche                                      | TODO     |                                                                                                                                                                                                                          |
 | S8.2   | Alert aggregato per pratica                                  | TODO     |                                                                                                                                                                                                                          |
@@ -84,6 +84,33 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-25 — S6.2: Differenze calcolate — **E6 (Importi) COMPLETATA**
+
+**Renderer-only. Nessuna modifica schema, nessuna migrazione.** Valori derivati al
+volo dai quattro importi (non persistiti, vedi `02-data-model.md` §Calcoli derivati).
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `src/features/practices/importoCalc.ts` | Helper puro `computeImportoDifferences`: richiesto−concesso, % riduzione = (richiesto−concesso)/richiesto×100, concesso−fatturato, fatturato−liquidato, concesso−liquidato. `null` se un operando manca/non finito; % `null` anche se richiesto=0 (no div/0). |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `src/pages/DettaglioPraticaPage.tsx` | Costante `NOT_CALCULABLE`; `formatImportoCalc`/`formatPercentuale`; `Field` reso muted anche per «Non calcolabile»; componente `ImportiDifferences` (sottosezione «Differenze» nella sezione Importi) |
+| `docs/00-backlog-mvp.md` | S6.2: formule esplicitate + AC (nessun NaN, mostrate nel dettaglio) |
+
+**Regole / decisioni:**
+1. Calcoli **non persistiti**: derivati in render dai 4 importi della pratica.
+2. Operando mancante → `null` → «Non calcolabile». **% riduzione** anche con `richiesto=0` → «Non calcolabile» (evita NaN/Infinity).
+3. Le differenze possono essere negative (formattate con segno in valuta).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓. Verifica interattiva GUI (compilazione importi via transizioni → differenze coerenti) da completare manualmente.
+
+---
 
 ### 2026-06-25 — S6.1: Quattro importi (denormalizzazione da transizione)
 
