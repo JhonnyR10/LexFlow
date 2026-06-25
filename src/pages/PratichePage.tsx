@@ -1,10 +1,13 @@
 import React, { useState } from 'react'
 import { NuovaPraticaModal } from '../features/practices/NuovaPraticaModal'
 import { PraticheTable } from '../features/practices/PraticheTable'
+import { PraticheFilters } from '../features/practices/PraticheFilters'
+import { type PracticeFilters as PracticeFiltersType, emptyFilters } from '../features/practices/practiceFilters'
 
 export function PratichePage(): React.JSX.Element {
   const [modalOpen, setModalOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [filters, setFilters] = useState<PracticeFiltersType>(emptyFilters)
   const [lastCreated, setLastCreated] = useState<{ id: number; codice: string } | null>(null)
 
   const handleCreated = (id: number, codiceIstanza: string): void => {
@@ -69,7 +72,9 @@ export function PratichePage(): React.JSX.Element {
         )}
       </div>
 
-      <PraticheTable searchTerm={search} />
+      <PraticheFilters filters={filters} onChange={setFilters} />
+
+      <PraticheTable searchTerm={search} filters={filters} />
 
       {modalOpen && (
         <NuovaPraticaModal

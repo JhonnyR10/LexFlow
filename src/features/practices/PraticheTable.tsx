@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { useActivePractices } from './usePractices'
+import { type PracticeFilters, matchesFilters } from './practiceFilters'
 import type { PracticeListItem } from '../../../shared/ipc'
 
 // Normalizza per la ricerca: minuscolo + rimozione dei segni diacritici, così
@@ -95,7 +96,12 @@ const tdStyle: React.CSSProperties = {
   verticalAlign: 'middle',
 }
 
-export function PraticheTable({ searchTerm }: { searchTerm: string }): React.JSX.Element {
+export function PraticheTable({
+  searchTerm, filters,
+}: {
+  searchTerm: string
+  filters: PracticeFilters
+}): React.JSX.Element {
   const { data: practices, isLoading, isError } = useActivePractices()
 
   if (isLoading) {
@@ -131,9 +137,10 @@ export function PraticheTable({ searchTerm }: { searchTerm: string }): React.JSX
   }
 
   const normalizedTerm = normalizeForSearch(searchTerm.trim())
-  const filtered = normalizedTerm
-    ? practices.filter(p => searchableBlob(p).includes(normalizedTerm))
-    : practices
+  const filtered = practices.filter(p =>
+    matchesFilters(p, filters) &&
+    (normalizedTerm === '' || searchableBlob(p).includes(normalizedTerm))
+  )
 
   if (filtered.length === 0) {
     return (
@@ -143,9 +150,9 @@ export function PraticheTable({ searchTerm }: { searchTerm: string }): React.JSX
         border: '2px dashed var(--color-border)', borderRadius: '10px',
       }}>
         <p style={{ margin: '0 0 8px', fontWeight: 500 }}>
-          Nessun risultato per «{searchTerm.trim()}».
+          Nessun risultato per i criteri selezionati.
         </p>
-        <p style={{ margin: 0 }}>Modifica o azzera la ricerca per vedere tutte le pratiche.</p>
+        <p style={{ margin: 0 }}>Modifica o azzera ricerca e filtri per vedere tutte le pratiche.</p>
       </div>
     )
   }

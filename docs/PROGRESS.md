@@ -23,7 +23,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S2.2   | CRUD Collaboratori                                           | FATTO    | Modulo anagrafiche esteso: schema Drizzle + migrazione incrementale 0002_*.sql, CRUD completo, denominazione auto-derivata da cognome+nome, codiceInterno opzionale.                                                     |
 | S3.1   | Tabella pratiche attive                                      | FATTO    | IPC practices:listPractices, LEFT JOIN phases/professionisti/collaboratori, PraticheTable con 7 colonne, route /pratiche/:id con DettaglioPraticaPage placeholder.                                                        |
 | S3.2   | Ricerca globale                                              | FATTO    | Barra di ricerca in `PratichePage`, filtro client-side in `PraticheTable` (case/accent-insensitive) su codice, nome, soggetti, autorità, note. `note` esposto in `PracticeListItem`. Stato filtrato-vuoto distinto. Procedimenti multipli fuori MVP. |
-| S3.3   | Filtri base                                                  | TODO     |                                                                                                                                                                                                                          |
+| S3.3   | Filtri base                                                  | FATTO    | Filtri client-side combinabili (fase, collaboratore, professionista, data deposito da/a, importo richiesto min/max) + Azzera. Opzioni menu derivate dalle pratiche presenti. `practiceFilters.ts` (logica pura) + `PraticheFilters.tsx`. Importi concesso/fatturato/liquidato → E6. |
 | S3.4   | Ordinamento + selezione multipla                             | TODO     |                                                                                                                                                                                                                          |
 | S4.1   | Generazione codice istanza                                   | FATTO    | Schema practices (22 col, FK a phases/professionisti/collaboratori), siglaCodice in AppSettings, migrazione 0003_*.sql, IPC practices:generateCodiceIstanza, formato AAAAMMGG_SIGLA_NNN.                                 |
 | S4.2   | Form Nuova pratica                                           | FATTO    | Modal Nuova pratica: 6 sezioni, campi fissi + campi custom generali + PEC deposito. Backend: createPractice con transazione, auto-transizione depositata→in_attesa_decreto, HistoryEvent. Nuove tabelle: history_events, pec_recipients. Migrazione 0004_*.sql. |                                                                                                                                                                                                                          |
@@ -84,6 +84,40 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-25 — S3.3: Filtri base
+
+**Nessuna modifica schema, nessuna migrazione.** Filtri lato renderer
+sull'elenco già caricato/cachato, combinabili tra loro e con la ricerca
+globale (S3.2). Le opzioni dei menu (fase/collaboratore/professionista) sono
+derivate dalle pratiche presenti — nessuna query aggiuntiva, nessun filtro che
+produrrebbe zero risultati.
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `src/features/practices/practiceFilters.ts` | Tipo `PracticeFilters`, `emptyFilters`, `hasActiveFilters`, predicato puro `matchesFilters`, helper di derivazione opzioni (`derivePhaseOptions`/`deriveCollaboratoreOptions`/`deriveProfessionistaOptions` con dedup + sort `it`) |
+| `src/features/practices/PraticheFilters.tsx` | Barra filtri: select fase/collaboratore/professionista, range data deposito (da/a), range importo richiesto (min/max), pulsante «Azzera filtri» (disabilitato se nessun filtro attivo) |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `src/features/practices/PraticheTable.tsx` | Prop `filters`; filtro combinato `matchesFilters(p) && match ricerca`; stato vuoto-filtrato generalizzato a ricerca+filtri |
+| `src/pages/PratichePage.tsx` | Stato `filters`, render `<PraticheFilters>`, `filters` passato alla tabella |
+
+**Regole / decisioni:**
+1. Filtri combinabili in AND; ciascun campo `null` = filtro inattivo.
+2. Date ISO confrontate lessicograficamente; pratica con data/importo mancante esclusa quando il relativo filtro è attivo.
+3. **Decisione di prodotto:** il filtro data opera sulla **data deposito** (data operativa cardine del dominio: anzianità/alert S8). Modificabile su richiesta.
+4. **Fuori perimetro:** importi concesso/fatturato/liquidato (E6, non ancora denormalizzati sulla pratica) → filtro importo limitato a `importoRichiesto`; numeri di procedimento fuori MVP.
+
+**Confine di storia:** S3.4 (ordinamento colonne + selezione multipla limitata al filtrato) resta storia separata successiva.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` da verificare interattivamente.
+
+---
 
 ### 2026-06-25 — S3.2: Ricerca globale
 
