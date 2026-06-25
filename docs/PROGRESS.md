@@ -31,7 +31,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S5.1   | Dettaglio pratica                                            | FATTO    | IPC `practices:getPractice` (detail con join fasi/anagrafiche, history, PEC deposito). DettaglioPraticaPage read-only: intestazione, dati generali, soggetti, importi, campi personalizzati risolti, workflow, storico/timeline, documenti (stub E7). Pulsanti transizione = S5.2.                                                                          |
 | S5.2   | Pulsanti dinamici = transizioni                              | FATTO    | IPC `practices:listAvailableTransitions` (attive, non automatiche, dalla fase corrente; fase finale → nessuna azione). Componente `WorkflowActions` nel dettaglio: pulsanti generati dalla config, loading/empty/error. Form+salvataggio = S5.3.                                                                                              |
 | S5.3   | Form dinamico fase + salvataggio                             | FATTO    | Nuova tabella `transition_records` (migrazione 0005, incrementale). IPC `practices:executeTransition`: validazione campi lato main (required+condizionale+menu+pec), calcolo destinazione dentro transazione (self/sospensione/resume), TransitionRecord+HistoryEvent+PEC, version++. `TransitionFormModal` + `DynamicField`/`PecBlock` estratti in modulo condiviso. Guard liquidata = S5.4. |
-| S5.4   | Guard coerenza stati                                         | TODO     |                                                                                                                                                                                                                          |
+| S5.4   | Guard coerenza stati                                         | FATTO    | Backend-only, nessuna migrazione. Guard di liquidazione in `executeTransition` (dentro la transazione): destinazione `category='liquidated'` richiede categorie raggiunte `decree_received` + `awaiting_liquidation` (via HistoryEvent.toPhaseId). Ragiona per category canonica, non per key; difesa in profondità. |
 | S5.5   | Storico/timeline                                             | TODO     |                                                                                                                                                                                                                          |
 | S6.1   | Quattro importi                                              | TODO     |                                                                                                                                                                                                                          |
 | S6.2   | Differenze calcolate                                         | TODO     |                                                                                                                                                                                                                          |
@@ -84,6 +84,29 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-25 — S5.4: Guard di coerenza degli stati — **E5 (Workflow operativo) COMPLETATA**
+
+**Nessuna modifica schema, nessuna migrazione.** Solo lettura di `history_events` join `phases`.
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `main/modules/practices/repository.ts` | Nuova `findReachedPhaseCategories(practiceId)`: `selectDistinct` delle `phases.category` raggiunte dagli `HistoryEvent` (innerJoin su `toPhaseId`), `Set<string>` |
+| `main/modules/practices/service.ts` | Costanti `LIQUIDATION_CATEGORY`/`REQUIRED_BEFORE_LIQUIDATION` + helper `assertLiquidationGuard`; chiamata in `executeTransition` dentro la transazione (`phaseChanged && toPhaseCategory==='liquidated'`), prima dell'insert del record |
+| `docs/03-workflow-engine.md` | §"Coerenza degli stati": specificata la regola concreta del guard di liquidazione e la natura "difesa in profondità" |
+
+**Invarianti / regole del guard:**
+1. Attivo solo su destinazione `category='liquidated'` con effettivo cambio fase.
+2. Richiede che la pratica abbia attraversato (via `HistoryEvent.toPhaseId`) una fase `decree_received` **e** una `awaiting_liquidation`; altrimenti `ValidationError` con elenco di ciò che manca.
+3. Ragiona per **category canonica**, non per `key`: le fasi custom (`category='custom'`) non innescano il guard.
+4. Controllo **dentro la transazione** → rollback (nessun `TransitionRecord`/`HistoryEvent`) se non superato.
+5. `isResume` ha `toPhaseCategory=null` → mai liquidazione, nessun falso positivo.
+
+**S5.5 (Storico/timeline):** considerata coperta da S5.1 (`TimelineSection` in `DettaglioPraticaPage`). Eventuale arricchimento con i valori compilati nelle transizioni resta TODO futuro.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓ (boot pulito). Verifica interattiva GUI ✓: percorso valido fino a Liquidata e percorso bloccato via transizione-scorciatoia confermati dall'utente.
 
 ### 2026-06-25 — S5.3: Form dinamico fase + salvataggio
 

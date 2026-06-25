@@ -404,6 +404,23 @@ export function findHistoryEventsByPractice(practiceId: number): HistoryEventLis
     .all()
 }
 
+// Categorie di fase che la pratica ha attraversato nella sua storia: distinte
+// dalle `phases.category` raggiunte dagli HistoryEvent (toPhaseId). Usata dal
+// guard di liquidazione (S5.4) per verificare decreto/SCP registrati.
+export function findReachedPhaseCategories(practiceId: number): Set<string> {
+  const rows = getDb()
+    .selectDistinct({ category: phases.category })
+    .from(historyEvents)
+    .innerJoin(phases, eq(historyEvents.toPhaseId, phases.id))
+    .where(eq(historyEvents.practiceId, practiceId))
+    .all()
+  const categories: string[] = []
+  for (const r of rows) {
+    if (r.category != null) categories.push(r.category)
+  }
+  return new Set(categories)
+}
+
 export function findPecDepositoAddresses(practiceId: number): string[] {
   return getDb()
     .select({ indirizzo: pecRecipients.indirizzo })

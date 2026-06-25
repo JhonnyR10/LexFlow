@@ -73,6 +73,8 @@ La PEC non è un flag di fase né logica cablata. Si configura come **visibilit�
 
 Le transizioni invalide non esistono nel grafo, quindi non producono pulsanti. Guard di business aggiuntivi nel service (es. non si raggiunge `liquidata` senza che risultino registrati decreto e invio a SCP). I guard stanno nel service, non nei componenti.
 
+**Guard di liquidazione (S5.4).** Quando una transizione porta a una fase con `category = liquidated` (cambio fase effettivo), il service verifica che la pratica abbia **già attraversato** nella sua storia (`HistoryEvent`) una fase con `category = decree_received` (decreto ricevuto) **e** una con `category = awaiting_liquidation` (invio a SCP). In caso contrario l'avanzamento è rifiutato con errore di validazione che elenca cosa manca; il controllo avviene **dentro la transazione**, quindi nessun `TransitionRecord`/`HistoryEvent` viene scritto (rollback). Il guard ragiona per **category canonica**, non per `key`: le fasi custom (`category = custom`) non lo innescano. Nel grafo canonico è quasi sempre soddisfatto (a `liquidata` si arriva da `in_attesa_liquidazione_scp`, dopo `decreto_ricevuto`): funge da **difesa in profondità** contro riconfigurazioni del workflow che introducano scorciatoie verso la liquidazione.
+
 ## Dashboard e report (derivati)
 
 Card per fase: una per ogni fase con pratiche attive (escluse le cestinate). Gli alert anzianità riguardano le fasi aperte (non finali). "Vedi pratiche" su una card -> Pratiche filtrate per quella fase. Le nuove fasi configurate dall'utente entrano automaticamente in card, filtri e report.

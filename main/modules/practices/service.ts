@@ -35,6 +35,7 @@ import {
   findActiveMenuOptionValues,
   insertTransitionRecord,
   advancePractice,
+  findReachedPhaseCategories,
   type TransitionFieldRow,
 } from './repository'
 import { getDb } from '../../database/connection'
@@ -337,6 +338,30 @@ function validateTransitionValues(
   return clean
 }
 
+// Guard di coerenza degli stati (S5.4, docs/03-workflow-engine.md §Coerenza degli stati).
+// Ragiona per category canonica, non per key: le fasi custom non lo innescano.
+const LIQUIDATION_CATEGORY = 'liquidated'
+const REQUIRED_BEFORE_LIQUIDATION: ReadonlyArray<{ category: string; label: string }> = [
+  { category: 'decree_received',      label: 'decreto ricevuto' },
+  { category: 'awaiting_liquidation', label: 'invio a SCP' },
+]
+
+// Impedisce di raggiungere «Liquidata» senza che la pratica abbia attraversato
+// (negli HistoryEvent) le fasi di decreto ricevuto e invio a SCP. Difesa in
+// profondità contro scorciatoie nel workflow riconfigurato.
+function assertLiquidationGuard(practiceId: number, targetCategory: string | null): void {
+  if (targetCategory !== LIQUIDATION_CATEGORY) return
+  const reached = findReachedPhaseCategories(practiceId)
+  const missing = REQUIRED_BEFORE_LIQUIDATION
+    .filter(req => !reached.has(req.category))
+    .map(req => req.label)
+  if (missing.length > 0) {
+    throw new ValidationError(
+      `Impossibile liquidare la pratica: manca la registrazione di ${missing.join(' e ')}.`
+    )
+  }
+}
+
 // Deriva il contesto della PEC dalla fase di destinazione (precisazione 1).
 // TODO (post-MVP): rendere il contesto configurabile direttamente sul campo `pec`.
 function derivePecContesto(toPhaseCategory: string | null): 'deposito' | 'scp' | 'altro' {
@@ -414,6 +439,12 @@ export function executeTransition(input: ExecuteTransitionInput): ExecuteTransit
         newPreviousPhaseId = core.previousPhaseId
         phaseChanged = true
       }
+    }
+
+    // Guard di coerenza degli stati (S5.4): blocca la liquidazione senza decreto
+    // e invio SCP registrati. Dentro la transazione → rollback se non superato.
+    if (phaseChanged) {
+      assertLiquidationGuard(input.practiceId, transition.toPhaseCategory)
     }
 
     const transitionRecordId = insertTransitionRecord({
