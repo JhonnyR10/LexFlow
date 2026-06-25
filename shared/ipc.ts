@@ -431,6 +431,7 @@ export interface PracticeListItem {
   dataUdienza: string | null
   dataDeposito: string | null
   autoritaGiudiziaria: string | null
+  note: string | null
   currentPhaseId: number
   currentPhaseKey: string | null
   currentPhaseDisplayName: string | null

@@ -3,6 +3,24 @@ import { Link } from 'react-router-dom'
 import { useActivePractices } from './usePractices'
 import type { PracticeListItem } from '../../../shared/ipc'
 
+// Normalizza per la ricerca: minuscolo + rimozione dei segni diacritici, così
+// il confronto è case-insensitive e accent-insensitive ("AUTORITA" trova "Autorità").
+function normalizeForSearch(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+}
+
+// Stringa cercabile per riga: concatena i campi su cui opera la ricerca globale.
+function searchableBlob(p: PracticeListItem): string {
+  return normalizeForSearch([
+    p.codiceIstanza,
+    p.nomeIstanza,
+    p.collaboratoreDenominazione,
+    p.professionistaDenominazione,
+    p.autoritaGiudiziaria,
+    p.note,
+  ].filter((v): v is string => v != null).join(' '))
+}
+
 function formatDate(iso: string | null): string {
   if (!iso) return '—'
   const [y, m, d] = iso.split('-')
@@ -77,7 +95,7 @@ const tdStyle: React.CSSProperties = {
   verticalAlign: 'middle',
 }
 
-export function PraticheTable(): React.JSX.Element {
+export function PraticheTable({ searchTerm }: { searchTerm: string }): React.JSX.Element {
   const { data: practices, isLoading, isError } = useActivePractices()
 
   if (isLoading) {
@@ -112,6 +130,26 @@ export function PraticheTable(): React.JSX.Element {
     )
   }
 
+  const normalizedTerm = normalizeForSearch(searchTerm.trim())
+  const filtered = normalizedTerm
+    ? practices.filter(p => searchableBlob(p).includes(normalizedTerm))
+    : practices
+
+  if (filtered.length === 0) {
+    return (
+      <div style={{
+        padding: '48px', textAlign: 'center',
+        color: 'var(--color-text-muted)', fontSize: '14px',
+        border: '2px dashed var(--color-border)', borderRadius: '10px',
+      }}>
+        <p style={{ margin: '0 0 8px', fontWeight: 500 }}>
+          Nessun risultato per «{searchTerm.trim()}».
+        </p>
+        <p style={{ margin: 0 }}>Modifica o azzera la ricerca per vedere tutte le pratiche.</p>
+      </div>
+    )
+  }
+
   return (
     <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', background: 'var(--color-surface)' }}>
@@ -127,7 +165,7 @@ export function PraticheTable(): React.JSX.Element {
           </tr>
         </thead>
         <tbody>
-          {practices.map(p => <PracticeRow key={p.id} p={p} />)}
+          {filtered.map(p => <PracticeRow key={p.id} p={p} />)}
         </tbody>
       </table>
     </div>

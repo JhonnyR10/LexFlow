@@ -4,6 +4,7 @@ import { PraticheTable } from '../features/practices/PraticheTable'
 
 export function PratichePage(): React.JSX.Element {
   const [modalOpen, setModalOpen] = useState(false)
+  const [search, setSearch] = useState('')
   const [lastCreated, setLastCreated] = useState<{ id: number; codice: string } | null>(null)
 
   const handleCreated = (id: number, codiceIstanza: string): void => {
@@ -38,7 +39,37 @@ export function PratichePage(): React.JSX.Element {
         </div>
       )}
 
-      <PraticheTable />
+      <div style={{ position: 'relative', maxWidth: '420px', marginBottom: '16px' }}>
+        <input
+          type="search"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Cerca per codice, nome, soggetti, autorità, note…"
+          aria-label="Cerca pratiche"
+          style={{
+            width: '100%', padding: '8px 32px 8px 12px',
+            background: 'var(--color-surface)', color: 'var(--color-text)',
+            border: '1px solid var(--color-border)', borderRadius: '6px',
+            fontSize: '13px', boxSizing: 'border-box',
+          }}
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch('')}
+            aria-label="Azzera ricerca"
+            style={{
+              position: 'absolute', top: '50%', right: '8px', transform: 'translateY(-50%)',
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--color-text-muted)', fontSize: '15px', lineHeight: 1, padding: '2px',
+            }}
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      <PraticheTable searchTerm={search} />
 
       {modalOpen && (
         <NuovaPraticaModal

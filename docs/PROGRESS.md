@@ -22,7 +22,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S2.1   | CRUD Professionisti                                          | FATTO    | Nuovo modulo anagrafiche (IPC namespace `anagrafiche:`), schema Drizzle + migrazione incrementale 0001_*.sql, CRUD completo, denominazione auto-derivata da cognome+nome, validazione CF/email morbida.                  |
 | S2.2   | CRUD Collaboratori                                           | FATTO    | Modulo anagrafiche esteso: schema Drizzle + migrazione incrementale 0002_*.sql, CRUD completo, denominazione auto-derivata da cognome+nome, codiceInterno opzionale.                                                     |
 | S3.1   | Tabella pratiche attive                                      | FATTO    | IPC practices:listPractices, LEFT JOIN phases/professionisti/collaboratori, PraticheTable con 7 colonne, route /pratiche/:id con DettaglioPraticaPage placeholder.                                                        |
-| S3.2   | Ricerca globale                                              | TODO     |                                                                                                                                                                                                                          |
+| S3.2   | Ricerca globale                                              | FATTO    | Barra di ricerca in `PratichePage`, filtro client-side in `PraticheTable` (case/accent-insensitive) su codice, nome, soggetti, autorità, note. `note` esposto in `PracticeListItem`. Stato filtrato-vuoto distinto. Procedimenti multipli fuori MVP. |
 | S3.3   | Filtri base                                                  | TODO     |                                                                                                                                                                                                                          |
 | S3.4   | Ordinamento + selezione multipla                             | TODO     |                                                                                                                                                                                                                          |
 | S4.1   | Generazione codice istanza                                   | FATTO    | Schema practices (22 col, FK a phases/professionisti/collaboratori), siglaCodice in AppSettings, migrazione 0003_*.sql, IPC practices:generateCodiceIstanza, formato AAAAMMGG_SIGLA_NNN.                                 |
@@ -84,6 +84,34 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-25 — S3.2: Ricerca globale
+
+**Nessuna modifica schema, nessuna migrazione.** Filtro lato renderer
+sull'elenco già caricato/cachato da `useActivePractices`: ricerca istantanea,
+nessun IPC per battuta, nessuna business logic nei layer main (filtro di
+presentazione). Unico tocco backend: esposizione del campo `note` nell'elenco.
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `shared/ipc.ts` | Aggiunto `note: string \| null` a `PracticeListItem` |
+| `main/modules/practices/repository.ts` | `findAllActivePractices`: `note` aggiunto alla `select(...)` e al mapping |
+| `src/features/practices/PraticheTable.tsx` | Prop `searchTerm`; helper puri `normalizeForSearch` (lowercase + NFD senza diacritici) e `searchableBlob` (codice, nome, denominazioni soggetti, autorità, note); filtro `includes`; stato **filtrato-vuoto** distinto da quello «Nessuna pratica attiva» |
+| `src/pages/PratichePage.tsx` | Stato `search`, `<input type="search">` con pulsante "✕" di azzeramento; `searchTerm` passato alla tabella |
+
+**Regole / invarianti:**
+1. Ricerca **case-insensitive e accent-insensitive** (es. "AUTORITA" trova "Autorità").
+2. Campi cercabili: codice istanza, nome istanza, denominazione collaboratore/professionista, autorità giudiziaria, note.
+3. Termine vuoto → elenco completo; termine senza match → stato filtrato-vuoto dedicato.
+4. **Fuori perimetro:** numeri di procedimento multipli (fuori MVP, nessuna colonna in `practices`).
+
+**Confine di storia:** S3.3 (filtri fase/soggetti/date/importi) e S3.4 (ordinamento + selezione multipla) restano storie separate successive.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` da verificare interattivamente.
+
+---
 
 ### 2026-06-25 — S5.4: Guard di coerenza degli stati — **E5 (Workflow operativo) COMPLETATA**
 
