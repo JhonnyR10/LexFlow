@@ -55,7 +55,8 @@ export const IPC_CHANNELS = {
   PRACTICES_LIST: 'practices:listPractices',
   PRACTICES_GET: 'practices:getPractice',
   PRACTICES_LIST_AVAILABLE_TRANSITIONS: 'practices:listAvailableTransitions',
-  PRACTICES_EXECUTE_TRANSITION: 'practices:executeTransition'
+  PRACTICES_EXECUTE_TRANSITION: 'practices:executeTransition',
+  PRACTICES_UPDATE: 'practices:updatePractice'
 } as const
 
 export type AppGetVersionResponse = string
@@ -424,6 +425,32 @@ export interface CreatePracticeResponse {
   currentPhaseId: number
 }
 
+// --- Modifica pratica (S4.3) ---
+// Modifica i soli dati generali editabili. `codiceIstanza` (identità) e la fase
+// corrente NON sono modificabili da qui: la fase si muove solo via transizioni (E5).
+// `dataUdienza` resta obbligatoria; modificarla non rigenera il codice istanza.
+export interface UpdatePracticeInput {
+  id: number
+  nomeIstanza?: string
+  collaboratoreId?: number | null
+  professionistaId?: number | null
+  tipologiaAttivita?: string
+  dataUdienza: string                     // ISO YYYY-MM-DD — obbligatoria
+  competenza?: string
+  autoritaGiudiziaria?: string
+  dataDeposito?: string
+  modalitaDeposito?: string
+  importoRichiesto?: number | null
+  note?: string
+  customValues?: Record<string, unknown>
+  pecDestinatari?: string[]               // destinatari PEC deposito; usati solo se modalitaDeposito='pec'
+}
+
+export interface UpdatePracticeResponse {
+  id: number
+  changed: boolean                        // true se almeno un campo è cambiato (→ HistoryEvent scritto)
+}
+
 export interface PracticeListItem {
   id: number
   codiceIstanza: string
@@ -563,6 +590,7 @@ export interface LexFlowApi {
   practices: {
     generateCodiceIstanza(input: GenerateCodiceIstanzaInput): Promise<GenerateCodiceIstanzaResponse>
     createPractice(input: CreatePracticeInput): Promise<CreatePracticeResponse>
+    updatePractice(input: UpdatePracticeInput): Promise<UpdatePracticeResponse>
     listPractices(): Promise<PracticesListResponse>
     getPractice(input: GetPracticeInput): Promise<GetPracticeResponse>
     listAvailableTransitions(input: ListAvailableTransitionsInput): Promise<PracticesListAvailableTransitionsResponse>

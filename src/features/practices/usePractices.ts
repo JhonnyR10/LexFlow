@@ -9,6 +9,8 @@ import { practicesApi } from '../../api/practices'
 import type {
   CreatePracticeInput,
   CreatePracticeResponse,
+  UpdatePracticeInput,
+  UpdatePracticeResponse,
   GetPracticeResponse,
   PracticesListResponse,
   PracticesListAvailableTransitionsResponse,
@@ -46,6 +48,20 @@ export function useCreatePractice(): UseMutationResult<CreatePracticeResponse, E
   return useMutation({
     mutationFn: (input: CreatePracticeInput) => practicesApi.createPractice(input),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['practices'] })
+    },
+  })
+}
+
+export function useUpdatePractice(
+  practiceId: number
+): UseMutationResult<UpdatePracticeResponse, Error, UpdatePracticeInput, unknown> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: UpdatePracticeInput) => practicesApi.updatePractice(input),
+    onSuccess: () => {
+      // Dettaglio (dati + nuovo evento storico) ed elenco vanno ricaricati.
+      queryClient.invalidateQueries({ queryKey: ['practice', practiceId] })
       queryClient.invalidateQueries({ queryKey: ['practices'] })
     },
   })

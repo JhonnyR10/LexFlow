@@ -93,7 +93,7 @@ Priorità MoSCoW. `MVP` = nel primo rilascio usabile end-to-end.
 
 - **S4.1** Generazione codice istanza automatica (sigla configurabile, progressivo annuale, anti-duplicato). _AC:_ due pratiche stesso giorno → progressivi distinti.
 - **S4.2** Form Nuova pratica: dati generali + campi custom generali + PEC deposito + numeri procedimento. _AC:_ validazione obbligatori; pratica nasce in fase iniziale.
-- **S4.3** Modifica pratica con registrazione nello storico delle modifiche rilevanti.
+- **S4.3** Modifica pratica con registrazione nello storico delle modifiche rilevanti. Editabili dal dettaglio: nome istanza, soggetti (collaboratore/professionista), tipologia/competenza/autorità, date (udienza/deposito), modalità deposito, importo richiesto, note, campi generali configurabili, destinatari PEC deposito. **Non** editabili da qui: `codiceIstanza` (identità della pratica, read-only) e `currentPhaseId`/fase (si muove solo via transizioni — E5). _AC:_ ogni modifica rilevante (qualsiasi variazione dei campi editabili) genera **un solo** `HistoryEvent` type `updated` con riepilogo dei campi cambiati; salvare senza modifiche non genera eventi; `codiceIstanza` e fase corrente invariati dopo il salvataggio.
 
 ### E5 — Workflow operativo `MVP` (Must)
 

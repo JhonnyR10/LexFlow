@@ -27,7 +27,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S3.4   | Ordinamento + selezione multipla                             | FATTO    | **E3 (Elenco e ricerca) COMPLETATA.** Ordinamento per colonna (toggle asc/desc, nulli in fondo, collation it+numeric); selezione multipla con checkbox limitata al filtrato, "seleziona tutto" solo sul filtrato; toolbar conteggio + deseleziona. Azioni bulk effettive rinviate (E10 cestino). |
 | S4.1   | Generazione codice istanza                                   | FATTO    | Schema practices (22 col, FK a phases/professionisti/collaboratori), siglaCodice in AppSettings, migrazione 0003_*.sql, IPC practices:generateCodiceIstanza, formato AAAAMMGG_SIGLA_NNN.                                 |
 | S4.2   | Form Nuova pratica                                           | FATTO    | Modal Nuova pratica: 6 sezioni, campi fissi + campi custom generali + PEC deposito. Backend: createPractice con transazione, auto-transizione depositata→in_attesa_decreto, HistoryEvent. Nuove tabelle: history_events, pec_recipients. Migrazione 0004_*.sql. |                                                                                                                                                                                                                          |
-| S4.3   | Modifica pratica + storico                                   | TODO     |                                                                                                                                                                                                                          |
+| S4.3   | Modifica pratica + storico                                   | FATTO    | **E4 (Creazione/modifica pratica) COMPLETATA.** IPC `practices:updatePractice`; `updatePractice` con diff campo-per-campo in transazione → un solo `HistoryEvent` type `updated` se cambia qualcosa. `codiceIstanza` e fase NON editabili. `ModificaPraticaModal` dal dettaglio; stili form estratti in `practiceFormStyles.ts`. PEC deposito sostituita integralmente. Nessuna migrazione. |
 | S5.1   | Dettaglio pratica                                            | FATTO    | IPC `practices:getPractice` (detail con join fasi/anagrafiche, history, PEC deposito). DettaglioPraticaPage read-only: intestazione, dati generali, soggetti, importi, campi personalizzati risolti, workflow, storico/timeline, documenti (stub E7). Pulsanti transizione = S5.2.                                                                          |
 | S5.2   | Pulsanti dinamici = transizioni                              | FATTO    | IPC `practices:listAvailableTransitions` (attive, non automatiche, dalla fase corrente; fase finale → nessuna azione). Componente `WorkflowActions` nel dettaglio: pulsanti generati dalla config, loading/empty/error. Form+salvataggio = S5.3.                                                                                              |
 | S5.3   | Form dinamico fase + salvataggio                             | FATTO    | Nuova tabella `transition_records` (migrazione 0005, incrementale). IPC `practices:executeTransition`: validazione campi lato main (required+condizionale+menu+pec), calcolo destinazione dentro transazione (self/sospensione/resume), TransitionRecord+HistoryEvent+PEC, version++. `TransitionFormModal` + `DynamicField`/`PecBlock` estratti in modulo condiviso. Guard liquidata = S5.4. |
@@ -84,6 +84,46 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-25 — S4.3: Modifica pratica + storico — **E4 (Creazione/modifica pratica) COMPLETATA**
+
+**Nessuna modifica schema, nessuna migrazione.** Editing dei soli dati generali su
+colonne esistenti; `version` incrementato come in `advancePractice`.
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `src/features/practices/practiceFormStyles.ts` | Costanti di stile inline condivise dai modali di pratica (estratte da `NuovaPraticaModal` per evitarne la duplicazione) + `readonlyInputStyle` |
+| `src/features/practices/ModificaPraticaModal.tsx` | Modale di modifica: campi pre-riempiti dalla pratica, codice istanza read-only, validazione zod (dataUdienza), submit via `useUpdatePractice`; riusa `DynamicField`/`PecBlock`/`getMenuOptions` |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `shared/ipc.ts` | Canale `PRACTICES_UPDATE`; tipi `UpdatePracticeInput`/`UpdatePracticeResponse`; esteso `LexFlowApi.practices` |
+| `main/modules/practices/repository.ts` | `findPracticeForEdit` (set editabili + isTrashed), `updatePracticeFields` (version++), `deletePecDepositoRecipients` |
+| `main/modules/practices/service.ts` | `updatePractice`: diff campo-per-campo in transazione, normalizzazione, `HistoryEvent` `updated` solo se `changed`; helper `normStr`/`stableStringify` |
+| `main/modules/practices/controller.ts` | `updatePracticeSchema` (zod) + handler `PRACTICES_UPDATE` |
+| `main/preload.ts` | Bridge `practices.updatePractice` |
+| `src/api/practices.ts` | Client `updatePractice` |
+| `src/features/practices/usePractices.ts` | Hook `useUpdatePractice` (invalida `['practice', id]`, `['practices']`) |
+| `src/features/practices/NuovaPraticaModal.tsx` | Stili inline ora importati da `practiceFormStyles.ts` (nessun cambio funzionale → S4.2 invariata) |
+| `src/pages/DettaglioPraticaPage.tsx` | Pulsante «Modifica» (nascosto se cestinata) + montaggio `ModificaPraticaModal` |
+| `docs/00-backlog-mvp.md` | AC di S4.3 esplicitati (campi editabili, codice/fase immutabili, evento `updated`) |
+
+**Invarianti / decisioni:**
+1. **Editabili:** nome istanza, soggetti, tipologia/competenza/autorità, date udienza/deposito, modalità deposito, importo richiesto, note, campi generali configurabili, PEC deposito. **Non editabili da S4.3:** `codiceIstanza` (identità/path documenti, read-only) e fase corrente (si muove solo via transizioni, E5).
+2. **«Modifica rilevante»** = qualsiasi variazione di un campo editabile. Un solo `HistoryEvent` type `updated`, `note` = «Modificati: …», `payload` = `{ changes: [{label, from, to}] }`. Nessun campo cambiato → nessun evento, `changed=false`, nessun errore.
+3. `customValues` confrontato con stringify stabile (chiavi ordinate); PEC deposito confrontata come insieme ordinato e sostituita integralmente (`contesto='deposito'`).
+4. Guard pratica nel cestino: modifica rifiutata (`ValidationError`), coerente con `executeTransition`.
+5. `nomeIstanza` non svuotabile: se vuoto, si mantiene il valore corrente. `dataUdienza` resta obbligatoria; modificarla non rigenera il codice.
+
+**Confine di storia:** i 3 importi concesso/fatturato/liquidato (colonne + differenze) restano **E6**.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` da verificare interattivamente.
+
+---
 
 ### 2026-06-25 — S3.4: Ordinamento + selezione multipla — **E3 (Elenco e ricerca) COMPLETATA**
 

@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { usePracticeDetail } from '../features/practices/usePractices'
 import { WorkflowActions } from '../features/practices/WorkflowActions'
+import { ModificaPraticaModal } from '../features/practices/ModificaPraticaModal'
 import { useFields } from '../features/config/fields/useFields'
 import { useMenuSets } from '../features/config/menus/useMenus'
 import type {
@@ -239,6 +240,7 @@ export function DettaglioPraticaPage(): React.JSX.Element {
   const { id } = useParams<{ id: string }>()
   const numericId = id != null && /^\d+$/.test(id) ? Number(id) : null
   const { data: practice, isLoading, isError, error } = usePracticeDetail(numericId)
+  const [editing, setEditing] = useState(false)
 
   if (numericId == null) {
     return (
@@ -287,17 +289,40 @@ export function DettaglioPraticaPage(): React.JSX.Element {
       <BackLink />
 
       {/* Intestazione */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-            {practice.codiceIstanza}
-          </h1>
-          <PhaseBadge name={practice.currentPhase.displayName} isFinal={practice.currentPhase.isFinal} />
+      <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+              {practice.codiceIstanza}
+            </h1>
+            <PhaseBadge name={practice.currentPhase.displayName} isFinal={practice.currentPhase.isFinal} />
+          </div>
+          <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+            {practice.nomeIstanza}
+          </div>
         </div>
-        <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
-          {practice.nomeIstanza}
-        </div>
+        {!practice.isTrashed && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            style={{
+              flexShrink: 0, padding: '8px 18px', background: 'var(--color-bg)', color: 'var(--color-text)',
+              border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '13px',
+              fontWeight: 500, cursor: 'pointer',
+            }}
+          >
+            Modifica
+          </button>
+        )}
       </div>
+
+      {editing && (
+        <ModificaPraticaModal
+          practice={practice}
+          onClose={() => setEditing(false)}
+          onUpdated={() => setEditing(false)}
+        />
+      )}
 
       {/* Dati generali */}
       <Section title="Dati generali">

@@ -3,6 +3,8 @@ import type {
   GenerateCodiceIstanzaResponse,
   CreatePracticeInput,
   CreatePracticeResponse,
+  UpdatePracticeInput,
+  UpdatePracticeResponse,
   PracticesListResponse,
   GetPracticeInput,
   GetPracticeResponse,
@@ -22,6 +24,11 @@ export const practicesApi = {
     input: CreatePracticeInput
   ): Promise<CreatePracticeResponse> =>
     window.api.practices.createPractice(input),
+
+  updatePractice: (
+    input: UpdatePracticeInput
+  ): Promise<UpdatePracticeResponse> =>
+    window.api.practices.updatePractice(input),
 
   listPractices: (): Promise<PracticesListResponse> =>
     window.api.practices.listPractices(),

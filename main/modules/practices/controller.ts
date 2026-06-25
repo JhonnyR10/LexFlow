@@ -8,10 +8,12 @@ import type {
   GetPracticeResponse,
   PracticesListAvailableTransitionsResponse,
   ExecuteTransitionResponse,
+  UpdatePracticeResponse,
 } from '../../../shared/ipc'
 import {
   generateCodiceIstanza,
   createPractice,
+  updatePractice,
   listActivePractices,
   getPracticeDetail,
   listAvailableTransitions,
@@ -67,6 +69,23 @@ const createPracticeSchema = z.object({
   pecDestinatari:      z.array(z.string()).optional(),
 })
 
+const updatePracticeSchema = z.object({
+  id:                  z.number().int().positive(),
+  nomeIstanza:         z.string().optional(),
+  collaboratoreId:     z.number().int().positive().nullable().optional(),
+  professionistaId:    z.number().int().positive().nullable().optional(),
+  tipologiaAttivita:   z.string().optional(),
+  dataUdienza:         z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'dataUdienza deve essere nel formato YYYY-MM-DD'),
+  competenza:          z.string().optional(),
+  autoritaGiudiziaria: z.string().optional(),
+  dataDeposito:        z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')).transform(v => v || undefined),
+  modalitaDeposito:    z.string().optional(),
+  importoRichiesto:    z.number().nullable().optional(),
+  note:                z.string().optional(),
+  customValues:        z.record(z.string(), z.unknown()).optional(),
+  pecDestinatari:      z.array(z.string()).optional(),
+})
+
 export function registerPracticesHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.PRACTICES_LIST,
@@ -91,6 +110,15 @@ export function registerPracticesHandlers(): void {
       logger.debug('IPC', IPC_CHANNELS.PRACTICES_CREATE)
       const parsed = parseOrThrow(createPracticeSchema, input)
       return createPractice(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.PRACTICES_UPDATE,
+    (_, input: unknown): UpdatePracticeResponse => {
+      logger.debug('IPC', IPC_CHANNELS.PRACTICES_UPDATE)
+      const parsed = parseOrThrow(updatePracticeSchema, input)
+      return updatePractice(parsed)
     }
   )
 

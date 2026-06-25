@@ -421,6 +421,106 @@ export function findReachedPhaseCategories(practiceId: number): Set<string> {
   return new Set(categories)
 }
 
+// --- S4.3: modifica pratica ---
+
+export interface PracticeForEdit {
+  id: number
+  nomeIstanza: string
+  collaboratoreId: number | null
+  professionistaId: number | null
+  tipologiaAttivita: string | null
+  dataUdienza: string | null
+  competenza: string | null
+  autoritaGiudiziaria: string | null
+  dataDeposito: string | null
+  modalitaDeposito: string | null
+  importoRichiesto: number | null
+  note: string | null
+  customValues: string  // JSON grezzo
+  isTrashed: boolean
+}
+
+// Set completo dei campi editabili (+ isTrashed) per costruire il diff in S4.3.
+export function findPracticeForEdit(id: number): PracticeForEdit | null {
+  const row = getDb()
+    .select({
+      id:                  practices.id,
+      nomeIstanza:         practices.nomeIstanza,
+      collaboratoreId:     practices.collaboratoreId,
+      professionistaId:    practices.professionistaId,
+      tipologiaAttivita:   practices.tipologiaAttivita,
+      dataUdienza:         practices.dataUdienza,
+      competenza:          practices.competenza,
+      autoritaGiudiziaria: practices.autoritaGiudiziaria,
+      dataDeposito:        practices.dataDeposito,
+      modalitaDeposito:    practices.modalitaDeposito,
+      importoRichiesto:    practices.importoRichiesto,
+      note:                practices.note,
+      customValues:        practices.customValues,
+      isTrashed:           practices.isTrashed,
+    })
+    .from(practices)
+    .where(eq(practices.id, id))
+    .get()
+  if (!row) return null
+  return {
+    id:                  row.id,
+    nomeIstanza:         row.nomeIstanza,
+    collaboratoreId:     row.collaboratoreId ?? null,
+    professionistaId:    row.professionistaId ?? null,
+    tipologiaAttivita:   row.tipologiaAttivita ?? null,
+    dataUdienza:         row.dataUdienza ?? null,
+    competenza:          row.competenza ?? null,
+    autoritaGiudiziaria: row.autoritaGiudiziaria ?? null,
+    dataDeposito:        row.dataDeposito ?? null,
+    modalitaDeposito:    row.modalitaDeposito ?? null,
+    importoRichiesto:    row.importoRichiesto ?? null,
+    note:                row.note ?? null,
+    customValues:        row.customValues,
+    isTrashed:           row.isTrashed,
+  }
+}
+
+export interface UpdatablePracticeFields {
+  nomeIstanza: string
+  collaboratoreId: number | null
+  professionistaId: number | null
+  tipologiaAttivita: string | null
+  dataUdienza: string
+  competenza: string | null
+  autoritaGiudiziaria: string | null
+  dataDeposito: string | null
+  modalitaDeposito: string | null
+  importoRichiesto: number | null
+  note: string | null
+  customValues: string
+}
+
+// Aggiorna i soli campi generali editabili (mai currentPhaseId/previousPhaseId/
+// codiceIstanza) e incrementa `version` (predisposizione audit, come advancePractice).
+export function updatePracticeFields(
+  id: number,
+  fields: UpdatablePracticeFields,
+  updatedAt: string
+): void {
+  getDb()
+    .update(practices)
+    .set({ ...fields, updatedAt, version: sql`${practices.version} + 1` })
+    .where(eq(practices.id, id))
+    .run()
+}
+
+// Sostituzione integrale dei destinatari PEC deposito di una pratica (S4.3).
+export function deletePecDepositoRecipients(practiceId: number): void {
+  getDb()
+    .delete(pecRecipients)
+    .where(and(
+      eq(pecRecipients.practiceId, practiceId),
+      eq(pecRecipients.contesto, 'deposito'),
+    ))
+    .run()
+}
+
 export function findPecDepositoAddresses(practiceId: number): string[] {
   return getDb()
     .select({ indirizzo: pecRecipients.indirizzo })

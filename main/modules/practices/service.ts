@@ -11,6 +11,8 @@ import type {
   PracticesListAvailableTransitionsResponse,
   ExecuteTransitionInput,
   ExecuteTransitionResponse,
+  UpdatePracticeInput,
+  UpdatePracticeResponse,
 } from '../../../shared/ipc'
 import {
   countPracticesByYear,
@@ -36,6 +38,9 @@ import {
   insertTransitionRecord,
   advancePractice,
   findReachedPhaseCategories,
+  findPracticeForEdit,
+  updatePracticeFields,
+  deletePecDepositoRecipients,
   type TransitionFieldRow,
 } from './repository'
 import { getDb } from '../../database/connection'
@@ -259,6 +264,138 @@ export function createPractice(input: CreatePracticeInput): CreatePracticeRespon
   })
 
   return result!
+}
+
+// ---------- S4.3: modifica pratica + storico ----------
+
+// Normalizza una stringa opzionale: trim, vuota → null.
+function normStr(v: string | undefined | null): string | null {
+  const t = (v ?? '').trim()
+  return t.length > 0 ? t : null
+}
+
+// Serializzazione stabile (chiavi ordinate) per confrontare oggetti customValues.
+function stableStringify(obj: Record<string, unknown>): string {
+  const keys = Object.keys(obj).sort()
+  const ordered: Record<string, unknown> = {}
+  for (const k of keys) ordered[k] = obj[k]
+  return JSON.stringify(ordered)
+}
+
+interface FieldChange {
+  label: string
+  from: unknown
+  to: unknown
+}
+
+// Modifica i dati generali editabili di una pratica e registra nello storico le
+// modifiche rilevanti (regola 9). NON tocca codiceIstanza né la fase corrente
+// (la fase si muove solo via transizioni, E5). Tutto dentro una transazione.
+export function updatePractice(input: UpdatePracticeInput): UpdatePracticeResponse {
+  if (!input.dataUdienza) {
+    throw new ValidationError('dataUdienza è obbligatoria')
+  }
+
+  const now = new Date().toISOString()
+  let response: UpdatePracticeResponse
+
+  getDb().transaction(() => {
+    const current = findPracticeForEdit(input.id)
+    if (!current) {
+      throw new NotFoundError('Pratica non trovata')
+    }
+    if (current.isTrashed) {
+      throw new ValidationError('Impossibile modificare una pratica nel cestino')
+    }
+
+    // Valori nuovi normalizzati. nomeIstanza non può essere svuotato: se vuoto,
+    // si mantiene quello corrente.
+    const next = {
+      nomeIstanza:         normStr(input.nomeIstanza) ?? current.nomeIstanza,
+      collaboratoreId:     input.collaboratoreId ?? null,
+      professionistaId:    input.professionistaId ?? null,
+      tipologiaAttivita:   normStr(input.tipologiaAttivita),
+      dataUdienza:         input.dataUdienza,
+      competenza:          normStr(input.competenza),
+      autoritaGiudiziaria: normStr(input.autoritaGiudiziaria),
+      dataDeposito:        normStr(input.dataDeposito),
+      modalitaDeposito:    normStr(input.modalitaDeposito),
+      importoRichiesto:    input.importoRichiesto ?? null,
+      note:                normStr(input.note),
+    }
+
+    const currentCustom = parseCustomValues(current.customValues)
+    const nextCustom = input.customValues ?? currentCustom
+
+    // PEC deposito: rilevante solo se modalità = pec; altrimenti il set va azzerato.
+    const isPec = next.modalitaDeposito === 'pec'
+    const nextPec = isPec
+      ? (input.pecDestinatari ?? []).map(a => a.trim()).filter(a => a.length > 0)
+      : []
+    const currentPec = findPecDepositoAddresses(input.id)
+
+    // Costruzione del diff (campi rilevanti, etichette leggibili).
+    const changes: FieldChange[] = []
+    const track = (label: string, from: unknown, to: unknown): void => {
+      if (from !== to) changes.push({ label, from, to })
+    }
+
+    track('Nome istanza', current.nomeIstanza, next.nomeIstanza)
+    track('Collaboratore', current.collaboratoreId, next.collaboratoreId)
+    track('Professionista', current.professionistaId, next.professionistaId)
+    track('Tipologia attività', current.tipologiaAttivita, next.tipologiaAttivita)
+    track('Data udienza', current.dataUdienza, next.dataUdienza)
+    track('Competenza', current.competenza, next.competenza)
+    track('Autorità giudiziaria', current.autoritaGiudiziaria, next.autoritaGiudiziaria)
+    track('Data deposito', current.dataDeposito, next.dataDeposito)
+    track('Modalità deposito', current.modalitaDeposito, next.modalitaDeposito)
+    track('Importo richiesto', current.importoRichiesto, next.importoRichiesto)
+    track('Note', current.note, next.note)
+
+    const customChanged = stableStringify(currentCustom) !== stableStringify(nextCustom)
+    if (customChanged) {
+      changes.push({ label: 'Campi aggiuntivi', from: currentCustom, to: nextCustom })
+    }
+
+    const pecChanged =
+      [...currentPec].sort().join('\n') !== [...nextPec].sort().join('\n')
+    if (pecChanged) {
+      changes.push({ label: 'Destinatari PEC deposito', from: currentPec, to: nextPec })
+    }
+
+    if (changes.length === 0) {
+      response = { id: input.id, changed: false }
+      return
+    }
+
+    updatePracticeFields(
+      input.id,
+      { ...next, customValues: JSON.stringify(nextCustom) },
+      now
+    )
+
+    if (pecChanged) {
+      deletePecDepositoRecipients(input.id)
+      if (nextPec.length > 0) {
+        insertPecRecipients(input.id, nextPec, 'deposito')
+      }
+    }
+
+    insertHistoryEvent({
+      practiceId:  input.id,
+      timestamp:   now,
+      type:        'updated',
+      title:       'Pratica modificata',
+      fromPhaseId: null,
+      toPhaseId:   null,
+      note:        `Modificati: ${changes.map(c => c.label).join(', ')}`,
+      payload:     JSON.stringify({ changes }),
+    })
+
+    response = { id: input.id, changed: true }
+  })
+
+  return response!
 }
 
 // ---------- S5.3: esecuzione transizione (form dinamico + salvataggio) ----------

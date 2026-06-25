@@ -1,20 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
 import { z } from 'zod'
 import { useMenuSets } from '../config/menus/useMenus'
 import { useFields } from '../config/fields/useFields'
 import { useAllProfessionisti } from '../anagrafiche/professionisti/useProfessionisti'
 import { useAllCollaboratori } from '../anagrafiche/collaboratori/useCollaboratori'
-import { useCreatePractice } from './usePractices'
-import { practicesApi } from '../../api/practices'
+import { useUpdatePractice } from './usePractices'
 import { ipcErrorMessage } from '../../utils/ipcError'
 import { DynamicField, PecBlock } from './dynamicFields'
 import { getMenuOptions } from './menuHelpers'
 import {
   overlayStyle, dialogStyle, titleStyle, sectionTitleStyle, rowStyle, fieldStyle,
   labelStyle, requiredDot, hintStyle, inputStyle, selectStyle, textareaStyle,
-  errorStyle, footerStyle, btnPrimaryStyle, btnSecondaryStyle,
+  errorStyle, footerStyle, btnPrimaryStyle, btnSecondaryStyle, readonlyInputStyle,
 } from './practiceFormStyles'
-import type { FieldDefListItem } from '../../../shared/ipc'
+import type { FieldDefListItem, PracticeDetail } from '../../../shared/ipc'
 
 // ---- Validazione renderer ----
 const formSchema = z.object({
@@ -22,76 +21,43 @@ const formSchema = z.object({
     .string()
     .min(1, 'La data di udienza è obbligatoria')
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato non valido (YYYY-MM-DD)'),
-  codiceIstanza: z.string().optional(),
-  nomeIstanza: z.string().optional(),
-  pecDestinatari: z.array(z.string()).optional(),
 })
 
 interface Props {
+  practice: PracticeDetail
   onClose: () => void
-  onCreated: (id: number, codiceIstanza: string) => void
+  onUpdated: (changed: boolean) => void
 }
 
 // ---- Componente principale ----
-export function NuovaPraticaModal({ onClose, onCreated }: Props): React.JSX.Element {
+export function ModificaPraticaModal({ practice, onClose, onUpdated }: Props): React.JSX.Element {
   const { data: menuSets = [], isLoading: loadingMenus } = useMenuSets()
   const { data: professionisti = [], isLoading: loadingProf } = useAllProfessionisti()
   const { data: collaboratori = [], isLoading: loadingCollab } = useAllCollaboratori()
   const { data: generalFields = [], isLoading: loadingFields } = useFields({ scope: 'general' })
-  const createPractice = useCreatePractice()
+  const updatePractice = useUpdatePractice(practice.id)
 
-  // Campi fissi
-  const [dataUdienza,         setDataUdienza]         = useState('')
-  const [codiceIstanza,       setCodiceIstanza]       = useState('')
-  const [codiceManual,        setCodiceManual]        = useState(false)  // true = utente ha modificato il codice manualmente
-  const [nomeIstanza,         setNomeIstanza]         = useState('')
-  const [nomeManual,          setNomeManual]          = useState(false)
-  const [professionistaId,    setProfessionistaId]    = useState<string>('')
-  const [collaboratoreId,     setCollaboratoreId]     = useState<string>('')
-  const [tipologiaAttivita,   setTipologiaAttivita]   = useState('')
-  const [competenza,          setCompetenza]          = useState('')
-  const [autoritaGiudiziaria, setAutoritaGiudiziaria] = useState('')
-  const [dataDeposito,        setDataDeposito]        = useState('')
-  const [modalitaDeposito,    setModalitaDeposito]    = useState('')
-  const [importoRichiesto,    setImportoRichiesto]    = useState('')
-  const [note,                setNote]                = useState('')
-  const [pecDestinatari,      setPecDestinatari]      = useState<string[]>([])
+  // Campi fissi pre-riempiti dalla pratica esistente.
+  const [nomeIstanza,         setNomeIstanza]         = useState(practice.nomeIstanza)
+  const [professionistaId,    setProfessionistaId]    = useState<string>(practice.professionistaId != null ? String(practice.professionistaId) : '')
+  const [collaboratoreId,     setCollaboratoreId]     = useState<string>(practice.collaboratoreId != null ? String(practice.collaboratoreId) : '')
+  const [tipologiaAttivita,   setTipologiaAttivita]   = useState(practice.tipologiaAttivita ?? '')
+  const [dataUdienza,         setDataUdienza]         = useState(practice.dataUdienza ?? '')
+  const [competenza,          setCompetenza]          = useState(practice.competenza ?? '')
+  const [autoritaGiudiziaria, setAutoritaGiudiziaria] = useState(practice.autoritaGiudiziaria ?? '')
+  const [dataDeposito,        setDataDeposito]        = useState(practice.dataDeposito ?? '')
+  const [modalitaDeposito,    setModalitaDeposito]    = useState(practice.modalitaDeposito ?? '')
+  const [importoRichiesto,    setImportoRichiesto]    = useState(practice.importoRichiesto != null ? String(practice.importoRichiesto) : '')
+  const [note,                setNote]                = useState(practice.note ?? '')
+  const [pecDestinatari,      setPecDestinatari]      = useState<string[]>(practice.pecDepositoDestinatari)
 
-  // Campi custom generali
-  const [customValues, setCustomValues] = useState<Record<string, unknown>>({})
+  // Campi custom generali pre-riempiti.
+  const [customValues, setCustomValues] = useState<Record<string, unknown>>(practice.customValues)
 
   const [error,   setError]   = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   const isPec = modalitaDeposito === 'pec'
-
-  // Aggiorna codice preview quando cambia dataUdienza (se l'utente non ha modificato manualmente)
-  useEffect(() => {
-    if (!dataUdienza || !/^\d{4}-\d{2}-\d{2}$/.test(dataUdienza)) return
-    if (codiceManual) return
-    practicesApi.generateCodiceIstanza({ dataUdienza })
-      .then(res => setCodiceIstanza(res.codice))
-      .catch(() => {/* ignora errori di preview */})
-  }, [dataUdienza, codiceManual])
-
-  // Cambio data udienza: aggiorna la data e, se l'utente non ha modificato a
-  // mano il nome istanza, lo rigenera in linea (niente setState-in-effect).
-  const handleDataUdienzaChange = useCallback((val: string): void => {
-    setDataUdienza(val)
-    if (!nomeManual && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
-      setNomeIstanza(`${val.replace(/-/g, '')}_NOTA_SPESE`)
-    }
-  }, [nomeManual])
-
-  const handleCodiceChange = useCallback((val: string): void => {
-    setCodiceIstanza(val)
-    setCodiceManual(true)
-  }, [])
-
-  const handleNomeChange = useCallback((val: string): void => {
-    setNomeIstanza(val)
-    setNomeManual(true)
-  }, [])
 
   const handleCustomChange = useCallback((key: string, value: unknown): void => {
     setCustomValues(prev => ({ ...prev, [key]: value }))
@@ -101,19 +67,18 @@ export function NuovaPraticaModal({ onClose, onCreated }: Props): React.JSX.Elem
     e.preventDefault()
     setError(null)
 
-    const parsed = formSchema.safeParse({ dataUdienza, codiceIstanza, nomeIstanza, pecDestinatari })
+    const parsed = formSchema.safeParse({ dataUdienza })
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? 'Dati non validi')
       return
     }
 
-    // Filtra indirizzi PEC vuoti
     const pec = isPec ? pecDestinatari.filter(a => a.trim() !== '') : []
 
     setLoading(true)
     try {
-      const result = await createPractice.mutateAsync({
-        codiceIstanza:       codiceIstanza || undefined,
+      const result = await updatePractice.mutateAsync({
+        id:                  practice.id,
         nomeIstanza:         nomeIstanza || undefined,
         collaboratoreId:     collaboratoreId ? parseInt(collaboratoreId, 10) : null,
         professionistaId:    professionistaId ? parseInt(professionistaId, 10) : null,
@@ -126,9 +91,9 @@ export function NuovaPraticaModal({ onClose, onCreated }: Props): React.JSX.Elem
         importoRichiesto:    importoRichiesto !== '' ? parseFloat(importoRichiesto) : null,
         note:                note || undefined,
         customValues,
-        pecDestinatari:      pec.length > 0 ? pec : undefined,
+        pecDestinatari:      pec,
       })
-      onCreated(result.id, result.codiceIstanza)
+      onUpdated(result.changed)
     } catch (err) {
       setError(ipcErrorMessage(err))
     } finally {
@@ -143,7 +108,7 @@ export function NuovaPraticaModal({ onClose, onCreated }: Props): React.JSX.Elem
   return (
     <div style={overlayStyle} onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
       <div style={dialogStyle} onMouseDown={e => e.stopPropagation()}>
-        <div style={titleStyle}>Nuova pratica</div>
+        <div style={titleStyle}>Modifica pratica</div>
 
         {isDataLoading && (
           <p style={{ color: 'var(--color-text-muted)', fontSize: '13px', marginBottom: '16px' }}>
@@ -156,6 +121,24 @@ export function NuovaPraticaModal({ onClose, onCreated }: Props): React.JSX.Elem
           {/* ---- Sezione 1: Codice / Udienza ---- */}
           <div style={sectionTitleStyle}>Codice istanza e udienza</div>
 
+          <div style={rowStyle}>
+            <div>
+              <label style={labelStyle}>Codice istanza</label>
+              <input style={readonlyInputStyle} type="text" value={practice.codiceIstanza} readOnly disabled />
+              <p style={hintStyle}>Identità della pratica: non modificabile.</p>
+            </div>
+            <div>
+              <label style={labelStyle}>Nome istanza</label>
+              <input
+                style={inputStyle}
+                type="text"
+                value={nomeIstanza}
+                onChange={e => setNomeIstanza(e.target.value)}
+                placeholder="AAAAMMGG_NOTA_SPESE"
+              />
+            </div>
+          </div>
+
           <div style={fieldStyle}>
             <label style={labelStyle}>
               Data udienza<span style={requiredDot}>*</span>
@@ -164,34 +147,10 @@ export function NuovaPraticaModal({ onClose, onCreated }: Props): React.JSX.Elem
               style={inputStyle}
               type="date"
               value={dataUdienza}
-              onChange={e => handleDataUdienzaChange(e.target.value)}
+              onChange={e => setDataUdienza(e.target.value)}
               required
             />
-          </div>
-
-          <div style={rowStyle}>
-            <div>
-              <label style={labelStyle}>Codice istanza</label>
-              <input
-                style={inputStyle}
-                type="text"
-                value={codiceIstanza}
-                onChange={e => handleCodiceChange(e.target.value)}
-                placeholder="auto-generato"
-              />
-              <p style={hintStyle}>Generato automaticamente dalla data di udienza. Modificabile.</p>
-            </div>
-            <div>
-              <label style={labelStyle}>Nome istanza</label>
-              <input
-                style={inputStyle}
-                type="text"
-                value={nomeIstanza}
-                onChange={e => handleNomeChange(e.target.value)}
-                placeholder="auto-generato"
-              />
-              <p style={hintStyle}>Auto-generato come AAAAMMGG_NOTA_SPESE. Modificabile.</p>
-            </div>
+            <p style={hintStyle}>La modifica della data non rigenera il codice istanza.</p>
           </div>
 
           {/* ---- Sezione 2: Soggetti ---- */}
@@ -204,7 +163,7 @@ export function NuovaPraticaModal({ onClose, onCreated }: Props): React.JSX.Elem
                 onChange={e => setProfessionistaId(e.target.value)}>
                 <option value="">— nessuno —</option>
                 {(professionisti as { id: number; denominazione: string; isActive: boolean }[])
-                  .filter(p => p.isActive)
+                  .filter(p => p.isActive || String(p.id) === professionistaId)
                   .map(p => <option key={p.id} value={p.id}>{p.denominazione}</option>)}
               </select>
             </div>
@@ -214,7 +173,7 @@ export function NuovaPraticaModal({ onClose, onCreated }: Props): React.JSX.Elem
                 onChange={e => setCollaboratoreId(e.target.value)}>
                 <option value="">— nessuno —</option>
                 {(collaboratori as { id: number; denominazione: string; isActive: boolean }[])
-                  .filter(c => c.isActive)
+                  .filter(c => c.isActive || String(c.id) === collaboratoreId)
                   .map(c => <option key={c.id} value={c.id}>{c.denominazione}</option>)}
               </select>
             </div>
@@ -337,7 +296,7 @@ export function NuovaPraticaModal({ onClose, onCreated }: Props): React.JSX.Elem
               style={{ ...btnPrimaryStyle, opacity: loading ? 0.7 : 1 }}
               disabled={loading || isDataLoading}
             >
-              {loading ? 'Salvataggio…' : 'Crea pratica'}
+              {loading ? 'Salvataggio…' : 'Salva modifiche'}
             </button>
           </div>
 
