@@ -128,9 +128,9 @@ ora l'infrastruttura di lettura: un **puntatore di bootstrap** esterno al DB.
 **Confine di storia:** spostamento/cambio percorso (post-MVP), backup/ripristino (S11.3), reset (S11.4),
 backup automatico (S11.7).
 
-**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓. Verifica interattiva GUI
-(`npm run desktop`: `config.json` creato/ricreato al boot, sezione mostra il percorso, Copia/Apri cartella,
-regressione tema+documenti) da completare manualmente.
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓
+(verifica interattiva GUI confermata dall'utente: `config.json` creato/ricreato al boot, sezione mostra il
+percorso, Copia/Apri cartella, nessuna regressione tema+documenti).
 
 ### 2026-06-26 — S11.1: Tema interfaccia + colori semantici fissi — **apre E11 (Impostazioni app)**
 
