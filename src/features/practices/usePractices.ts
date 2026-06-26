@@ -16,6 +16,9 @@ import type {
   PracticesListAvailableTransitionsResponse,
   ExecuteTransitionInput,
   ExecuteTransitionResponse,
+  MoveToTrashInput,
+  MoveToTrashResponse,
+  PracticesListTrashedResponse,
 } from '../../../shared/ipc'
 
 export function useActivePractices(): UseQueryResult<PracticesListResponse, Error> {
@@ -65,6 +68,31 @@ export function useUpdatePractice(
       // Dettaglio (dati + nuovo evento storico) ed elenco vanno ricaricati.
       queryClient.invalidateQueries({ queryKey: ['practice', practiceId] })
       queryClient.invalidateQueries({ queryKey: ['practices'] })
+    },
+  })
+}
+
+export function useTrashedPractices(): UseQueryResult<PracticesListTrashedResponse, Error> {
+  return useQuery({
+    queryKey: ['trash'],
+    queryFn: () => practicesApi.listTrashed(),
+  })
+}
+
+// Sposta una o più pratiche nel cestino (S10.1). Le pratiche cestinate escono
+// da elenco/Dashboard/alert ed entrano nel cestino: invalidiamo le relative
+// query, più il dettaglio di ciascuna pratica coinvolta.
+export function useMoveToTrash(): UseMutationResult<MoveToTrashResponse, Error, MoveToTrashInput, unknown> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: MoveToTrashInput) => practicesApi.moveToTrash(input),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['practices'] })
+      queryClient.invalidateQueries({ queryKey: ['trash'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      for (const id of variables.ids) {
+        queryClient.invalidateQueries({ queryKey: ['practice', id] })
+      }
     },
   })
 }

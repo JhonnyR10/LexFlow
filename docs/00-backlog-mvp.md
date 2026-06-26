@@ -127,7 +127,7 @@ Priorità MoSCoW. `MVP` = nel primo rilascio usabile end-to-end.
 
 ### E10 — Cestino `MVP` (Must)
 
-- **S10.1** Sposta nel cestino con conferma e motivo; data cestinazione. _AC:_ escluso da Dashboard/Report/alert/assistente.
+- **S10.1** Sposta nel cestino (soft delete) con conferma e motivo; data cestinazione. L'azione è disponibile dal **dettaglio pratica** (singola) e **in blocco** dalla toolbar di selezione dell'elenco (selezione multipla predisposta in S3.4). Una modale di conferma raccoglie un **motivo obbligatorio** (validato zod su renderer e main); al salvataggio le pratiche selezionate ottengono `isTrashed=true`, `trashedAt` (data cestinazione) e `trashReason`, e ciascuna scrive un `HistoryEvent` `type='trashed'` con il motivo (regola 9). Operazione atomica in un'unica transazione; pratiche già cestinate vengono saltate. I file documentali **non** vengono toccati (sopravvivono a cestino + ripristino, E7). La pagina **Cestino** mostra (sola lettura in S10.1) la tabella delle pratiche cestinate con codice istanza cliccabile (= Apri), nome, fase, **data cestinazione** e **motivo**, con messaggio di avviso in testa. _AC:_ dopo la cestinazione la pratica sparisce da elenco/Dashboard/alert/anzianità (le query filtrano già `isTrashed=false`) e compare nel Cestino con data e motivo; conferma senza motivo bloccata; storico con l'evento «Pratica spostata nel cestino». Ripristino → S10.2; cancellazione definitiva → S10.3.
 - **S10.2** Ripristino (singolo e multiplo) con ritorno nei conteggi.
 - **S10.3** Cancellazione definitiva esplicita e irreversibile, con avviso forte.
 

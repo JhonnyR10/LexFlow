@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { usePracticeDetail } from '../features/practices/usePractices'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { usePracticeDetail, useMoveToTrash } from '../features/practices/usePractices'
 import { WorkflowActions } from '../features/practices/WorkflowActions'
 import { ModificaPraticaModal } from '../features/practices/ModificaPraticaModal'
+import { MoveToTrashModal } from '../features/practices/MoveToTrashModal'
+import { ipcErrorMessage } from '../utils/ipcError'
 import { DocumentsSection } from '../features/documents/DocumentsSection'
 import { useFields } from '../features/config/fields/useFields'
 import { useMenuSets } from '../features/config/menus/useMenus'
@@ -285,7 +287,26 @@ export function DettaglioPraticaPage(): React.JSX.Element {
   const { id } = useParams<{ id: string }>()
   const numericId = id != null && /^\d+$/.test(id) ? Number(id) : null
   const { data: practice, isLoading, isError, error } = usePracticeDetail(numericId)
+  const navigate = useNavigate()
+  const moveToTrash = useMoveToTrash()
   const [editing, setEditing] = useState(false)
+  const [trashing, setTrashing] = useState(false)
+  const [trashError, setTrashError] = useState<string | null>(null)
+
+  const handleMoveToTrash = (reason: string): void => {
+    if (numericId == null) return
+    setTrashError(null)
+    moveToTrash.mutate(
+      { ids: [numericId], reason },
+      {
+        onSuccess: () => {
+          setTrashing(false)
+          navigate('/pratiche')
+        },
+        onError: (e) => setTrashError(ipcErrorMessage(e)),
+      }
+    )
+  }
 
   if (numericId == null) {
     return (
@@ -347,19 +368,42 @@ export function DettaglioPraticaPage(): React.JSX.Element {
           </div>
         </div>
         {!practice.isTrashed && (
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            style={{
-              flexShrink: 0, padding: '8px 18px', background: 'var(--color-bg)', color: 'var(--color-text)',
-              border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '13px',
-              fontWeight: 500, cursor: 'pointer',
-            }}
-          >
-            Modifica
-          </button>
+          <div style={{ flexShrink: 0, display: 'flex', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              style={{
+                padding: '8px 18px', background: 'var(--color-bg)', color: 'var(--color-text)',
+                border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '13px',
+                fontWeight: 500, cursor: 'pointer',
+              }}
+            >
+              Modifica
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTrashError(null); setTrashing(true) }}
+              style={{
+                padding: '8px 18px', background: 'var(--color-bg)', color: 'var(--color-destructive)',
+                border: '1px solid var(--color-destructive)', borderRadius: '6px', fontSize: '13px',
+                fontWeight: 500, cursor: 'pointer',
+              }}
+            >
+              Sposta nel cestino
+            </button>
+          </div>
         )}
       </div>
+
+      {practice.isTrashed && (
+        <div style={{
+          marginBottom: '24px', padding: '12px 16px', borderRadius: '8px',
+          background: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)',
+          color: 'var(--color-error)', fontSize: '13px',
+        }}>
+          Questa pratica è nel cestino. Le azioni di modifica e avanzamento sono disabilitate.
+        </div>
+      )}
 
       {editing && (
         <ModificaPraticaModal
@@ -367,6 +411,25 @@ export function DettaglioPraticaPage(): React.JSX.Element {
           onClose={() => setEditing(false)}
           onUpdated={() => setEditing(false)}
         />
+      )}
+
+      {trashing && (
+        <MoveToTrashModal
+          count={1}
+          pending={moveToTrash.isPending}
+          onConfirm={handleMoveToTrash}
+          onClose={() => { if (!moveToTrash.isPending) setTrashing(false) }}
+        />
+      )}
+
+      {trashError && (
+        <div style={{
+          marginBottom: '16px', padding: '10px 14px', borderRadius: '8px',
+          background: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)',
+          color: 'var(--color-error)', fontSize: '13px',
+        }}>
+          {trashError}
+        </div>
       )}
 
       {/* Dati generali */}
@@ -429,9 +492,11 @@ export function DettaglioPraticaPage(): React.JSX.Element {
             <Field label="Fase di provenienza" value={practice.previousPhaseDisplayName} />
           )}
         </FieldGrid>
-        <div style={{ marginTop: '18px' }}>
-          <WorkflowActions practiceId={practice.id} isFinal={practice.currentPhase.isFinal} />
-        </div>
+        {!practice.isTrashed && (
+          <div style={{ marginTop: '18px' }}>
+            <WorkflowActions practiceId={practice.id} isFinal={practice.currentPhase.isFinal} />
+          </div>
+        )}
       </Section>
 
       {/* Storico */}

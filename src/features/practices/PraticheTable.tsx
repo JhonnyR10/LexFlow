@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useActivePractices } from './usePractices'
+import { useActivePractices, useMoveToTrash } from './usePractices'
+import { MoveToTrashModal } from './MoveToTrashModal'
+import { ipcErrorMessage } from '../../utils/ipcError'
 import { type PracticeFilters, matchesFilters } from './practiceFilters'
 import type { PracticeListItem } from '../../../shared/ipc'
 
@@ -192,6 +194,9 @@ export function PraticheTable({
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<number>>(new Set())
+  const [trashing, setTrashing] = useState(false)
+  const [trashError, setTrashError] = useState<string | null>(null)
+  const moveToTrash = useMoveToTrash()
 
   const handleSort = (col: SortColumn): void => {
     if (sortColumn === col) {
@@ -287,6 +292,20 @@ export function PraticheTable({
     })
   }
 
+  const handleMoveToTrash = (reason: string): void => {
+    setTrashError(null)
+    moveToTrash.mutate(
+      { ids: visibleSelectedIds, reason },
+      {
+        onSuccess: () => {
+          setTrashing(false)
+          setSelectedIds(new Set())
+        },
+        onError: (e) => setTrashError(ipcErrorMessage(e)),
+      }
+    )
+  }
+
   return (
     <>
       {visibleSelectedIds.length > 0 && (
@@ -308,7 +327,38 @@ export function PraticheTable({
           >
             Deseleziona tutto
           </button>
+          <button
+            type="button"
+            onClick={() => { setTrashError(null); setTrashing(true) }}
+            style={{
+              marginLeft: 'auto', padding: '6px 14px', cursor: 'pointer',
+              background: 'var(--color-bg)', color: 'var(--color-destructive)',
+              border: '1px solid var(--color-destructive)', borderRadius: '6px',
+              fontSize: '13px', fontWeight: 500,
+            }}
+          >
+            Sposta nel cestino
+          </button>
         </div>
+      )}
+
+      {trashError && (
+        <div style={{
+          padding: '10px 14px', marginBottom: '12px', borderRadius: '8px',
+          background: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)',
+          color: 'var(--color-error)', fontSize: '13px',
+        }}>
+          {trashError}
+        </div>
+      )}
+
+      {trashing && (
+        <MoveToTrashModal
+          count={visibleSelectedIds.length}
+          pending={moveToTrash.isPending}
+          onConfirm={handleMoveToTrash}
+          onClose={() => { if (!moveToTrash.isPending) setTrashing(false) }}
+        />
       )}
 
       <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--color-border)' }}>

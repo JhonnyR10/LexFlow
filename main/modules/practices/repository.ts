@@ -18,7 +18,7 @@ import type {
   NewTransitionRecordRow,
   PracticeRow,
 } from '../../database/schema'
-import type { PracticeListItem } from '../../../shared/ipc'
+import type { PracticeListItem, TrashedPracticeItem } from '../../../shared/ipc'
 
 export function countPracticesByYear(year: number): number {
   const prefix = `${year}%`
@@ -552,6 +552,59 @@ export function findPecDepositoAddresses(practiceId: number): string[] {
     ))
     .all()
     .map(r => r.indirizzo)
+}
+
+// --- S10.1: sposta nel cestino (soft delete) ---
+
+// Cestina una pratica: imposta isTrashed/trashedAt/trashReason e incrementa
+// `version` (predisposizione audit, come advancePractice). La guard
+// `isTrashed=false` rende l'operazione idempotente: una pratica già cestinata
+// non viene ritoccata. Ritorna il numero di righe effettivamente aggiornate.
+export function moveToTrash(
+  id: number,
+  reason: string,
+  trashedAt: string
+): number {
+  const result = getDb()
+    .update(practices)
+    .set({
+      isTrashed:   true,
+      trashedAt,
+      trashReason: reason,
+      updatedAt:   trashedAt,
+      version:     sql`${practices.version} + 1`,
+    })
+    .where(and(eq(practices.id, id), eq(practices.isTrashed, false)))
+    .run()
+  return result.changes
+}
+
+// Pratiche nel cestino, più recenti in cima: per la pagina Cestino (sola lettura
+// in S10.1). Join su phases per il displayName della fase corrente.
+export function findTrashedPractices(): TrashedPracticeItem[] {
+  const rows = getDb()
+    .select({
+      id:                      practices.id,
+      codiceIstanza:           practices.codiceIstanza,
+      nomeIstanza:             practices.nomeIstanza,
+      currentPhaseDisplayName: phases.displayName,
+      trashedAt:               practices.trashedAt,
+      trashReason:             practices.trashReason,
+    })
+    .from(practices)
+    .leftJoin(phases, eq(practices.currentPhaseId, phases.id))
+    .where(eq(practices.isTrashed, true))
+    .orderBy(desc(practices.trashedAt))
+    .all()
+
+  return rows.map(r => ({
+    id:                      r.id,
+    codiceIstanza:           r.codiceIstanza,
+    nomeIstanza:             r.nomeIstanza,
+    currentPhaseDisplayName: r.currentPhaseDisplayName ?? null,
+    trashedAt:               r.trashedAt ?? null,
+    trashReason:             r.trashReason ?? null,
+  }))
 }
 
 export function findAllActivePractices(): PracticeListItem[] {

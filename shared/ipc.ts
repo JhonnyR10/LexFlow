@@ -57,6 +57,8 @@ export const IPC_CHANNELS = {
   PRACTICES_LIST_AVAILABLE_TRANSITIONS: 'practices:listAvailableTransitions',
   PRACTICES_EXECUTE_TRANSITION: 'practices:executeTransition',
   PRACTICES_UPDATE: 'practices:updatePractice',
+  PRACTICES_MOVE_TO_TRASH: 'practices:moveToTrash',
+  PRACTICES_LIST_TRASHED: 'practices:listTrashed',
   DOCUMENTS_LIST: 'documents:listByPractice',
   DOCUMENTS_UPLOAD: 'documents:upload',
   DOCUMENTS_DELETE: 'documents:delete',
@@ -533,6 +535,32 @@ export interface PracticeDetail {
 
 export type GetPracticeResponse = PracticeDetail
 
+// --- Sposta nel cestino (soft delete) — S10.1 ---
+// Cestina N pratiche con un motivo condiviso. Usato sia dal dettaglio (un id)
+// sia dalla toolbar di selezione dell'elenco (più id). Idempotente: le pratiche
+// già cestinate vengono saltate, `trashedCount` riflette quelle spostate ora.
+export interface MoveToTrashInput {
+  ids: number[]
+  reason: string
+}
+
+export interface MoveToTrashResponse {
+  trashedCount: number
+}
+
+// Riga della tabella Cestino (sola lettura in S10.1): pratica cestinata con data
+// e motivo della cestinazione.
+export interface TrashedPracticeItem {
+  id: number
+  codiceIstanza: string
+  nomeIstanza: string
+  currentPhaseDisplayName: string | null
+  trashedAt: string | null
+  trashReason: string | null
+}
+
+export type PracticesListTrashedResponse = TrashedPracticeItem[]
+
 // --- Transizioni disponibili dalla fase corrente (S5.2) ---
 // Pulsanti di avanzamento generati dalla configurazione: solo transizioni
 // attive e non automatiche dalla fase corrente della pratica. Il form e il
@@ -690,6 +718,8 @@ export interface LexFlowApi {
     getPractice(input: GetPracticeInput): Promise<GetPracticeResponse>
     listAvailableTransitions(input: ListAvailableTransitionsInput): Promise<PracticesListAvailableTransitionsResponse>
     executeTransition(input: ExecuteTransitionInput): Promise<ExecuteTransitionResponse>
+    moveToTrash(input: MoveToTrashInput): Promise<MoveToTrashResponse>
+    listTrashed(): Promise<PracticesListTrashedResponse>
   }
   documents: {
     listByPractice(input: ListDocumentsInput): Promise<ListDocumentsResponse>

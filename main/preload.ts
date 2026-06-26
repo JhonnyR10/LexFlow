@@ -19,7 +19,11 @@ const api: LexFlowApi = {
     listAvailableTransitions: (input) =>
       ipcRenderer.invoke('practices:listAvailableTransitions', input),
     executeTransition: (input) =>
-      ipcRenderer.invoke('practices:executeTransition', input)
+      ipcRenderer.invoke('practices:executeTransition', input),
+    moveToTrash: (input) =>
+      ipcRenderer.invoke('practices:moveToTrash', input),
+    listTrashed: () =>
+      ipcRenderer.invoke('practices:listTrashed')
   },
   documents: {
     listByPractice: (input) =>

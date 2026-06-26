@@ -41,7 +41,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S8.3   | Giorni da deposito                                           | FATTO    | Campo «Giorni dalla data deposito» nel dettaglio pratica (Dati generali); assente/non parsabile → «Data deposito non presente» (muted). Calcolo `daysSinceDeposit` estratto in `shared/giorniDeposito.ts`, riusato dal service alert (S8.2). Renderer-only, nessuna migrazione. |
 | S8.4   | Anzianità + stato vuoto + Vedi pratiche                      | FATTO    | **E8 (Dashboard) COMPLETATA.** Sezione «Pratiche più vecchie» (top-5 pratiche aperte per giorni da deposito desc, riusa query alert + `daysSinceDeposit` condiviso); stato vuoto archivio unico a livello Dashboard con azione «Crea una nuova pratica»; card per fase cliccabili → `/pratiche?phaseId=` con filtro Fase preimpostato (`filtersFromSearchParams` + `useSearchParams`). Nuovo IPC `dashboard:aging`, nessuna migrazione. |
 | S9.1   | Export CSV                                                   | TODO     |                                                                                                                                                                                                                          |
-| S10.1  | Sposta nel cestino                                           | TODO     |                                                                                                                                                                                                                          |
+| S10.1  | Sposta nel cestino                                           | FATTO    | **Apre E10 (Cestino).** Soft delete con conferma + motivo obbligatorio; azione dal dettaglio (singola) e in blocco dalla toolbar di selezione (S3.4). IPC `practices:moveToTrash` (N id + motivo, transazione atomica, idempotente, `HistoryEvent` `trashed`) e `practices:listTrashed`. Pagina Cestino di sola lettura (data + motivo). Nessuna migrazione (colonne già presenti). Ripristino→S10.2, cancellazione→S10.3. |
 | S10.2  | Ripristino                                                   | TODO     |                                                                                                                                                                                                                          |
 | S10.3  | Cancellazione definitiva                                     | TODO     |                                                                                                                                                                                                                          |
 | S11.1  | Tema + colori semantici fissi                                | TODO     |                                                                                                                                                                                                                          |
@@ -85,7 +85,56 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
-### 2026-06-26 — S8.4: Anzianità + stato vuoto + Vedi pratiche — **E8 (Dashboard) COMPLETATA**
+### 2026-06-26 — S10.1: Sposta nel cestino — **apre E10 (Cestino)**
+
+**Nessuna modifica schema, nessuna migrazione.** Le colonne `isTrashed`/`trashedAt`/
+`trashReason` esistevano già su `practices`; le esclusioni (Dashboard/alert/elenco/
+anzianità) filtravano già `isTrashed=false`. Questa storia rende **raggiungibile** lo
+stato cestinato.
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `src/features/practices/MoveToTrashModal.tsx` | Modale di conferma riusabile (dettaglio + bulk): motivo **obbligatorio**, pulsante di conferma con colore distruttivo fisso `--color-destructive` (regola 8); props `count`/`pending`/`onConfirm`/`onClose` |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `shared/ipc.ts` | Canali `PRACTICES_MOVE_TO_TRASH`/`PRACTICES_LIST_TRASHED`; tipi `MoveToTrashInput`/`MoveToTrashResponse`/`TrashedPracticeItem`/`PracticesListTrashedResponse`; estesa `LexFlowApi.practices` |
+| `main/modules/practices/repository.ts` | `moveToTrash(id,reason,trashedAt)` (update `isTrashed/trashedAt/trashReason`, `version+1`, guard `isTrashed=false` → idempotente, ritorna `changes`); `findTrashedPractices` (join `phases`, `orderBy desc(trashedAt)`) |
+| `main/modules/practices/service.ts` | `moveToTrash(input)`: valida motivo non vuoto, una sola transazione, per ogni id salta assenti/già cestinate, `moveToTrashRow`+`HistoryEvent` `trashed`, ritorna `trashedCount`; `listTrashedPractices` pass-through |
+| `main/modules/practices/controller.ts` | `moveToTrashSchema` (ids≥1, reason trim min 1) + handler `PRACTICES_MOVE_TO_TRASH`/`PRACTICES_LIST_TRASHED` |
+| `main/preload.ts` | `practices.moveToTrash`/`practices.listTrashed` nel contextBridge |
+| `src/api/practices.ts` | Client `moveToTrash`/`listTrashed` |
+| `src/features/practices/usePractices.ts` | `useMoveToTrash` (invalida `['practices']`,`['trash']`,`['dashboard']`,`['practice',id]`) + `useTrashedPractices` (queryKey `['trash']`) |
+| `src/pages/DettaglioPraticaPage.tsx` | Pulsante «Sposta nel cestino» (distruttivo, accanto a Modifica, nascosto se cestinata); banner «Questa pratica è nel cestino»; `WorkflowActions` nascoste se cestinata; navigazione a `/pratiche` al successo |
+| `src/features/practices/PraticheTable.tsx` | Toolbar di selezione: pulsante «Sposta nel cestino» (su `visibleSelectedIds`), modale, svuota selezione al successo, riga errore |
+| `src/pages/CestinoPage.tsx` | Placeholder → tabella sola lettura (codice cliccabile=Apri, nome, fase, data cestinazione, motivo) + avviso in testa; loading/empty/error |
+| `docs/00-backlog-mvp.md` | S10.1 AC esplicitati (singola+bulk, motivo obbligatorio, `trashedAt`, evento `trashed`, esclusioni già attive, pagina Cestino sola lettura) |
+
+**Invarianti / decisioni:**
+1. **Soft delete** (regola 6): nessuna riga rimossa; i file documentali non vengono
+   toccati (sopravvivono a cestino+ripristino, coerente con E7).
+2. **Motivo obbligatorio** validato su entrambi i lati (zod main + guard renderer, regola 10).
+3. **Bulk = stesso motivo**, operazione **atomica** in un'unica transazione; pratiche
+   già cestinate saltate (idempotenza), `trashedCount` conta solo quelle spostate ora.
+4. **Colori distruttivi fissi** dal token `--color-destructive` (regola 8).
+5. **HistoryEvent** `trashed` per pratica (regola 9), motivo in `note`.
+6. Layer rispettati: query solo nel repository; logica/transazione nel service; zod nel controller; nessun `any`.
+
+**Confine di storia:** ripristino (singolo/multiplo) → S10.2; cancellazione definitiva
+(conferma forte separata) → S10.3; in S10.1 la pagina Cestino è sola lettura.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓.
+Verifica interattiva GUI (`npm run desktop`: cestinazione singola e bulk, conferma
+senza motivo bloccata, sparizione da elenco/Dashboard, comparsa nel Cestino con data e
+motivo, evento storico, banner sul dettaglio cestinato) da completare manualmente.
+
+---
+
+### 2026-06-26 — S8.4: Anzianità + stato vuoto e Vedi pratiche — **E8 (Dashboard) COMPLETATA**
 
 **Nessuna modifica schema, nessuna migrazione.** Storia di sola lettura (nessuna
 mutazione, nessun `HistoryEvent`). Riuso del calcolo `daysSinceDeposit` condiviso

@@ -12,6 +12,9 @@ import type {
   PracticesListAvailableTransitionsResponse,
   ExecuteTransitionInput,
   ExecuteTransitionResponse,
+  MoveToTrashInput,
+  MoveToTrashResponse,
+  PracticesListTrashedResponse,
 } from '../../shared/ipc'
 
 export const practicesApi = {
@@ -45,4 +48,10 @@ export const practicesApi = {
     input: ExecuteTransitionInput
   ): Promise<ExecuteTransitionResponse> =>
     window.api.practices.executeTransition(input),
+
+  moveToTrash: (input: MoveToTrashInput): Promise<MoveToTrashResponse> =>
+    window.api.practices.moveToTrash(input),
+
+  listTrashed: (): Promise<PracticesListTrashedResponse> =>
+    window.api.practices.listTrashed(),
 }

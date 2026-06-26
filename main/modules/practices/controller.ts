@@ -9,6 +9,8 @@ import type {
   PracticesListAvailableTransitionsResponse,
   ExecuteTransitionResponse,
   UpdatePracticeResponse,
+  MoveToTrashResponse,
+  PracticesListTrashedResponse,
 } from '../../../shared/ipc'
 import {
   generateCodiceIstanza,
@@ -18,6 +20,8 @@ import {
   getPracticeDetail,
   listAvailableTransitions,
   executeTransition,
+  moveToTrash,
+  listTrashedPractices,
 } from './service'
 import { logger } from '../../utils/logger'
 
@@ -86,6 +90,11 @@ const updatePracticeSchema = z.object({
   pecDestinatari:      z.array(z.string()).optional(),
 })
 
+const moveToTrashSchema = z.object({
+  ids:    z.array(z.number().int().positive()).min(1, 'Nessuna pratica selezionata'),
+  reason: z.string().trim().min(1, 'Indicare un motivo per la cestinazione'),
+})
+
 export function registerPracticesHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.PRACTICES_LIST,
@@ -146,6 +155,23 @@ export function registerPracticesHandlers(): void {
       logger.debug('IPC', IPC_CHANNELS.PRACTICES_EXECUTE_TRANSITION)
       const parsed = parseOrThrow(executeTransitionSchema, input)
       return executeTransition(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.PRACTICES_MOVE_TO_TRASH,
+    (_, input: unknown): MoveToTrashResponse => {
+      logger.debug('IPC', IPC_CHANNELS.PRACTICES_MOVE_TO_TRASH)
+      const parsed = parseOrThrow(moveToTrashSchema, input)
+      return moveToTrash(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.PRACTICES_LIST_TRASHED,
+    (): PracticesListTrashedResponse => {
+      logger.debug('IPC', IPC_CHANNELS.PRACTICES_LIST_TRASHED)
+      return listTrashedPractices()
     }
   )
 }

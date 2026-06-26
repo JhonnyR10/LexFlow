@@ -13,6 +13,9 @@ import type {
   ExecuteTransitionResponse,
   UpdatePracticeInput,
   UpdatePracticeResponse,
+  MoveToTrashInput,
+  MoveToTrashResponse,
+  PracticesListTrashedResponse,
 } from '../../../shared/ipc'
 import {
   countPracticesByYear,
@@ -42,6 +45,8 @@ import {
   updatePracticeFields,
   updatePracticeImporti,
   deletePecDepositoRecipients,
+  moveToTrash as moveToTrashRow,
+  findTrashedPractices,
   type TransitionFieldRow,
   type ImportiUpdate,
 } from './repository'
@@ -660,4 +665,53 @@ export function executeTransition(input: ExecuteTransitionInput): ExecuteTransit
   })
 
   return response!
+}
+
+// ---------- S10.1: sposta nel cestino (soft delete) ----------
+
+// Cestina le pratiche indicate con un motivo condiviso. Eliminazione logica
+// (regola 6): nessuna riga rimossa, i file documentali non vengono toccati.
+// Tutto in un'unica transazione: o tutte le pratiche valide vengono cestinate,
+// o nessuna. Le pratiche assenti o già cestinate vengono saltate (idempotenza);
+// `trashedCount` conta solo quelle effettivamente spostate ora. Ogni pratica
+// cestinata scrive un HistoryEvent `trashed` con il motivo (regola 9).
+export function moveToTrash(input: MoveToTrashInput): MoveToTrashResponse {
+  const reason = input.reason.trim()
+  if (reason.length === 0) {
+    throw new ValidationError('Indicare un motivo per la cestinazione')
+  }
+  if (input.ids.length === 0) {
+    throw new ValidationError('Nessuna pratica selezionata')
+  }
+
+  const now = new Date().toISOString()
+  let trashedCount = 0
+
+  getDb().transaction(() => {
+    for (const id of input.ids) {
+      const core = findPracticeCoreById(id)
+      if (!core || core.isTrashed) continue  // assente o già cestinata: saltata
+
+      const changed = moveToTrashRow(id, reason, now)
+      if (changed === 0) continue
+
+      insertHistoryEvent({
+        practiceId:  id,
+        timestamp:   now,
+        type:        'trashed',
+        title:       'Pratica spostata nel cestino',
+        fromPhaseId: null,
+        toPhaseId:   null,
+        note:        reason,
+        payload:     JSON.stringify({ trashedAt: now }),
+      })
+      trashedCount++
+    }
+  })
+
+  return { trashedCount }
+}
+
+export function listTrashedPractices(): PracticesListTrashedResponse {
+  return findTrashedPractices()
 }
