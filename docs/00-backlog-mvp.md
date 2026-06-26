@@ -115,7 +115,7 @@ Priorità MoSCoW. `MVP` = nel primo rilascio usabile end-to-end.
 ### E8 — Dashboard `MVP` (Must)
 
 - **S8.1** Card per fase dinamiche (solo fasi con pratiche attive). _AC:_ avanzamento aggiorna i conteggi; cestino escluso.
-- **S8.2** Alert aggregato singolo per pratica, severità massima, soglie 30/60/90, colori semantici fissi indipendenti dal tema. _AC:_ una pratica con due problemi → un solo box con più motivazioni.
+- **S8.2** Alert aggregato singolo per pratica, severità massima, soglie 30/60/90, colori semantici fissi indipendenti dal tema. La severità deriva dai **giorni dalla data deposito**: `> 90` rosso, `> 60` arancione, `> 30` giallo (strettamente maggiori); sotto 30 o senza data deposito la pratica non genera box (il messaggio "Data deposito non presente" è perimetro S8.3). Le motivazioni sono **aggregate** nello stesso box: sempre "Ferma da N giorni dalla data deposito" più, in modo contestuale per category canonica, "Decreto ricevuto ma non ancora inviato a SCP" (fase `decree_received`); le motivazioni contestuali si aggiungono ma non alzano la severità. Esclude pratiche cestinate e fasi finali. Box ordinati per severità (rosso → arancione → giallo) poi per giorni decrescenti, ciascuno cliccabile verso il dettaglio. _AC:_ una pratica con due problemi → un solo box con più motivazioni; colori alert invariati al cambio tema; avanzamento/creazione aggiornano gli avvisi (invalidazione `['dashboard']`).
 - **S8.3** Giorni dalla data deposito; assente → "Data deposito non presente".
 - **S8.4** Anzianità pratiche; stato vuoto archivio; "Vedi pratiche" → Pratiche filtrate.
 

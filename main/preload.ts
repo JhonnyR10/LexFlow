@@ -33,7 +33,9 @@ const api: LexFlowApi = {
   },
   dashboard: {
     phaseCounts: () =>
-      ipcRenderer.invoke('dashboard:phaseCounts')
+      ipcRenderer.invoke('dashboard:phaseCounts'),
+    alerts: () =>
+      ipcRenderer.invoke('dashboard:alerts')
   },
   config: {
     listPhases: () => ipcRenderer.invoke('config:listPhases'),

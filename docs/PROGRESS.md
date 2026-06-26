@@ -37,7 +37,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S6.2   | Differenze calcolate                                         | FATTO    | **E6 (Importi) COMPLETATA.** Helper puro `importoCalc.ts` (richiesto−concesso, % riduzione con guard div/0, concesso−fatturato, fatturato−liquidato, concesso−liquidato; null se operando mancante). Sottosezione «Differenze» nel dettaglio; «Non calcolabile» per i null, nessun NaN. Renderer-only, nessuna migrazione. |
 | S7.1   | Documenti decreto+fattura                                    | FATTO    | **E7 (Documenti) COMPLETATA.** Nuovo modulo `documents` (4 canali IPC), tabella `documents` (migrazione 0007). Upload via file dialog nativo nel main; file in `<userData>/documenti/<codiceIstanza>/`, `filePath` relativo in DB; sostituzione per kind (decreto/fattura); apri via shell; HistoryEvent su add/replace/remove; guard cestino su upload/elimina. `DocumentsSection` nel dettaglio (sostituisce stub). |
 | S8.1   | Card per fase dinamiche                                      | FATTO    | **Apre E8 (Dashboard).** Nuovo modulo `dashboard` (controller/service/repository), canale IPC `dashboard:phaseCounts`. Conteggio pratiche attive per fase (innerJoin practices→phases, GROUP BY, `isTrashed=false`, ordine `phases.order`): solo fasi con pratiche. `PhaseCountCards` con loading/empty/error; stato vuoto «Archivio vuoto…». Invalidazione `['dashboard']` su create/executeTransition. Nessuna migrazione. |
-| S8.2   | Alert aggregato per pratica                                  | TODO     |                                                                                                                                                                                                                          |
+| S8.2   | Alert aggregato per pratica                                  | FATTO    | Sezione «Avvisi» in Dashboard. Un box per pratica attiva (cestino + fasi finali esclusi) con anzianità da deposito > 30g; severità 30/60/90 → giallo/arancione/rosso (token semantici fissi); motivazioni aggregate (anzianità + «decreto ricevuto non inviato a SCP» per category `decree_received`). IPC `dashboard:alerts`, logica pura nel service. Nessuna migrazione. |
 | S8.3   | Giorni da deposito                                           | TODO     |                                                                                                                                                                                                                          |
 | S8.4   | Anzianità + stato vuoto + Vedi pratiche                      | TODO     |                                                                                                                                                                                                                          |
 | S9.1   | Export CSV                                                   | TODO     |                                                                                                                                                                                                                          |
@@ -84,6 +84,61 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-26 — S8.2: Alert aggregato per pratica — **E8 (Dashboard)**
+
+**Nessuna modifica schema, nessuna migrazione.** Sola lettura aggregata su
+`practices`+`phases`. Logica di severità/motivazioni **pura** nel service (layer
+business); il repository fa solo la query.
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `src/features/dashboard/AlertsSection.tsx` | Sezione «Avvisi»: un box per pratica, bordo sinistro col token semantico di severità, codice istanza link al dettaglio (`/pratiche/:id`), fase corrente, elenco motivazioni; loading/empty/error; empty «Nessun avviso. Tutte le pratiche attive sono nei tempi.» |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `shared/ipc.ts` | Canale `DASHBOARD_ALERTS`; tipi `AlertSeverity`/`DashboardAlert`/`DashboardAlertsResponse`; `LexFlowApi.dashboard.alerts()` |
+| `main/modules/dashboard/repository.ts` | `findActivePracticesForAlerts`: `innerJoin practices→phases`, `where isTrashed=false AND phases.isFinal=false`; tipo `AlertCandidateRow`. Solo lettura |
+| `main/modules/dashboard/service.ts` | `getDashboardAlerts` + helper puri `daysSinceDeposit`/`severityForDays`/`buildReasons`/`toAlert` e `SEVERITY_RANK`; filtro severità `null`, ordinamento severità→giorni desc |
+| `main/modules/dashboard/controller.ts` | Handler `DASHBOARD_ALERTS` (nessun input) |
+| `main/preload.ts` | `dashboard.alerts` nel contextBridge |
+| `src/api/dashboard.ts` | Client `alerts()` |
+| `src/features/dashboard/useDashboard.ts` | `useDashboardAlerts` (queryKey `['dashboard','alerts']`) |
+| `src/pages/DashboardPage.tsx` | `<AlertsSection>` sopra le card; titolo «Pratiche per fase»; sottotitolo «Centro di controllo…» |
+| `docs/00-backlog-mvp.md` | S8.2 AC esplicitati (soglie `>`, severità da giorni, motivazioni aggregate, esclusioni, ordinamento, cliccabile) |
+
+**Invarianti / decisioni:**
+1. **Severità = unico driver della comparsa del box**, dai giorni da deposito:
+   `> 90` rosso, `> 60` arancione, `> 30` giallo (strettamente maggiori). `≤ 30`
+   o `dataDeposito` assente/non parsabile → nessun box.
+2. **dataDeposito assente** non genera alert in S8.2; il messaggio «Data deposito
+   non presente» è perimetro S8.3.
+3. **Motivazioni aggregate**: sempre «Ferma da N giorni dalla data deposito»; più,
+   per **category canonica** `decree_received`, «Decreto ricevuto ma non ancora
+   inviato a SCP». Le contestuali non alzano la severità.
+4. **Esclusioni**: cestino (`isTrashed=false`) e **fasi finali** (`phases.isFinal=false`).
+5. **Colori semantici fissi** dai token `--color-warning-yellow|orange|red`
+   (CLAUDE.md regola 8), già definiti in `global.css`.
+6. **Freschezza**: `['dashboard']` è già invalidato su create/executeTransition →
+   copre `['dashboard','alerts']`. Il passare dei giorni si riflette a query/refetch/
+   riavvio (nessun timer introdotto).
+7. Layer rispettati: query solo nel repository; nessun `any`.
+
+**Confine di storia:** display per-pratica «Giorni dalla data deposito: X» / «Data
+deposito non presente» → S8.3; card anzianità e «Vedi pratiche» con filtro coerente
+→ S8.4; alert nell'intestazione del dettaglio pratica → riuso futuro; card
+«documenti mancanti» → futuro.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓.
+Verifica interattiva GUI (`npm run desktop`: box per severità 30/60/90, doppia
+motivazione in `decree_received`, esclusione cestino/fasi finali, empty state,
+aggiornamento dopo avanzamento) da completare manualmente.
+
+---
 
 ### 2026-06-26 — S8.1: Card per fase dinamiche — **apre E8 (Dashboard)**
 

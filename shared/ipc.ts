@@ -61,7 +61,8 @@ export const IPC_CHANNELS = {
   DOCUMENTS_UPLOAD: 'documents:upload',
   DOCUMENTS_DELETE: 'documents:delete',
   DOCUMENTS_OPEN: 'documents:open',
-  DASHBOARD_PHASE_COUNTS: 'dashboard:phaseCounts'
+  DASHBOARD_PHASE_COUNTS: 'dashboard:phaseCounts',
+  DASHBOARD_ALERTS: 'dashboard:alerts'
 } as const
 
 export type AppGetVersionResponse = string
@@ -623,6 +624,23 @@ export interface DashboardPhaseCount {
 }
 export type DashboardPhaseCountsResponse = DashboardPhaseCount[]
 
+// Alert aggregato per pratica (S8.2). Severità dalle soglie 30/60/90 giorni dalla
+// data deposito; colori semantici fissi (giallo/arancione/rosso). Più motivazioni
+// nello stesso box. Esclude cestino e fasi finali. dataDeposito assente → la
+// pratica non genera alert in S8.2 (display "Data deposito non presente" è S8.3).
+export type AlertSeverity = 'yellow' | 'orange' | 'red'
+
+export interface DashboardAlert {
+  practiceId: number
+  codiceIstanza: string
+  nomeIstanza: string
+  currentPhaseDisplayName: string | null
+  severity: AlertSeverity
+  daysSinceDeposit: number
+  reasons: string[]
+}
+export type DashboardAlertsResponse = DashboardAlert[]
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
@@ -669,6 +687,7 @@ export interface LexFlowApi {
   }
   dashboard: {
     phaseCounts(): Promise<DashboardPhaseCountsResponse>
+    alerts(): Promise<DashboardAlertsResponse>
   }
   anagrafiche: {
     listProfessionisti(): Promise<AnagraficheListProfessionistiResponse>
