@@ -431,11 +431,15 @@ export function FieldsSection(): React.JSX.Element {
     const action = f.isActive ? 'disattivare' : 'attivare'
     if (!window.confirm(`Vuoi ${action} il campo "${f.label}"?`)) return
     setInlineError(null)
+    setPecNote(null)
     setTogglingId(f.id)
     setActiveMutation.mutate(
       { id: f.id, isActive: !f.isActive },
       {
-        onSuccess: () => setTogglingId(null),
+        onSuccess: (res) => {
+          setTogglingId(null)
+          if (res.warning) setPecNote(res.warning)
+        },
         onError: (err) => {
           setTogglingId(null)
           setInlineError(ipcErrorMessage(err))

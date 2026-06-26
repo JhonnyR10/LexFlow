@@ -31,6 +31,7 @@ import {
   findPhaseById,
   findMaxOrder,
   countActiveInitialPhases,
+  countActivePracticesUsingPhase,
   keyExists,
   createPhaseAtomic,
   updatePhaseAtomic,
@@ -100,13 +101,15 @@ function assertCanDeactivate(phaseId: number, isInitial: boolean): void {
       )
     }
   }
-  // TODO: verificare che nessuna pratica attiva si trovi in questa fase.
-  // Implementare quando esiste la tabella practices:
-  // const usageCount = countActivePracticesInPhase(phaseId)
-  // if (usageCount > 0) {
-  //   throw new ConflictError(`Impossibile disattivare: ${usageCount} pratica/e attiva/e si trovano in questa fase.`)
-  // }
-  void phaseId
+  // Guard di blocco: la fase è "in uso" se è la fase corrente OPPURE la fase di provenienza
+  // (previousPhaseId, ricordata da una pratica sospesa per "Riprendi pratica") di una pratica
+  // non cestinata. Le pratiche cestinate non bloccano.
+  const usageCount = countActivePracticesUsingPhase(phaseId)
+  if (usageCount > 0) {
+    throw new ConflictError(
+      `Impossibile disattivare: ${usageCount} pratica/e attiva/e usano questa fase.`
+    )
+  }
 }
 
 export function listActivePhases(): PhaseListItem[] {
@@ -399,13 +402,25 @@ export function updateMenuOption(input: UpdateMenuOptionInput): MenuOptionListIt
   return toMenuOptionListItem(opt)
 }
 
-export function setMenuOptionActive(input: SetMenuOptionActiveInput): { success: true } {
+// Nota informativa mostrata alla disattivazione di un elemento il cui valore vive dentro
+// JSON (opzione menu, campo). La disattivazione è consentita e non corrompe i dati esistenti:
+// li nasconde solo dai nuovi form.
+const DEACTIVATION_JSON_NOTE =
+  'Disattivato. I valori già salvati nelle pratiche restano invariati; ' +
+  "l'elemento non comparirà nei nuovi inserimenti."
+
+export function setMenuOptionActive(
+  input: SetMenuOptionActiveInput
+): { success: true; warning?: string } {
   const existing = findMenuOptionById(input.id)
   if (!existing) throw new NotFoundError(`Opzione ${input.id} non trovata`)
-  // TODO: verificare che l'opzione non sia in uso da pratiche prima di disattivarla.
-  // Implementare quando esiste la tabella practices con i campi configurabili.
+  // Avviso non bloccante (caso B): l'uso reale di un'opzione vive in customValues /
+  // transition_records.values (JSON). Per semplicità MVP la disattivazione è sempre consentita
+  // e si restituisce solo una nota informativa, senza scandire i JSON.
+  // TODO (opzionale, post-MVP): controllo rigoroso con scan di customValues e
+  // transition_records.values per segnalare l'uso effettivo dell'opzione.
   setMenuOptionIsActive(input.id, input.isActive)
-  return { success: true }
+  return input.isActive ? { success: true } : { success: true, warning: DEACTIVATION_JSON_NOTE }
 }
 
 export function reorderMenuOptions(input: ReorderMenuOptionsInput): { success: true } {
@@ -591,14 +606,20 @@ export function updateField(input: UpdateFieldInput): FieldDefListItem {
   return result
 }
 
-export function setFieldActive(input: SetFieldActiveInput): { success: true } {
+export function setFieldActive(
+  input: SetFieldActiveInput
+): { success: true; warning?: string } {
   const existing = findFieldById(input.id)
   if (!existing) throw new NotFoundError(`Campo ${input.id} non trovato`)
-  // TODO: verificare che il campo non sia valorizzato in pratiche prima di disattivarlo.
-  // Se il campo è usato come controllore da altri campi, la condizione viene lasciata intatta:
-  // E5 tratterà il controllore inattivo come "condizione non soddisfatta" a runtime.
+  // Avviso non bloccante (caso B): il valore di un campo vive in customValues /
+  // transition_records.values (JSON). Per semplicità MVP la disattivazione è sempre consentita
+  // e si restituisce solo una nota informativa, senza scandire i JSON. Se il campo è usato come
+  // controllore da altri campi, la condizione resta intatta: E5 tratterà il controllore inattivo
+  // come "condizione non soddisfatta" a runtime.
+  // TODO (opzionale, post-MVP): controllo rigoroso con scan di customValues e
+  // transition_records.values per segnalare l'uso effettivo del campo.
   setFieldIsActive(input.id, input.isActive)
-  return { success: true }
+  return input.isActive ? { success: true } : { success: true, warning: DEACTIVATION_JSON_NOTE }
 }
 
 export function reorderFields(input: ReorderFieldsInput): { success: true } {

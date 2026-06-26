@@ -18,9 +18,11 @@ import {
   findCollaboratoreById,
   insertCollaboratore,
   updateCollaboratoreFields,
-  setCollaboratoreIsActive
+  setCollaboratoreIsActive,
+  countActivePracticesByProfessionista,
+  countActivePracticesByCollaboratore
 } from './repository'
-import { NotFoundError, ValidationError } from '../../errors/AppError'
+import { ConflictError, NotFoundError, ValidationError } from '../../errors/AppError'
 
 function buildDenominazione(cognome: string, nome: string, raw: string | null | undefined): string {
   const trimmed = (raw ?? '').trim()
@@ -102,8 +104,18 @@ export function setProfessionistaActive(
   const existing = findProfessionistaById(input.id)
   if (!existing) throw new NotFoundError(`Professionista ${input.id} non trovato`)
 
-  // TODO: aggiungere guard "non disattivare se collegato a pratiche attive"
-  // quando la tabella practices sarà disponibile (E4).
+  // Guard di blocco: la disattivazione è vietata se referenziato da pratiche attive
+  // (non cestinate). La riattivazione è sempre permessa.
+  if (!input.isActive) {
+    const usageCount = countActivePracticesByProfessionista(input.id)
+    if (usageCount > 0) {
+      throw new ConflictError(
+        `Impossibile disattivare: ${usageCount} pratica/e attiva/e ` +
+          `usano questo professionista.`
+      )
+    }
+  }
+
   setProfessionistaIsActive(input.id, input.isActive)
   return { success: true }
 }
@@ -155,8 +167,18 @@ export function setCollaboratoreActive(
   const existing = findCollaboratoreById(input.id)
   if (!existing) throw new NotFoundError(`Collaboratore ${input.id} non trovato`)
 
-  // TODO: aggiungere guard "non disattivare se collegato a pratiche attive"
-  // quando la tabella practices sarà disponibile (E4).
+  // Guard di blocco: la disattivazione è vietata se referenziato da pratiche attive
+  // (non cestinate). La riattivazione è sempre permessa.
+  if (!input.isActive) {
+    const usageCount = countActivePracticesByCollaboratore(input.id)
+    if (usageCount > 0) {
+      throw new ConflictError(
+        `Impossibile disattivare: ${usageCount} pratica/e attiva/e ` +
+          `usano questo collaboratore.`
+      )
+    }
+  }
+
   setCollaboratoreIsActive(input.id, input.isActive)
   return { success: true }
 }

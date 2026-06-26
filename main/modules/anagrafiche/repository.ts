@@ -1,6 +1,6 @@
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, count, eq } from 'drizzle-orm'
 import { getDb } from '../../database/connection'
-import { professionisti, collaboratori } from '../../database/schema'
+import { professionisti, collaboratori, practices } from '../../database/schema'
 import type { ProfessionistaListItem, CollaboratoreListItem } from '../../../shared/ipc'
 import type { NewProfessionistaRow, ProfessionistaRow } from '../../database/schema/professionisti'
 import type { NewCollaboratoreRow, CollaboratoreRow } from '../../database/schema/collaboratori'
@@ -61,6 +61,16 @@ export function setProfessionistaIsActive(id: number, isActive: boolean): void {
     .run()
 }
 
+/** Numero di pratiche NON cestinate che referenziano questo professionista. */
+export function countActivePracticesByProfessionista(id: number): number {
+  const [row] = getDb()
+    .select({ cnt: count() })
+    .from(practices)
+    .where(and(eq(practices.professionistaId, id), eq(practices.isTrashed, false)))
+    .all()
+  return row?.cnt ?? 0
+}
+
 // ---------- Collaboratori ----------
 
 function toCollaboratoreListItem(row: CollaboratoreRow): CollaboratoreListItem {
@@ -113,4 +123,14 @@ export function setCollaboratoreIsActive(id: number, isActive: boolean): void {
     .set({ isActive })
     .where(eq(collaboratori.id, id))
     .run()
+}
+
+/** Numero di pratiche NON cestinate che referenziano questo collaboratore. */
+export function countActivePracticesByCollaboratore(id: number): number {
+  const [row] = getDb()
+    .select({ cnt: count() })
+    .from(practices)
+    .where(and(eq(practices.collaboratoreId, id), eq(practices.isTrashed, false)))
+    .all()
+  return row?.cnt ?? 0
 }

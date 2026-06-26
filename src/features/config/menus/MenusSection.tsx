@@ -192,6 +192,14 @@ const inlineErrorStyle: React.CSSProperties = {
   fontSize: '13px'
 }
 
+const inlineNoteStyle: React.CSSProperties = {
+  padding: '10px 16px',
+  background: 'var(--color-bg)',
+  borderTop: '1px solid var(--color-border)',
+  color: 'var(--color-text-secondary)',
+  fontSize: '13px'
+}
+
 const noSelectionStyle: React.CSSProperties = {
   padding: '40px 20px',
   textAlign: 'center',
@@ -233,16 +241,23 @@ export function MenusSection(): React.JSX.Element {
   const [createOptionOpen, setCreateOptionOpen] = useState(false)
   const [editOption, setEditOption] = useState<MenuOptionListItem | null>(null)
   const [inlineError, setInlineError] = useState<string | null>(null)
+  const [inlineNote, setInlineNote] = useState<string | null>(null)
 
   const selectedSet = menuSets?.find((s) => s.id === selectedSetId) ?? null
 
   function handleToggleOptionActive(opt: MenuOptionListItem): void {
     setInlineError(null)
+    setInlineNote(null)
     const action = opt.isActive ? 'disattivare' : 'attivare'
     if (!window.confirm(`Vuoi ${action} l'opzione "${opt.label}"?`)) return
     setActiveMutation.mutate(
       { id: opt.id, isActive: !opt.isActive },
-      { onError: (err) => setInlineError(ipcErrorMessage(err)) }
+      {
+        onSuccess: (res) => {
+          if (res.warning) setInlineNote(res.warning)
+        },
+        onError: (err) => setInlineError(ipcErrorMessage(err))
+      }
     )
   }
 
@@ -442,6 +457,7 @@ export function MenusSection(): React.JSX.Element {
             )}
 
             {inlineError && <div style={inlineErrorStyle}>{inlineError}</div>}
+            {inlineNote && <div style={inlineNoteStyle}>{inlineNote}</div>}
           </div>
         </div>
       )}

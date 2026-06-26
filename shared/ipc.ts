@@ -215,7 +215,9 @@ export type ConfigCreateMenuSetResponse = MenuSetListItem
 export type ConfigUpdateMenuSetResponse = MenuSetListItem
 export type ConfigCreateMenuOptionResponse = MenuOptionListItem
 export type ConfigUpdateMenuOptionResponse = MenuOptionListItem
-export type ConfigSetMenuOptionActiveResponse = { success: true }
+// `warning` valorizzato solo alla disattivazione: nota non bloccante mostrata dal renderer
+// (la disattivazione procede; i valori già salvati nelle pratiche restano invariati).
+export type ConfigSetMenuOptionActiveResponse = { success: true; warning?: string }
 export type ConfigReorderMenuOptionsResponse = { success: true }
 
 // ---------- FieldDef ----------
@@ -308,7 +310,9 @@ export type ReorderFieldsInput = { id: number; order: number }[]
 export type ConfigListFieldsResponse = FieldDefListItem[]
 export type ConfigCreateFieldResponse = FieldDefListItem
 export type ConfigUpdateFieldResponse = FieldDefListItem
-export type ConfigSetFieldActiveResponse = { success: true }
+// `warning` valorizzato solo alla disattivazione: nota non bloccante mostrata dal renderer
+// (la disattivazione procede; i valori già salvati nelle pratiche restano invariati).
+export type ConfigSetFieldActiveResponse = { success: true; warning?: string }
 export type ConfigReorderFieldsResponse = { success: true }
 
 // ---------- Anagrafiche — Professionisti ----------

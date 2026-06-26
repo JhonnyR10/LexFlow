@@ -1,6 +1,6 @@
-import { eq, asc, and, ne, sql, isNull } from 'drizzle-orm'
+import { eq, asc, and, ne, or, count, sql, isNull } from 'drizzle-orm'
 import { getDb } from '../../database/connection'
-import { phases, transitions, menuSets, menuOptions, fieldDefs } from '../../database/schema'
+import { phases, transitions, menuSets, menuOptions, fieldDefs, practices } from '../../database/schema'
 import type {
   PhaseListItem,
   TransitionListItem,
@@ -71,6 +71,26 @@ export function countActiveInitialPhases(): number {
 
 export function keyExists(key: string): boolean {
   return getDb().select({ id: phases.id }).from(phases).where(eq(phases.key, key)).get() != null
+}
+
+/**
+ * Numero di pratiche NON cestinate che usano questa fase, sia come fase corrente
+ * (`currentPhaseId`) sia come fase di provenienza salvata (`previousPhaseId`, ricordata
+ * da una pratica sospesa per "Riprendi pratica"). Disattivare una fase in uso romperebbe
+ * pratiche vive, quindi è bloccato.
+ */
+export function countActivePracticesUsingPhase(phaseId: number): number {
+  const [row] = getDb()
+    .select({ cnt: count() })
+    .from(practices)
+    .where(
+      and(
+        or(eq(practices.currentPhaseId, phaseId), eq(practices.previousPhaseId, phaseId)),
+        eq(practices.isTrashed, false)
+      )
+    )
+    .all()
+  return row?.cnt ?? 0
 }
 
 // Crea una fase in transazione: resetta isInitial sulle altre se necessario.
