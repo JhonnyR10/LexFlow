@@ -36,7 +36,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S6.1   | Quattro importi                                              | FATTO    | concesso/fatturato/liquidato denormalizzati da `TransitionRecord.values` su 3 colonne pratica (cache derivata, non editabili a mano). Mappatura esplicita field-key→colonna (3 voci) in `executeTransition`. Seed di 3 campi `importo` su Registra decreto/invio a SCP/liquidazione. Migrazione incrementale 0006. Differenze calcolate = S6.2. |
 | S6.2   | Differenze calcolate                                         | FATTO    | **E6 (Importi) COMPLETATA.** Helper puro `importoCalc.ts` (richiesto−concesso, % riduzione con guard div/0, concesso−fatturato, fatturato−liquidato, concesso−liquidato; null se operando mancante). Sottosezione «Differenze» nel dettaglio; «Non calcolabile» per i null, nessun NaN. Renderer-only, nessuna migrazione. |
 | S7.1   | Documenti decreto+fattura                                    | FATTO    | **E7 (Documenti) COMPLETATA.** Nuovo modulo `documents` (4 canali IPC), tabella `documents` (migrazione 0007). Upload via file dialog nativo nel main; file in `<userData>/documenti/<codiceIstanza>/`, `filePath` relativo in DB; sostituzione per kind (decreto/fattura); apri via shell; HistoryEvent su add/replace/remove; guard cestino su upload/elimina. `DocumentsSection` nel dettaglio (sostituisce stub). |
-| S8.1   | Card per fase dinamiche                                      | TODO     |                                                                                                                                                                                                                          |
+| S8.1   | Card per fase dinamiche                                      | FATTO    | **Apre E8 (Dashboard).** Nuovo modulo `dashboard` (controller/service/repository), canale IPC `dashboard:phaseCounts`. Conteggio pratiche attive per fase (innerJoin practices→phases, GROUP BY, `isTrashed=false`, ordine `phases.order`): solo fasi con pratiche. `PhaseCountCards` con loading/empty/error; stato vuoto «Archivio vuoto…». Invalidazione `['dashboard']` su create/executeTransition. Nessuna migrazione. |
 | S8.2   | Alert aggregato per pratica                                  | TODO     |                                                                                                                                                                                                                          |
 | S8.3   | Giorni da deposito                                           | TODO     |                                                                                                                                                                                                                          |
 | S8.4   | Anzianità + stato vuoto + Vedi pratiche                      | TODO     |                                                                                                                                                                                                                          |
@@ -84,6 +84,45 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-26 — S8.1: Card per fase dinamiche — **apre E8 (Dashboard)**
+
+**Nessuna modifica schema, nessuna migrazione.** Sola lettura aggregata su
+`practices`+`phases`. Nuovo modulo `dashboard` come casa per le storie E8 successive
+(alert/anzianità/documenti mancanti).
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `main/modules/dashboard/repository.ts` | `findActivePhaseCounts`: `count(practices.id)` con `innerJoin practices→phases`, `where isTrashed=false`, `groupBy phases.id`, `orderBy phases.order`. L'inner join + group esclude le fasi senza pratiche attive |
+| `main/modules/dashboard/service.ts` | `getDashboardPhaseCounts`: pass-through tipizzato al tipo condiviso |
+| `main/modules/dashboard/controller.ts` | `registerDashboardHandlers`: handler `dashboard:phaseCounts` senza input |
+| `src/api/dashboard.ts` | Client renderer `window.api.dashboard.phaseCounts()` |
+| `src/features/dashboard/useDashboard.ts` | `useDashboardPhaseCounts` (queryKey `['dashboard','phaseCounts']`) |
+| `src/features/dashboard/PhaseCountCards.tsx` | Griglia card (conteggio + nome fase); loading/empty/error; stato vuoto «Archivio vuoto…» (testo da `06-ui-ux.md`); card non cliccabili (deep-link = S8.4) |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `shared/ipc.ts` | Canale `DASHBOARD_PHASE_COUNTS`; tipi `DashboardPhaseCount`/`DashboardPhaseCountsResponse`; namespace `LexFlowApi.dashboard` |
+| `main/preload.ts` | Namespace `dashboard: { phaseCounts }` nel contextBridge |
+| `main/server.ts` | `registerDashboardHandlers()` nel bootstrap |
+| `src/pages/DashboardPage.tsx` | Placeholder → intestazione «Dashboard» + `<PhaseCountCards>` |
+| `src/features/practices/usePractices.ts` | Invalidazione `['dashboard']` negli `onSuccess` di `useCreatePractice` e `useExecuteTransition` (AC «avanzamento aggiorna i conteggi») |
+
+**Invarianti / decisioni:**
+1. **Cestino escluso** a livello di query (`isTrashed=false`).
+2. **Card dinamiche:** solo fasi con ≥1 pratica attiva (inner join + group), ordinate per `phases.order`.
+3. **Freschezza:** create/executeTransition invalidano `['dashboard']`; update non cambia fase → non invalida.
+4. Layer rispettati: query solo nel repository; nessun `any`.
+
+**Confine di storia:** alert aggregati 30/60/90 → S8.2; giorni da deposito → S8.3; anzianità + stato-vuoto-archivio con azione + «Vedi pratiche» (deep-link a Pratiche filtrate) → S8.4.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓. Verifica interattiva GUI (`npm run desktop`: card popolate, conteggi corretti dopo avanzamento/creazione, stato vuoto) da completare manualmente.
+
+---
 
 ### 2026-06-25 — S7.1: Documenti decreto+fattura — **E7 (Documenti) COMPLETATA**
 

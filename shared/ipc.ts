@@ -60,7 +60,8 @@ export const IPC_CHANNELS = {
   DOCUMENTS_LIST: 'documents:listByPractice',
   DOCUMENTS_UPLOAD: 'documents:upload',
   DOCUMENTS_DELETE: 'documents:delete',
-  DOCUMENTS_OPEN: 'documents:open'
+  DOCUMENTS_OPEN: 'documents:open',
+  DASHBOARD_PHASE_COUNTS: 'dashboard:phaseCounts'
 } as const
 
 export type AppGetVersionResponse = string
@@ -609,6 +610,19 @@ export interface OpenDocumentResponse {
   opened: boolean
 }
 
+// --- E8 Dashboard ---
+
+// Conteggio pratiche attive (non cestinate) per fase. Solo le fasi con almeno
+// una pratica attiva sono presenti (card dinamiche, S8.1).
+export interface DashboardPhaseCount {
+  phaseId: number
+  phaseKey: string
+  displayName: string
+  category: string
+  count: number
+}
+export type DashboardPhaseCountsResponse = DashboardPhaseCount[]
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
@@ -652,6 +666,9 @@ export interface LexFlowApi {
     upload(input: UploadDocumentInput): Promise<UploadDocumentResponse>
     delete(input: DeleteDocumentInput): Promise<DeleteDocumentResponse>
     open(input: OpenDocumentInput): Promise<OpenDocumentResponse>
+  }
+  dashboard: {
+    phaseCounts(): Promise<DashboardPhaseCountsResponse>
   }
   anagrafiche: {
     listProfessionisti(): Promise<AnagraficheListProfessionistiResponse>

@@ -49,6 +49,8 @@ export function useCreatePractice(): UseMutationResult<CreatePracticeResponse, E
     mutationFn: (input: CreatePracticeInput) => practicesApi.createPractice(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['practices'] })
+      // I conteggi per fase della Dashboard (S8.1) cambiano con la nuova pratica.
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })
 }
@@ -78,6 +80,8 @@ export function useExecuteTransition(
       queryClient.invalidateQueries({ queryKey: ['practice', practiceId] })
       queryClient.invalidateQueries({ queryKey: ['practice', practiceId, 'transitions'] })
       queryClient.invalidateQueries({ queryKey: ['practices'] })
+      // L'avanzamento sposta la pratica di fase: i conteggi Dashboard (S8.1) cambiano.
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })
 }

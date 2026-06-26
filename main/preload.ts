@@ -31,6 +31,10 @@ const api: LexFlowApi = {
     open: (input) =>
       ipcRenderer.invoke('documents:open', input)
   },
+  dashboard: {
+    phaseCounts: () =>
+      ipcRenderer.invoke('dashboard:phaseCounts')
+  },
   config: {
     listPhases: () => ipcRenderer.invoke('config:listPhases'),
     listAllPhases: () => ipcRenderer.invoke('config:listAllPhases'),
