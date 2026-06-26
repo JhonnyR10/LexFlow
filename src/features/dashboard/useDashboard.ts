@@ -1,6 +1,7 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { dashboardApi } from '../../api/dashboard'
 import type {
+  DashboardAgingResponse,
   DashboardAlertsResponse,
   DashboardPhaseCountsResponse,
 } from '../../../shared/ipc'
@@ -16,5 +17,12 @@ export function useDashboardAlerts(): UseQueryResult<DashboardAlertsResponse, Er
   return useQuery({
     queryKey: ['dashboard', 'alerts'],
     queryFn: () => dashboardApi.alerts(),
+  })
+}
+
+export function useDashboardAging(): UseQueryResult<DashboardAgingResponse, Error> {
+  return useQuery({
+    queryKey: ['dashboard', 'aging'],
+    queryFn: () => dashboardApi.aging(),
   })
 }

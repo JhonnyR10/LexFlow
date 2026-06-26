@@ -1,14 +1,16 @@
 import type {
   AlertSeverity,
+  DashboardAgingItem,
+  DashboardAgingResponse,
   DashboardAlert,
   DashboardAlertsResponse,
   DashboardPhaseCountsResponse,
 } from '../../../shared/ipc'
 import { daysSinceDeposit } from '../../../shared/giorniDeposito'
 import {
+  findActiveOpenPracticesWithDeposit,
   findActivePhaseCounts,
-  findActivePracticesForAlerts,
-  type AlertCandidateRow,
+  type OpenPracticeRow,
 } from './repository'
 
 // Card di conteggio per fase (S8.1): pass-through tipizzato dal repository.
@@ -43,7 +45,7 @@ function buildReasons(days: number, category: string): string[] {
   return reasons
 }
 
-function toAlert(row: AlertCandidateRow): DashboardAlert | null {
+function toAlert(row: OpenPracticeRow): DashboardAlert | null {
   const days = daysSinceDeposit(row.dataDeposito)
   if (days === null) return null
   const severity = severityForDays(days)
@@ -62,7 +64,7 @@ function toAlert(row: AlertCandidateRow): DashboardAlert | null {
 // Alert aggregato per pratica (S8.2): un box per pratica attiva oltre soglia,
 // ordinato per severità (rosso → arancione → giallo) poi giorni decrescenti.
 export function getDashboardAlerts(): DashboardAlertsResponse {
-  return findActivePracticesForAlerts()
+  return findActiveOpenPracticesWithDeposit()
     .map(toAlert)
     .filter((a): a is DashboardAlert => a !== null)
     .sort(
@@ -70,4 +72,27 @@ export function getDashboardAlerts(): DashboardAlertsResponse {
         SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] ||
         b.daysSinceDeposit - a.daysSinceDeposit
     )
+}
+
+const AGING_LIMIT = 5
+
+// Anzianità (S8.4): le pratiche aperte più vecchie per giorni dalla data deposito,
+// senza soglia (a differenza degli alert). Le pratiche senza data deposito sono
+// escluse (non ordinabili per età). Ordinate per giorni decrescenti, prime N.
+export function getDashboardAging(limit = AGING_LIMIT): DashboardAgingResponse {
+  return findActiveOpenPracticesWithDeposit()
+    .map((row): DashboardAgingItem | null => {
+      const days = daysSinceDeposit(row.dataDeposito)
+      if (days === null) return null
+      return {
+        practiceId:              row.practiceId,
+        codiceIstanza:           row.codiceIstanza,
+        nomeIstanza:             row.nomeIstanza,
+        currentPhaseDisplayName: row.currentPhaseDisplayName,
+        daysSinceDeposit:        days,
+      }
+    })
+    .filter((i): i is DashboardAgingItem => i !== null)
+    .sort((a, b) => b.daysSinceDeposit - a.daysSinceDeposit)
+    .slice(0, limit)
 }

@@ -1,13 +1,17 @@
 import React, { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { NuovaPraticaModal } from '../features/practices/NuovaPraticaModal'
 import { PraticheTable } from '../features/practices/PraticheTable'
 import { PraticheFilters } from '../features/practices/PraticheFilters'
-import { type PracticeFilters as PracticeFiltersType, emptyFilters } from '../features/practices/practiceFilters'
+import { type PracticeFilters as PracticeFiltersType, filtersFromSearchParams } from '../features/practices/practiceFilters'
 
 export function PratichePage(): React.JSX.Element {
+  const [searchParams] = useSearchParams()
   const [modalOpen, setModalOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const [filters, setFilters] = useState<PracticeFiltersType>(emptyFilters)
+  // Filtri inizializzati una volta dalla query string (deep-link "Vedi pratiche"
+  // dalla Dashboard, S8.4); poi gestiti dalla barra filtri.
+  const [filters, setFilters] = useState<PracticeFiltersType>(() => filtersFromSearchParams(searchParams))
   const [lastCreated, setLastCreated] = useState<{ id: number; codice: string } | null>(null)
 
   const handleCreated = (id: number, codiceIstanza: string): void => {

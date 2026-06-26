@@ -62,7 +62,8 @@ export const IPC_CHANNELS = {
   DOCUMENTS_DELETE: 'documents:delete',
   DOCUMENTS_OPEN: 'documents:open',
   DASHBOARD_PHASE_COUNTS: 'dashboard:phaseCounts',
-  DASHBOARD_ALERTS: 'dashboard:alerts'
+  DASHBOARD_ALERTS: 'dashboard:alerts',
+  DASHBOARD_AGING: 'dashboard:aging'
 } as const
 
 export type AppGetVersionResponse = string
@@ -641,6 +642,17 @@ export interface DashboardAlert {
 }
 export type DashboardAlertsResponse = DashboardAlert[]
 
+// Anzianità (S8.4): le pratiche aperte più vecchie per giorni dalla data deposito,
+// senza soglia. Esclude cestino, fasi finali e pratiche senza data deposito.
+export interface DashboardAgingItem {
+  practiceId: number
+  codiceIstanza: string
+  nomeIstanza: string
+  currentPhaseDisplayName: string | null
+  daysSinceDeposit: number
+}
+export type DashboardAgingResponse = DashboardAgingItem[]
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
@@ -688,6 +700,7 @@ export interface LexFlowApi {
   dashboard: {
     phaseCounts(): Promise<DashboardPhaseCountsResponse>
     alerts(): Promise<DashboardAlertsResponse>
+    aging(): Promise<DashboardAgingResponse>
   }
   anagrafiche: {
     listProfessionisti(): Promise<AnagraficheListProfessionistiResponse>

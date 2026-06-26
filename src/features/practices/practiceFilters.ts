@@ -23,6 +23,24 @@ export const emptyFilters: PracticeFilters = {
   importoMax: null,
 }
 
+// Deep-link dalla Dashboard (S8.4): "Vedi pratiche" passa il filtro coerente come
+// query string (es. ?phaseId=5). Parte da emptyFilters e legge solo le chiavi
+// numeriche supportate; valori assenti o non numerici sono ignorati.
+export function filtersFromSearchParams(params: URLSearchParams): PracticeFilters {
+  return {
+    ...emptyFilters,
+    phaseId: parseNumericParam(params.get('phaseId')),
+    collaboratoreId: parseNumericParam(params.get('collaboratoreId')),
+    professionistaId: parseNumericParam(params.get('professionistaId')),
+  }
+}
+
+function parseNumericParam(value: string | null): number | null {
+  if (value == null || value.trim() === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
 export function hasActiveFilters(f: PracticeFilters): boolean {
   return (
     f.phaseId != null ||

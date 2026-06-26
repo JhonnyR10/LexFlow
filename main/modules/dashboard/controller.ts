@@ -1,10 +1,11 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../../shared/ipc'
 import type {
+  DashboardAgingResponse,
   DashboardAlertsResponse,
   DashboardPhaseCountsResponse,
 } from '../../../shared/ipc'
-import { getDashboardAlerts, getDashboardPhaseCounts } from './service'
+import { getDashboardAging, getDashboardAlerts, getDashboardPhaseCounts } from './service'
 import { logger } from '../../utils/logger'
 
 export function registerDashboardHandlers(): void {
@@ -21,6 +22,14 @@ export function registerDashboardHandlers(): void {
     (): DashboardAlertsResponse => {
       logger.debug('IPC', IPC_CHANNELS.DASHBOARD_ALERTS)
       return getDashboardAlerts()
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.DASHBOARD_AGING,
+    (): DashboardAgingResponse => {
+      logger.debug('IPC', IPC_CHANNELS.DASHBOARD_AGING)
+      return getDashboardAging()
     }
   )
 }

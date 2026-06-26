@@ -30,7 +30,7 @@ export function findActivePhaseCounts(): PhaseCountRow[] {
     .all()
 }
 
-export interface AlertCandidateRow {
+export interface OpenPracticeRow {
   practiceId: number
   codiceIstanza: string
   nomeIstanza: string
@@ -39,9 +39,10 @@ export interface AlertCandidateRow {
   currentPhaseDisplayName: string
 }
 
-// Pratiche attive (non cestinate) in fase NON finale, candidate al calcolo alert
-// (S8.2). La logica di severità/motivazioni vive nel service: qui solo lettura.
-export function findActivePracticesForAlerts(): AlertCandidateRow[] {
+// Pratiche aperte: attive (non cestinate) in fase NON finale. Set di candidati
+// condiviso dagli alert (S8.2) e dall'anzianità (S8.4); la logica (severità,
+// ordinamento per età) vive nel service. Qui solo lettura.
+export function findActiveOpenPracticesWithDeposit(): OpenPracticeRow[] {
   return getDb()
     .select({
       practiceId:              practices.id,

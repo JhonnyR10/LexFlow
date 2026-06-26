@@ -1,4 +1,5 @@
 import type {
+  DashboardAgingResponse,
   DashboardAlertsResponse,
   DashboardPhaseCountsResponse,
 } from '../../shared/ipc'
@@ -8,4 +9,6 @@ export const dashboardApi = {
     window.api.dashboard.phaseCounts(),
   alerts: (): Promise<DashboardAlertsResponse> =>
     window.api.dashboard.alerts(),
+  aging: (): Promise<DashboardAgingResponse> =>
+    window.api.dashboard.aging(),
 }

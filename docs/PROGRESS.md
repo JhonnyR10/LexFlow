@@ -39,7 +39,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S8.1   | Card per fase dinamiche                                      | FATTO    | **Apre E8 (Dashboard).** Nuovo modulo `dashboard` (controller/service/repository), canale IPC `dashboard:phaseCounts`. Conteggio pratiche attive per fase (innerJoin practices→phases, GROUP BY, `isTrashed=false`, ordine `phases.order`): solo fasi con pratiche. `PhaseCountCards` con loading/empty/error; stato vuoto «Archivio vuoto…». Invalidazione `['dashboard']` su create/executeTransition. Nessuna migrazione. |
 | S8.2   | Alert aggregato per pratica                                  | FATTO    | Sezione «Avvisi» in Dashboard. Un box per pratica attiva (cestino + fasi finali esclusi) con anzianità da deposito > 30g; severità 30/60/90 → giallo/arancione/rosso (token semantici fissi); motivazioni aggregate (anzianità + «decreto ricevuto non inviato a SCP» per category `decree_received`). IPC `dashboard:alerts`, logica pura nel service. Nessuna migrazione. |
 | S8.3   | Giorni da deposito                                           | FATTO    | Campo «Giorni dalla data deposito» nel dettaglio pratica (Dati generali); assente/non parsabile → «Data deposito non presente» (muted). Calcolo `daysSinceDeposit` estratto in `shared/giorniDeposito.ts`, riusato dal service alert (S8.2). Renderer-only, nessuna migrazione. |
-| S8.4   | Anzianità + stato vuoto + Vedi pratiche                      | TODO     |                                                                                                                                                                                                                          |
+| S8.4   | Anzianità + stato vuoto + Vedi pratiche                      | FATTO    | **E8 (Dashboard) COMPLETATA.** Sezione «Pratiche più vecchie» (top-5 pratiche aperte per giorni da deposito desc, riusa query alert + `daysSinceDeposit` condiviso); stato vuoto archivio unico a livello Dashboard con azione «Crea una nuova pratica»; card per fase cliccabili → `/pratiche?phaseId=` con filtro Fase preimpostato (`filtersFromSearchParams` + `useSearchParams`). Nuovo IPC `dashboard:aging`, nessuna migrazione. |
 | S9.1   | Export CSV                                                   | TODO     |                                                                                                                                                                                                                          |
 | S10.1  | Sposta nel cestino                                           | TODO     |                                                                                                                                                                                                                          |
 | S10.2  | Ripristino                                                   | TODO     |                                                                                                                                                                                                                          |
@@ -84,6 +84,60 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-26 — S8.4: Anzianità + stato vuoto + Vedi pratiche — **E8 (Dashboard) COMPLETATA**
+
+**Nessuna modifica schema, nessuna migrazione.** Storia di sola lettura (nessuna
+mutazione, nessun `HistoryEvent`). Riuso del calcolo `daysSinceDeposit` condiviso
+e della query candidati degli alert (CLAUDE.md regola 4: niente duplicazioni).
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `src/features/dashboard/AgingSection.tsx` | Sezione «Pratiche più vecchie»: lista delle top-5 pratiche aperte per giorni da deposito; ogni riga = codice istanza (link al dettaglio) + nome + fase + «N giorni dalla data deposito»; loading/empty/error; empty «Nessuna pratica aperta con data deposito.» |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `main/modules/dashboard/repository.ts` | `findActivePracticesForAlerts`→`findActiveOpenPracticesWithDeposit` e tipo `AlertCandidateRow`→`OpenPracticeRow` (ora condivisi da alert+anzianità); query invariata (`isTrashed=false AND phases.isFinal=false`) |
+| `main/modules/dashboard/service.ts` | Import aggiornati; nuova `getDashboardAging(limit=5)`: `daysSinceDeposit` per riga, scarta i `null`, ordina per giorni desc, prende i primi N; `getDashboardAlerts` usa la query rinominata |
+| `main/modules/dashboard/controller.ts` | Handler `DASHBOARD_AGING` (nessun input) |
+| `main/preload.ts` | `dashboard.aging` nel contextBridge |
+| `shared/ipc.ts` | Canale `DASHBOARD_AGING`; tipi `DashboardAgingItem`/`DashboardAgingResponse`; `LexFlowApi.dashboard.aging` |
+| `src/api/dashboard.ts` | Client `aging()` |
+| `src/features/dashboard/useDashboard.ts` | `useDashboardAging` (queryKey `['dashboard','aging']`, già coperta dall'invalidazione `['dashboard']`) |
+| `src/features/dashboard/PhaseCountCards.tsx` | `PhaseCard` ora è un `Link` a `/pratiche?phaseId=…` con affordance «Vedi pratiche →» |
+| `src/pages/DashboardPage.tsx` | Stato vuoto archivio unico (gate su `phaseCounts`): blocco «Archivio vuoto…» + azione «Crea una nuova pratica» (→ /pratiche); altrimenti Avvisi + Anzianità + Card per fase; loading/error a livello pagina |
+| `src/features/practices/practiceFilters.ts` | Helper puro `filtersFromSearchParams(params)` (legge `phaseId`/`collaboratoreId`/`professionistaId` numerici) + `parseNumericParam` |
+| `src/pages/PratichePage.tsx` | `useSearchParams`; filtri inizializzati una volta da `filtersFromSearchParams` (deep-link); barra filtri invariata |
+| `docs/00-backlog-mvp.md` | S8.4 AC esplicitati (anzianità top-5, stato vuoto unico con azione, deep-link `?phaseId=`) |
+
+**Invarianti / decisioni:**
+1. **Anzianità senza soglia:** mostra le più vecchie a prescindere da 30/60/90
+   (a differenza degli alert S8.2); pratiche senza data deposito escluse (non
+   ordinabili per età), nessun `NaN`. I giorni coincidono col «Ferma da N giorni»
+   dell'alert per la stessa pratica (calcolo condiviso).
+2. **Esclusioni** identiche agli alert (cestino + fasi finali), a livello SQL,
+   grazie alla query condivisa.
+3. **Stato vuoto unico:** quando nessuna fase ha pratiche attive, un solo blocco
+   con azione; le sezioni non vengono renderizzate (niente vuoti duplicati). Le
+   empty interne delle sezioni restano come difesa ma non compaiono.
+4. **Deep-link via query string** (`?phaseId=`): parsing in un punto unico,
+   estendibile; i filtri restano pienamente modificabili/azzerabili.
+5. **Freschezza:** `['dashboard']` già invalidato su create/executeTransition →
+   copre `['dashboard','aging']`, nessuna modifica in `usePractices.ts`.
+
+**Confine di storia:** card «documenti mancanti» in Dashboard → futuro (non in
+S8.4); deep-link su altri filtri oltre la fase → estendibile ma non richiesto ora.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓.
+Verifica interattiva GUI (`npm run desktop`: top-5 anzianità coerenti con gli
+alert, click card per fase → elenco filtrato, archivio vuoto con azione, pratica
+senza data deposito esclusa) da completare manualmente.
+
+---
 
 ### 2026-06-26 — S8.3: Giorni dalla data deposito — **E8 (Dashboard)**
 

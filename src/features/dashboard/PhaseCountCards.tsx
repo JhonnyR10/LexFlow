@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useDashboardPhaseCounts } from './useDashboard'
 import type { DashboardPhaseCount } from '../../../shared/ipc'
 
@@ -15,6 +16,14 @@ const cardStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '8px',
+  textDecoration: 'none',
+  color: 'inherit',
+  cursor: 'pointer',
+}
+
+const cardLinkStyle: React.CSSProperties = {
+  fontSize: '12px',
+  color: 'var(--color-accent)',
 }
 
 const countStyle: React.CSSProperties = {
@@ -36,10 +45,11 @@ const messageStyle: React.CSSProperties = {
 
 function PhaseCard({ item }: { item: DashboardPhaseCount }): React.JSX.Element {
   return (
-    <div style={cardStyle}>
+    <Link to={`/pratiche?phaseId=${item.phaseId}`} style={cardStyle}>
       <span style={countStyle}>{item.count}</span>
       <span style={labelStyle}>{item.displayName}</span>
-    </div>
+      <span style={cardLinkStyle}>Vedi pratiche →</span>
+    </Link>
   )
 }
 
