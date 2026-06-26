@@ -44,7 +44,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S10.1  | Sposta nel cestino                                           | FATTO    | **Apre E10 (Cestino).** Soft delete con conferma + motivo obbligatorio; azione dal dettaglio (singola) e in blocco dalla toolbar di selezione (S3.4). IPC `practices:moveToTrash` (N id + motivo, transazione atomica, idempotente, `HistoryEvent` `trashed`) e `practices:listTrashed`. Pagina Cestino di sola lettura (data + motivo). Nessuna migrazione (colonne già presenti). Ripristino→S10.2, cancellazione→S10.3. |
 | S10.2  | Ripristino                                                   | FATTO    | Ripristino dal cestino (singolo + multiplo) speculare a S10.1. IPC `practices:restore` (N id, transazione atomica, idempotente, azzera `trashedAt`/`trashReason`, `HistoryEvent` `restored`). Pagina Cestino interattiva (selezione + per-riga/bulk); pulsante «Ripristina» nel banner del dettaglio cestinata; modale di conferma leggera senza motivo (non distruttiva). Nessuna migrazione. Cancellazione→S10.3. |
 | S10.3  | Cancellazione definitiva                                     | FATTO    | **E10 (Cestino) COMPLETATA.** Hard delete irreversibile, solo da Cestino (per riga + bulk), solo pratiche cestinate. IPC `practices:permanentDelete` (N id, una transazione: cancella figli `documents→pec_recipients→history_events→transition_records→practices` con FK ON, idempotente, `deletedCount`); cartella documenti rimossa post-commit (best-effort, helper `removePracticeDocumentsDir` esportato da documents/service). Nessun HistoryEvent (entità distrutta), tracciato via log. Modale forte senza digitazione. `PracticeCore` esteso con `codiceIstanza`. Nessuna migrazione. |
-| S11.1  | Tema + colori semantici fissi                                | TODO     |                                                                                                                                                                                                                          |
+| S11.1  | Tema + colori semantici fissi                                | FATTO    | **Apre E11 (Impostazioni app).** Nuovo modulo `settings` (controller/service/repository), canali IPC `settings:get`/`settings:updateTheme`. 5 temi in `shared/themes.ts` (chiaro/scuro/pastello/deep-dark/grigio-senape), persistiti in `app_settings.theme` (no migrazione), applicati via `data-theme` su `<html>` (`ThemeApplier` in `App.tsx`). Palette CSS ridefiniscono solo token base/sidebar; token semantici restano in `:root` (regola 8 garantita per costruzione). Pagina Impostazioni app reale con anteprime. Nessun HistoryEvent (config app). |
 | S11.2  | Percorso dati                                                | TODO     |                                                                                                                                                                                                                          |
 | S11.3  | Backup completo + ripristino                                 | TODO     |                                                                                                                                                                                                                          |
 | S11.4  | Reset con backup automatico                                  | TODO     |                                                                                                                                                                                                                          |
@@ -84,6 +84,59 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-26 — S11.1: Tema interfaccia + colori semantici fissi — **apre E11 (Impostazioni app)**
+
+**Nessuna migrazione.** La colonna `app_settings.theme` (default `light`) esisteva già ed era seeded;
+questa storia la rende **selezionabile e applicata**. Prima storia di E11; il nuovo modulo `settings`
+è la casa delle storie successive (percorso dati, backup, reset).
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `shared/themes.ts` | Fonte di verità unica dei temi: `THEME_KEYS` (`light`/`dark`/`pastel`/`deep-dark`/`mustard-grey`), `ThemeKey`, `DEFAULT_THEME`, `THEMES` (key+label IT), guard `isThemeKey`. Usato da main (validazione/normalizzazione), renderer (selettore/applicazione) e `shared/ipc` (tipi). |
+| `main/modules/settings/repository.ts` | `getAppSettingsRow()` (riga unica `id=1`) e `updateThemeRow(theme)` (UPDATE singola colonna, ritorna `changes`). Query solo qui. |
+| `main/modules/settings/service.ts` | `getAppSettings()` (normalizza al `DEFAULT_THEME` se il valore DB fosse fuori dominio) e `updateTheme(input)` (valida via `isThemeKey`→`ValidationError`; `NotFoundError` se la riga manca). |
+| `main/modules/settings/controller.ts` | `registerSettingsHandlers()`: `SETTINGS_GET`/`SETTINGS_UPDATE_THEME` con zod (`z.enum(THEME_KEYS)`) via `parseOrThrow` (stile config). |
+| `src/api/settings.ts` | Client `settingsApi.get()`/`updateTheme(input)`. |
+| `src/features/settings/useSettings.ts` | `useAppSettings()` (queryKey `['settings']`) e `useUpdateTheme()` (mutation; `onSuccess` → `setQueryData(['settings'])` così ThemeApplier riflette subito il tema). |
+| `src/components/theme/ThemeApplier.tsx` | Componente senza UI: legge la query e in un `useEffect` imposta `document.documentElement.dataset.theme`. Default `light` finché carica. |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `shared/ipc.ts` | Import `ThemeKey`; canali `SETTINGS_GET`/`SETTINGS_UPDATE_THEME`; tipi `AppSettingsView`/`UpdateThemeInput`/risposte; namespace `settings` in `LexFlowApi`. |
+| `main/preload.ts` | `settings: { get, updateTheme }` nel contextBridge. |
+| `main/server.ts` | `registerSettingsHandlers()` nel bootstrap. |
+| `src/App.tsx` | Monta `<ThemeApplier/>` accanto a `<Router/>` (sotto il `QueryClientProvider` esistente). |
+| `src/pages/AppSettingsPage.tsx` | Da placeholder a pagina reale: sezione «Tema» con 5 card (anteprima sidebar/sfondo/superficie/accento + label + badge «Attivo»), click → `updateTheme`; loading/error gestiti. |
+| `src/styles/global.css` | Aggiunto `--color-bg-subtle` in `:root` e in ogni tema (era solo fallback hardcoded); 4 blocchi `html[data-theme='…']` (dark/pastel/deep-dark/mustard-grey) che ridefiniscono **solo** i token base/sidebar. I token semantici restano in `:root`. |
+| `docs/00-backlog-mvp.md` | AC di S11.1 esplicitati. |
+
+**Invarianti / decisioni:**
+1. **Colori semantici intoccabili per costruzione** (regola 8): alert/errori/distruttive/successo vivono in
+   `:root` e non sono mai ridichiarati nei blocchi `data-theme` → nessun tema può sovrascriverli.
+2. **Sorgente di verità = DB** (`app_settings.theme`), letta/scritta con TanStack Query come il resto del
+   codebase. **Niente Zustand**: sarebbe un secondo store da sincronizzare (no astrazione prematura).
+3. **Applicazione via `data-theme`** su `<html>`; il cambio non è ottimistico sul DOM (lint
+   `react-hooks/immutability`): la mutation aggiorna la cache `['settings']` → ThemeApplier applica.
+   L'IPC è locale/sincrono lato DB, il cambio è praticamente istantaneo.
+4. **Persistenza a riavvio gratuita**: al boot ThemeApplier legge la query e applica il tema salvato.
+5. **Nessun `HistoryEvent`**: operazione di configurazione dell'app, non sulla pratica.
+6. Layer rispettati: query solo nel repository; validazione zod nel controller + guard nel service;
+   nessun `any`.
+
+**Confine di storia:** percorso dati (S11.2), backup/ripristino (S11.3), reset (S11.4), backup automatico
+(S11.7), soglie alert configurabili (S11.5), info app (S11.6). La bonifica dei ~51 colori hardcoded residui
+(badge, `#fff` su pulsanti accent, hex semantici) **non** è in S11.1 (gli hex semantici e il bianco su
+accent sono volutamente fissi) → TODO futuro non bloccante.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓. Verifica interattiva GUI
+(`npm run desktop`: selezione dei 5 temi → cambia sfondo/card/bordi/testo/accenti/sidebar; alert Dashboard,
+box d'errore e pulsanti distruttivi invariati in ogni tema; persistenza dopo riavvio) da completare
+manualmente.
 
 ### 2026-06-26 — Chiusura pendenze pre-E11: ErrorBoundary (S0.3) + allineamento stati S0.2/S5.5
 

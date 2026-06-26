@@ -4,6 +4,7 @@ import { registerAnagraficheHandlers } from './modules/anagrafiche/controller'
 import { registerPracticesHandlers } from './modules/practices/controller'
 import { registerDocumentsHandlers } from './modules/documents/controller'
 import { registerDashboardHandlers } from './modules/dashboard/controller'
+import { registerSettingsHandlers } from './modules/settings/controller'
 
 export function bootstrap(): void {
   registerAppHandlers()
@@ -12,4 +13,5 @@ export function bootstrap(): void {
   registerPracticesHandlers()
   registerDocumentsHandlers()
   registerDashboardHandlers()
+  registerSettingsHandlers()
 }

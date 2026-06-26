@@ -1,3 +1,5 @@
+import type { ThemeKey } from './themes'
+
 export const PHASE_CATEGORIES = [
   'deposited',
   'awaiting_decree',
@@ -67,7 +69,9 @@ export const IPC_CHANNELS = {
   DOCUMENTS_OPEN: 'documents:open',
   DASHBOARD_PHASE_COUNTS: 'dashboard:phaseCounts',
   DASHBOARD_ALERTS: 'dashboard:alerts',
-  DASHBOARD_AGING: 'dashboard:aging'
+  DASHBOARD_AGING: 'dashboard:aging',
+  SETTINGS_GET: 'settings:get',
+  SETTINGS_UPDATE_THEME: 'settings:updateTheme'
 } as const
 
 export type AppGetVersionResponse = string
@@ -713,9 +717,25 @@ export interface DashboardAgingItem {
 }
 export type DashboardAgingResponse = DashboardAgingItem[]
 
+// --- Settings (E11) ---
+// Vista esposta all'MVP: per ora il solo tema (S11.1). Gli altri campi di
+// app_settings (dataPath, backup, security…) entrano con le storie successive.
+export interface AppSettingsView {
+  theme: ThemeKey
+}
+export type SettingsGetResponse = AppSettingsView
+export interface UpdateThemeInput {
+  theme: ThemeKey
+}
+export type SettingsUpdateThemeResponse = AppSettingsView
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
+  }
+  settings: {
+    get(): Promise<SettingsGetResponse>
+    updateTheme(input: UpdateThemeInput): Promise<SettingsUpdateThemeResponse>
   }
   config: {
     listPhases(): Promise<ConfigListPhasesResponse>

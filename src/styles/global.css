@@ -10,8 +10,11 @@
   /* Layout */
   --sidebar-width: 220px;
 
-  /* Base theme (light) */
+  /* Base theme (light) — i blocchi html[data-theme='...'] qui sotto
+     ridefiniscono SOLO questi token di base/sidebar; i token semantici
+     restano in :root e non vengono mai sovrascritti (regola 8). */
   --color-bg: #f1f5f9;
+  --color-bg-subtle: #f8fafc;
   --color-surface: #ffffff;
   --color-border: #e2e8f0;
   --color-text: #1e293b;
@@ -52,6 +55,90 @@
   --badge-final-text: #7e22ce;
   --badge-custom-bg: #fef3c7;
   --badge-custom-text: #92400e;
+}
+
+/* ===== Temi (S11.1) — ridefiniscono SOLO i token di base e sidebar.
+   I token semantici (alert/errori/distruttive) restano in :root. =====
+   light = valori di :root (nessun blocco necessario). */
+
+html[data-theme='dark'] {
+  --color-bg: #0f172a;
+  --color-bg-subtle: #172033;
+  --color-surface: #1e293b;
+  --color-border: #334155;
+  --color-text: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-accent: #6366f1;
+  --color-accent-hover: #818cf8;
+  --color-accent-light: #1e1b4b;
+
+  --sidebar-bg: #020617;
+  --sidebar-border: #1e293b;
+  --sidebar-text: #94a3b8;
+  --sidebar-text-active: #f8fafc;
+  --sidebar-item-hover: #1e293b;
+  --sidebar-item-active: #334155;
+}
+
+html[data-theme='pastel'] {
+  --color-bg: #faf5f0;
+  --color-bg-subtle: #f5ece3;
+  --color-surface: #fffdfb;
+  --color-border: #ecdfd3;
+  --color-text: #4a3f35;
+  --color-text-secondary: #8a7a6a;
+  --color-text-muted: #b3a596;
+  --color-accent: #c97b5a;
+  --color-accent-hover: #b56747;
+  --color-accent-light: #f7ece4;
+
+  --sidebar-bg: #6b5d4f;
+  --sidebar-border: #7d6e5f;
+  --sidebar-text: #d8cabb;
+  --sidebar-text-active: #fffaf4;
+  --sidebar-item-hover: #7a6b5c;
+  --sidebar-item-active: #87786a;
+}
+
+html[data-theme='deep-dark'] {
+  --color-bg: #000000;
+  --color-bg-subtle: #131316;
+  --color-surface: #0c0c0e;
+  --color-border: #26262b;
+  --color-text: #ededf2;
+  --color-text-secondary: #9b9ba5;
+  --color-text-muted: #6b6b75;
+  --color-accent: #8b5cf6;
+  --color-accent-hover: #a78bfa;
+  --color-accent-light: #1a1626;
+
+  --sidebar-bg: #060608;
+  --sidebar-border: #1d1d22;
+  --sidebar-text: #8b8b95;
+  --sidebar-text-active: #f5f5fa;
+  --sidebar-item-hover: #161619;
+  --sidebar-item-active: #232329;
+}
+
+html[data-theme='mustard-grey'] {
+  --color-bg: #ebe9e4;
+  --color-bg-subtle: #e3e0d8;
+  --color-surface: #f7f6f2;
+  --color-border: #d6d2c8;
+  --color-text: #36342e;
+  --color-text-secondary: #6e6a60;
+  --color-text-muted: #9a958a;
+  --color-accent: #c79a2b;
+  --color-accent-hover: #ad841f;
+  --color-accent-light: #f3ecd6;
+
+  --sidebar-bg: #3a382f;
+  --sidebar-border: #4a473d;
+  --sidebar-text: #c4bfb0;
+  --sidebar-text-active: #faf8f0;
+  --sidebar-item-hover: #46433a;
+  --sidebar-item-active: #524f44;
 }
 
 html,

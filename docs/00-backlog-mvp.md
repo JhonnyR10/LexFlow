@@ -133,7 +133,7 @@ Priorità MoSCoW. `MVP` = nel primo rilascio usabile end-to-end.
 
 ### E11 — Impostazioni app `MVP` parziale (Must per tema/backup/percorso; resto Should)
 
-- **S11.1** Tema interfaccia con colori alert/errori/azioni distruttive **non sovrascrivibili**. `MVP`.
+- **S11.1** Tema interfaccia con colori alert/errori/azioni distruttive **non sovrascrivibili**. `MVP`. L'utente sceglie il tema dell'interfaccia in «Impostazioni app» tra cinque palette (Chiaro, Scuro, Pastello, Deep dark, Grigio senape). Il tema è persistito in `app_settings.theme` (nessuna migrazione: colonna già presente) e applicato impostando `data-theme` su `<html>`; le palette ridefiniscono **solo** i token di base/sidebar (sfondo, superfici, bordi, testo, accenti, sidebar). I **token semantici** (alert giallo/arancione/rosso, errori, azioni distruttive/`--color-destructive`, successo) vivono in `:root` e non sono **mai** ridichiarati nei blocchi tema: impossibile sovrascriverli (regola 8) per costruzione. La selezione è una operazione di configurazione app (nessun `HistoryEvent`). _AC:_ cambiando tema sfondo/card/bordi/testo/accenti/sidebar cambiano; alert, errori e pulsanti distruttivi restano identici in ogni tema; il tema scelto sopravvive al riavvio dell'app; stati loading/error della pagina gestiti.
 - **S11.2** Percorso dati: visualizza, copia, cambia. `MVP`.
 - **S11.3** Backup completo (DB + documenti) e ripristino. `MVP`.
 - **S11.4** Reset archivio con backup automatico preventivo + doppia conferma. `MVP`.
