@@ -15,6 +15,8 @@ import type {
   UpdatePracticeResponse,
   MoveToTrashInput,
   MoveToTrashResponse,
+  RestoreFromTrashInput,
+  RestoreFromTrashResponse,
   PracticesListTrashedResponse,
 } from '../../../shared/ipc'
 import {
@@ -46,6 +48,7 @@ import {
   updatePracticeImporti,
   deletePecDepositoRecipients,
   moveToTrash as moveToTrashRow,
+  restoreFromTrash as restoreFromTrashRow,
   findTrashedPractices,
   type TransitionFieldRow,
   type ImportiUpdate,
@@ -710,6 +713,45 @@ export function moveToTrash(input: MoveToTrashInput): MoveToTrashResponse {
   })
 
   return { trashedCount }
+}
+
+// Ripristina le pratiche indicate dal cestino. Inverso di moveToTrash: riporta
+// isTrashed=false e azzera trashedAt/trashReason. Tutto in un'unica transazione:
+// o tutte le pratiche cestinate valide vengono ripristinate, o nessuna. Le
+// pratiche assenti o non cestinate vengono saltate (idempotenza); `restoredCount`
+// conta solo quelle effettivamente ripristinate ora. Ogni pratica ripristinata
+// scrive un HistoryEvent `restored` (regola 9).
+export function restoreFromTrash(input: RestoreFromTrashInput): RestoreFromTrashResponse {
+  if (input.ids.length === 0) {
+    throw new ValidationError('Nessuna pratica selezionata')
+  }
+
+  const now = new Date().toISOString()
+  let restoredCount = 0
+
+  getDb().transaction(() => {
+    for (const id of input.ids) {
+      const core = findPracticeCoreById(id)
+      if (!core || !core.isTrashed) continue  // assente o non cestinata: saltata
+
+      const changed = restoreFromTrashRow(id, now)
+      if (changed === 0) continue
+
+      insertHistoryEvent({
+        practiceId:  id,
+        timestamp:   now,
+        type:        'restored',
+        title:       'Pratica ripristinata dal cestino',
+        fromPhaseId: null,
+        toPhaseId:   null,
+        note:        null,
+        payload:     JSON.stringify({ restoredAt: now }),
+      })
+      restoredCount++
+    }
+  })
+
+  return { restoredCount }
 }
 
 export function listTrashedPractices(): PracticesListTrashedResponse {

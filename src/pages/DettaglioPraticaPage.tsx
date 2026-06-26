@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { usePracticeDetail, useMoveToTrash } from '../features/practices/usePractices'
+import { usePracticeDetail, useMoveToTrash, useRestoreFromTrash } from '../features/practices/usePractices'
 import { WorkflowActions } from '../features/practices/WorkflowActions'
 import { ModificaPraticaModal } from '../features/practices/ModificaPraticaModal'
 import { MoveToTrashModal } from '../features/practices/MoveToTrashModal'
+import { RestoreFromTrashModal } from '../features/practices/RestoreFromTrashModal'
 import { ipcErrorMessage } from '../utils/ipcError'
 import { DocumentsSection } from '../features/documents/DocumentsSection'
 import { useFields } from '../features/config/fields/useFields'
@@ -289,9 +290,12 @@ export function DettaglioPraticaPage(): React.JSX.Element {
   const { data: practice, isLoading, isError, error } = usePracticeDetail(numericId)
   const navigate = useNavigate()
   const moveToTrash = useMoveToTrash()
+  const restore = useRestoreFromTrash()
   const [editing, setEditing] = useState(false)
   const [trashing, setTrashing] = useState(false)
   const [trashError, setTrashError] = useState<string | null>(null)
+  const [restoring, setRestoring] = useState(false)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
 
   const handleMoveToTrash = (reason: string): void => {
     if (numericId == null) return
@@ -304,6 +308,20 @@ export function DettaglioPraticaPage(): React.JSX.Element {
           navigate('/pratiche')
         },
         onError: (e) => setTrashError(ipcErrorMessage(e)),
+      }
+    )
+  }
+
+  const handleRestore = (): void => {
+    if (numericId == null) return
+    setRestoreError(null)
+    restore.mutate(
+      { ids: [numericId] },
+      {
+        // Resta sul dettaglio: l'invalidazione di ['practice', id] ricarica la
+        // vista, il banner sparisce e ricompaiono Modifica/azioni workflow.
+        onSuccess: () => setRestoring(false),
+        onError: (e) => setRestoreError(ipcErrorMessage(e)),
       }
     )
   }
@@ -400,8 +418,19 @@ export function DettaglioPraticaPage(): React.JSX.Element {
           marginBottom: '24px', padding: '12px 16px', borderRadius: '8px',
           background: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)',
           color: 'var(--color-error)', fontSize: '13px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px',
         }}>
-          Questa pratica è nel cestino. Le azioni di modifica e avanzamento sono disabilitate.
+          <span>Questa pratica è nel cestino. Le azioni di modifica e avanzamento sono disabilitate.</span>
+          <button
+            type="button"
+            onClick={() => { setRestoreError(null); setRestoring(true) }}
+            style={{
+              flexShrink: 0, padding: '6px 16px', background: 'var(--color-accent)', color: '#fff',
+              border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+            }}
+          >
+            Ripristina
+          </button>
         </div>
       )}
 
@@ -429,6 +458,25 @@ export function DettaglioPraticaPage(): React.JSX.Element {
           color: 'var(--color-error)', fontSize: '13px',
         }}>
           {trashError}
+        </div>
+      )}
+
+      {restoring && (
+        <RestoreFromTrashModal
+          count={1}
+          pending={restore.isPending}
+          onConfirm={handleRestore}
+          onClose={() => { if (!restore.isPending) setRestoring(false) }}
+        />
+      )}
+
+      {restoreError && (
+        <div style={{
+          marginBottom: '16px', padding: '10px 14px', borderRadius: '8px',
+          background: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)',
+          color: 'var(--color-error)', fontSize: '13px',
+        }}>
+          {restoreError}
         </div>
       )}
 

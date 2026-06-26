@@ -14,6 +14,8 @@ import type {
   ExecuteTransitionResponse,
   MoveToTrashInput,
   MoveToTrashResponse,
+  RestoreFromTrashInput,
+  RestoreFromTrashResponse,
   PracticesListTrashedResponse,
 } from '../../shared/ipc'
 
@@ -51,6 +53,9 @@ export const practicesApi = {
 
   moveToTrash: (input: MoveToTrashInput): Promise<MoveToTrashResponse> =>
     window.api.practices.moveToTrash(input),
+
+  restore: (input: RestoreFromTrashInput): Promise<RestoreFromTrashResponse> =>
+    window.api.practices.restore(input),
 
   listTrashed: (): Promise<PracticesListTrashedResponse> =>
     window.api.practices.listTrashed(),

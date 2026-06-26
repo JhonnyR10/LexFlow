@@ -42,7 +42,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S8.4   | Anzianità + stato vuoto + Vedi pratiche                      | FATTO    | **E8 (Dashboard) COMPLETATA.** Sezione «Pratiche più vecchie» (top-5 pratiche aperte per giorni da deposito desc, riusa query alert + `daysSinceDeposit` condiviso); stato vuoto archivio unico a livello Dashboard con azione «Crea una nuova pratica»; card per fase cliccabili → `/pratiche?phaseId=` con filtro Fase preimpostato (`filtersFromSearchParams` + `useSearchParams`). Nuovo IPC `dashboard:aging`, nessuna migrazione. |
 | S9.1   | Export CSV                                                   | TODO     |                                                                                                                                                                                                                          |
 | S10.1  | Sposta nel cestino                                           | FATTO    | **Apre E10 (Cestino).** Soft delete con conferma + motivo obbligatorio; azione dal dettaglio (singola) e in blocco dalla toolbar di selezione (S3.4). IPC `practices:moveToTrash` (N id + motivo, transazione atomica, idempotente, `HistoryEvent` `trashed`) e `practices:listTrashed`. Pagina Cestino di sola lettura (data + motivo). Nessuna migrazione (colonne già presenti). Ripristino→S10.2, cancellazione→S10.3. |
-| S10.2  | Ripristino                                                   | TODO     |                                                                                                                                                                                                                          |
+| S10.2  | Ripristino                                                   | FATTO    | Ripristino dal cestino (singolo + multiplo) speculare a S10.1. IPC `practices:restore` (N id, transazione atomica, idempotente, azzera `trashedAt`/`trashReason`, `HistoryEvent` `restored`). Pagina Cestino interattiva (selezione + per-riga/bulk); pulsante «Ripristina» nel banner del dettaglio cestinata; modale di conferma leggera senza motivo (non distruttiva). Nessuna migrazione. Cancellazione→S10.3. |
 | S10.3  | Cancellazione definitiva                                     | TODO     |                                                                                                                                                                                                                          |
 | S11.1  | Tema + colori semantici fissi                                | TODO     |                                                                                                                                                                                                                          |
 | S11.2  | Percorso dati                                                | TODO     |                                                                                                                                                                                                                          |
@@ -84,6 +84,56 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-26 — S10.2: Ripristino dal cestino (singolo e multiplo)
+
+**Nessuna modifica schema, nessuna migrazione.** Inverso speculare di S10.1: le
+colonne `isTrashed`/`trashedAt`/`trashReason` esistono già. Questa storia rende
+**reversibile** lo stato cestinato, chiudendo il round-trip del Cestino.
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `src/features/practices/RestoreFromTrashModal.tsx` | Modale di conferma **leggera** riusabile (dettaglio + Cestino, singolo/bulk): **nessun motivo** (a differenza di `MoveToTrashModal`), pulsante di conferma con colore **accent neutro** — azione non distruttiva (regola 8); props `count`/`pending`/`onConfirm()`/`onClose` |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `shared/ipc.ts` | Canale `PRACTICES_RESTORE`; tipi `RestoreFromTrashInput`/`RestoreFromTrashResponse`; esteso `LexFlowApi.practices.restore` |
+| `main/modules/practices/repository.ts` | `restoreFromTrash(id, restoredAt)` (update `isTrashed=false`, azzera `trashedAt`/`trashReason`, `version+1`, guard `isTrashed=true` → idempotente, ritorna `changes`) |
+| `main/modules/practices/service.ts` | `restoreFromTrash(input)`: una sola transazione, per ogni id salta assenti/non cestinate, `restoreFromTrashRow`+`HistoryEvent` `restored`, ritorna `restoredCount` |
+| `main/modules/practices/controller.ts` | `restoreFromTrashSchema` (ids≥1) + handler `PRACTICES_RESTORE` |
+| `main/preload.ts` | `practices.restore` nel contextBridge |
+| `src/api/practices.ts` | Client `restore` |
+| `src/features/practices/usePractices.ts` | `useRestoreFromTrash` (invalida `['practices']`,`['trash']`,`['dashboard']`,`['practice',id]`) |
+| `src/pages/CestinoPage.tsx` | Sola lettura → interattiva: colonna checkbox + «seleziona tutto» (indeterminate), pulsante «Ripristina» per riga, toolbar bulk (conteggio + ripristina + deseleziona), modale di conferma, riga errore; selezione effettiva derivata in render (intersezione con righe presenti) |
+| `src/pages/DettaglioPraticaPage.tsx` | Pulsante «Ripristina» (accent) nel banner «Questa pratica è nel cestino»; al successo resta sul dettaglio (l'invalidazione ricarica la vista, banner via, Modifica/azioni di nuovo attive); stato `restoring`/`restoreError` |
+| `docs/00-backlog-mvp.md` | S10.2 AC esplicitati (singolo+bulk, conferma senza motivo, idempotenza, evento `restored`, ritorno nei conteggi) |
+
+**Invarianti / decisioni:**
+1. **Soft delete reversibile** (regola 6): ripristino = `isTrashed=false`; i file
+   documentali non vengono toccati (coerente con E7).
+2. **`trashedAt`/`trashReason` azzerati**: una pratica attiva non conserva quei
+   campi; la traccia resta negli `HistoryEvent` (`trashed` + `restored`).
+3. **Idempotenza + atomicità**: una sola transazione; pratiche non cestinate
+   saltate; `restoredCount` conta solo quelle ripristinate ora (`restoredCount=0`
+   se nulla cambia, nessun errore).
+4. **Conferma leggera senza motivo**: il ripristino non è distruttivo → pulsante
+   accent, niente `--color-destructive` (regola 8).
+5. **HistoryEvent** `restored` per pratica (regola 9).
+6. Layer rispettati: query solo nel repository; logica/transazione nel service;
+   zod nel controller; nessun `any`.
+
+**Confine di storia:** cancellazione definitiva (irreversibile, avviso forte) → S10.3.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓.
+Verifica interattiva GUI (`npm run desktop`: ripristino per riga, bulk, da
+dettaglio; ricomparsa in elenco/Dashboard/conteggi; evento storico; idempotenza)
+da completare manualmente.
+
+---
 
 ### 2026-06-26 — S10.1: Sposta nel cestino — **apre E10 (Cestino)**
 

@@ -18,6 +18,8 @@ import type {
   ExecuteTransitionResponse,
   MoveToTrashInput,
   MoveToTrashResponse,
+  RestoreFromTrashInput,
+  RestoreFromTrashResponse,
   PracticesListTrashedResponse,
 } from '../../../shared/ipc'
 
@@ -86,6 +88,23 @@ export function useMoveToTrash(): UseMutationResult<MoveToTrashResponse, Error, 
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: MoveToTrashInput) => practicesApi.moveToTrash(input),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['practices'] })
+      queryClient.invalidateQueries({ queryKey: ['trash'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      for (const id of variables.ids) {
+        queryClient.invalidateQueries({ queryKey: ['practice', id] })
+      }
+    },
+  })
+}
+
+// Ripristina una o più pratiche dal cestino (S10.2). Inverso di useMoveToTrash:
+// le pratiche tornano in elenco/Dashboard/conteggi ed escono dal cestino.
+export function useRestoreFromTrash(): UseMutationResult<RestoreFromTrashResponse, Error, RestoreFromTrashInput, unknown> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: RestoreFromTrashInput) => practicesApi.restore(input),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['practices'] })
       queryClient.invalidateQueries({ queryKey: ['trash'] })

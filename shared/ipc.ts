@@ -58,6 +58,7 @@ export const IPC_CHANNELS = {
   PRACTICES_EXECUTE_TRANSITION: 'practices:executeTransition',
   PRACTICES_UPDATE: 'practices:updatePractice',
   PRACTICES_MOVE_TO_TRASH: 'practices:moveToTrash',
+  PRACTICES_RESTORE: 'practices:restore',
   PRACTICES_LIST_TRASHED: 'practices:listTrashed',
   DOCUMENTS_LIST: 'documents:listByPractice',
   DOCUMENTS_UPLOAD: 'documents:upload',
@@ -548,6 +549,19 @@ export interface MoveToTrashResponse {
   trashedCount: number
 }
 
+// --- Ripristino dal cestino (soft delete inverso) — S10.2 ---
+// Ripristina N pratiche cestinate (isTrashed=false, trashedAt/trashReason
+// azzerati). Usato dal Cestino (un id per riga o più via selezione) e dal
+// dettaglio di una pratica cestinata (un id). Idempotente: le pratiche non
+// cestinate vengono saltate, `restoredCount` riflette quelle ripristinate ora.
+export interface RestoreFromTrashInput {
+  ids: number[]
+}
+
+export interface RestoreFromTrashResponse {
+  restoredCount: number
+}
+
 // Riga della tabella Cestino (sola lettura in S10.1): pratica cestinata con data
 // e motivo della cestinazione.
 export interface TrashedPracticeItem {
@@ -719,6 +733,7 @@ export interface LexFlowApi {
     listAvailableTransitions(input: ListAvailableTransitionsInput): Promise<PracticesListAvailableTransitionsResponse>
     executeTransition(input: ExecuteTransitionInput): Promise<ExecuteTransitionResponse>
     moveToTrash(input: MoveToTrashInput): Promise<MoveToTrashResponse>
+    restore(input: RestoreFromTrashInput): Promise<RestoreFromTrashResponse>
     listTrashed(): Promise<PracticesListTrashedResponse>
   }
   documents: {

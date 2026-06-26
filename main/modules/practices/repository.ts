@@ -579,8 +579,29 @@ export function moveToTrash(
   return result.changes
 }
 
-// Pratiche nel cestino, più recenti in cima: per la pagina Cestino (sola lettura
-// in S10.1). Join su phases per il displayName della fase corrente.
+// --- S10.2: ripristino dal cestino ---
+
+// Ripristina una pratica cestinata: azzera isTrashed/trashedAt/trashReason e
+// incrementa `version` (predisposizione audit, come moveToTrash). La guard
+// `isTrashed=true` rende l'operazione idempotente: una pratica non cestinata non
+// viene ritoccata. Ritorna il numero di righe effettivamente aggiornate.
+export function restoreFromTrash(id: number, restoredAt: string): number {
+  const result = getDb()
+    .update(practices)
+    .set({
+      isTrashed:   false,
+      trashedAt:   null,
+      trashReason: null,
+      updatedAt:   restoredAt,
+      version:     sql`${practices.version} + 1`,
+    })
+    .where(and(eq(practices.id, id), eq(practices.isTrashed, true)))
+    .run()
+  return result.changes
+}
+
+// Pratiche nel cestino, più recenti in cima: per la pagina Cestino. Join su
+// phases per il displayName della fase corrente.
 export function findTrashedPractices(): TrashedPracticeItem[] {
   const rows = getDb()
     .select({

@@ -1,13 +1,15 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useTrashedPractices } from '../features/practices/usePractices'
+import { useTrashedPractices, useRestoreFromTrash } from '../features/practices/usePractices'
+import { RestoreFromTrashModal } from '../features/practices/RestoreFromTrashModal'
+import { ipcErrorMessage } from '../utils/ipcError'
 import type { TrashedPracticeItem } from '../../shared/ipc'
 
-// S10.1 — Pagina Cestino (sola lettura): elenco delle pratiche cestinate con
-// data e motivo. Ripristino (S10.2) e cancellazione definitiva (S10.3) sono
-// storie successive: qui non ci sono ancora pulsanti d'azione.
+// S10.2 — Pagina Cestino: elenco delle pratiche cestinate con data e motivo, ora
+// con ripristino singolo (pulsante per riga) e multiplo (selezione + toolbar).
+// Cancellazione definitiva (S10.3) è una storia successiva.
 
-const pageStyle: React.CSSProperties = { padding: '32px', maxWidth: '960px' }
+const pageStyle: React.CSSProperties = { padding: '32px', maxWidth: '1040px' }
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return '—'
@@ -26,10 +28,30 @@ const thStyle: React.CSSProperties = {
 const tdStyle: React.CSSProperties = {
   padding: '10px 14px', fontSize: '13px', color: 'var(--color-text)', verticalAlign: 'middle',
 }
+const btnRestoreStyle: React.CSSProperties = {
+  padding: '5px 12px', background: 'var(--color-bg)', color: 'var(--color-accent)',
+  border: '1px solid var(--color-accent)', borderRadius: '6px', fontSize: '12px',
+  fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap',
+}
 
-function TrashedRow({ p }: { p: TrashedPracticeItem }): React.JSX.Element {
+interface RowProps {
+  p: TrashedPracticeItem
+  selected: boolean
+  onToggle: (id: number) => void
+  onRestore: (id: number) => void
+}
+
+function TrashedRow({ p, selected, onToggle, onRestore }: RowProps): React.JSX.Element {
   return (
     <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+      <td style={{ ...tdStyle, width: '36px', textAlign: 'center' }}>
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggle(p.id)}
+          aria-label={`Seleziona ${p.codiceIstanza}`}
+        />
+      </td>
       <td style={tdStyle}>
         <Link
           to={`/pratiche/${p.id}`}
@@ -44,12 +66,66 @@ function TrashedRow({ p }: { p: TrashedPracticeItem }): React.JSX.Element {
       <td style={tdStyle}>{p.currentPhaseDisplayName ?? '—'}</td>
       <td style={tdStyle}>{formatDateTime(p.trashedAt)}</td>
       <td style={tdStyle}>{p.trashReason ?? '—'}</td>
+      <td style={{ ...tdStyle, textAlign: 'right' }}>
+        <button type="button" onClick={() => onRestore(p.id)} style={btnRestoreStyle}>
+          Ripristina
+        </button>
+      </td>
     </tr>
   )
 }
 
 export function CestinoPage(): React.JSX.Element {
   const { data: trashed, isLoading, isError } = useTrashedPractices()
+  const restore = useRestoreFromTrash()
+
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  // Pratiche oggetto della conferma di ripristino aperta (null = nessuna modale).
+  const [restoreTargets, setRestoreTargets] = useState<number[] | null>(null)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
+
+  const rows = trashed ?? []
+  // La selezione effettiva è l'intersezione con le righe presenti (le pratiche
+  // ripristinate spariscono dalla lista): derivata in render, niente set-in-effect.
+  const presentIds = new Set(rows.map(r => r.id))
+  const effectiveSelected = [...selectedIds].filter(id => presentIds.has(id))
+  const selectedCount = effectiveSelected.length
+  const allSelected = rows.length > 0 && selectedCount === rows.length
+
+  const toggleOne = (id: number): void => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleAll = (): void => {
+    setSelectedIds(allSelected ? new Set() : new Set(rows.map(r => r.id)))
+  }
+
+  const clearSelection = (): void => setSelectedIds(new Set())
+
+  const openRestore = (ids: number[]): void => {
+    setRestoreError(null)
+    setRestoreTargets(ids)
+  }
+
+  const handleConfirmRestore = (): void => {
+    if (restoreTargets == null) return
+    setRestoreError(null)
+    restore.mutate(
+      { ids: restoreTargets },
+      {
+        onSuccess: () => {
+          setRestoreTargets(null)
+          clearSelection()
+        },
+        onError: (e) => setRestoreError(ipcErrorMessage(e)),
+      }
+    )
+  }
 
   return (
     <div style={pageStyle}>
@@ -62,7 +138,8 @@ export function CestinoPage(): React.JSX.Element {
         color: 'var(--color-text)', fontSize: '13px',
       }}>
         Le pratiche qui elencate sono cestinate (eliminazione logica): restano escluse da dashboard,
-        elenco e avvisi. I dati e i documenti sono conservati finché non vengono cancellati definitivamente.
+        elenco e avvisi. Puoi ripristinarle per riportarle tra le pratiche attive. I dati e i documenti
+        sono conservati finché non vengono cancellati definitivamente.
       </div>
 
       {isLoading && (
@@ -80,7 +157,7 @@ export function CestinoPage(): React.JSX.Element {
         </div>
       )}
 
-      {!isLoading && !isError && (!trashed || trashed.length === 0) && (
+      {!isLoading && !isError && rows.length === 0 && (
         <div style={{
           padding: '48px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '14px',
           border: '2px dashed var(--color-border)', borderRadius: '10px',
@@ -90,23 +167,93 @@ export function CestinoPage(): React.JSX.Element {
         </div>
       )}
 
-      {!isLoading && !isError && trashed && trashed.length > 0 && (
-        <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', background: 'var(--color-surface)' }}>
-            <thead>
-              <tr style={{ background: 'var(--color-bg-subtle, #f8fafc)' }}>
-                <th style={thStyle}>Codice istanza</th>
-                <th style={thStyle}>Nome istanza</th>
-                <th style={thStyle}>Fase</th>
-                <th style={thStyle}>Data cestinazione</th>
-                <th style={thStyle}>Motivo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {trashed.map(p => <TrashedRow key={p.id} p={p} />)}
-            </tbody>
-          </table>
-        </div>
+      {!isLoading && !isError && rows.length > 0 && (
+        <>
+          {restoreError && (
+            <div style={{
+              marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px',
+              background: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)', color: 'var(--color-error)',
+            }}>
+              {restoreError}
+            </div>
+          )}
+
+          {selectedCount > 0 && (
+            <div style={{
+              marginBottom: '12px', padding: '10px 14px', borderRadius: '8px',
+              display: 'flex', alignItems: 'center', gap: '14px',
+              background: 'var(--color-bg-subtle, #f8fafc)', border: '1px solid var(--color-border)',
+            }}>
+              <span style={{ fontSize: '13px', color: 'var(--color-text)' }}>
+                {selectedCount} {selectedCount === 1 ? 'pratica selezionata' : 'pratiche selezionate'}
+              </span>
+              <button
+                type="button"
+                onClick={() => openRestore(effectiveSelected)}
+                style={{
+                  padding: '6px 16px', background: 'var(--color-accent)', color: '#fff',
+                  border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                }}
+              >
+                Ripristina {selectedCount === 1 ? 'la pratica' : `le ${selectedCount} pratiche`}
+              </button>
+              <button
+                type="button"
+                onClick={clearSelection}
+                style={{
+                  padding: '6px 14px', background: 'transparent', color: 'var(--color-text-muted)',
+                  border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '13px', cursor: 'pointer',
+                }}
+              >
+                Deseleziona
+              </button>
+            </div>
+          )}
+
+          <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', background: 'var(--color-surface)' }}>
+              <thead>
+                <tr style={{ background: 'var(--color-bg-subtle, #f8fafc)' }}>
+                  <th style={{ ...thStyle, width: '36px', textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={el => { if (el) el.indeterminate = selectedCount > 0 && !allSelected }}
+                      onChange={toggleAll}
+                      aria-label="Seleziona tutte"
+                    />
+                  </th>
+                  <th style={thStyle}>Codice istanza</th>
+                  <th style={thStyle}>Nome istanza</th>
+                  <th style={thStyle}>Fase</th>
+                  <th style={thStyle}>Data cestinazione</th>
+                  <th style={thStyle}>Motivo</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Azioni</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(p => (
+                  <TrashedRow
+                    key={p.id}
+                    p={p}
+                    selected={selectedIds.has(p.id)}
+                    onToggle={toggleOne}
+                    onRestore={(id) => openRestore([id])}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {restoreTargets != null && (
+        <RestoreFromTrashModal
+          count={restoreTargets.length}
+          pending={restore.isPending}
+          onConfirm={handleConfirmRestore}
+          onClose={() => { if (!restore.isPending) setRestoreTargets(null) }}
+        />
       )}
     </div>
   )
