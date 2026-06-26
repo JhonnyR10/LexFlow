@@ -1,13 +1,15 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useTrashedPractices, useRestoreFromTrash } from '../features/practices/usePractices'
+import { useTrashedPractices, useRestoreFromTrash, usePermanentDelete } from '../features/practices/usePractices'
 import { RestoreFromTrashModal } from '../features/practices/RestoreFromTrashModal'
+import { PermanentDeleteModal } from '../features/practices/PermanentDeleteModal'
 import { ipcErrorMessage } from '../utils/ipcError'
 import type { TrashedPracticeItem } from '../../shared/ipc'
 
-// S10.2 — Pagina Cestino: elenco delle pratiche cestinate con data e motivo, ora
-// con ripristino singolo (pulsante per riga) e multiplo (selezione + toolbar).
-// Cancellazione definitiva (S10.3) è una storia successiva.
+// S10.2/S10.3 — Pagina Cestino: elenco delle pratiche cestinate con data e
+// motivo, con ripristino (per riga + in blocco) e cancellazione definitiva
+// (per riga + in blocco, conferma forte). È l'unico punto da cui si elimina
+// definitivamente una pratica.
 
 const pageStyle: React.CSSProperties = { padding: '32px', maxWidth: '1040px' }
 
@@ -33,15 +35,22 @@ const btnRestoreStyle: React.CSSProperties = {
   border: '1px solid var(--color-accent)', borderRadius: '6px', fontSize: '12px',
   fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap',
 }
+// Azione distruttiva: colore destructive fisso (regola 8).
+const btnDeleteStyle: React.CSSProperties = {
+  padding: '5px 12px', background: 'var(--color-bg)', color: 'var(--color-destructive)',
+  border: '1px solid var(--color-destructive)', borderRadius: '6px', fontSize: '12px',
+  fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap',
+}
 
 interface RowProps {
   p: TrashedPracticeItem
   selected: boolean
   onToggle: (id: number) => void
   onRestore: (id: number) => void
+  onDelete: (id: number) => void
 }
 
-function TrashedRow({ p, selected, onToggle, onRestore }: RowProps): React.JSX.Element {
+function TrashedRow({ p, selected, onToggle, onRestore, onDelete }: RowProps): React.JSX.Element {
   return (
     <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
       <td style={{ ...tdStyle, width: '36px', textAlign: 'center' }}>
@@ -67,9 +76,14 @@ function TrashedRow({ p, selected, onToggle, onRestore }: RowProps): React.JSX.E
       <td style={tdStyle}>{formatDateTime(p.trashedAt)}</td>
       <td style={tdStyle}>{p.trashReason ?? '—'}</td>
       <td style={{ ...tdStyle, textAlign: 'right' }}>
-        <button type="button" onClick={() => onRestore(p.id)} style={btnRestoreStyle}>
-          Ripristina
-        </button>
+        <div style={{ display: 'inline-flex', gap: '8px', justifyContent: 'flex-end' }}>
+          <button type="button" onClick={() => onRestore(p.id)} style={btnRestoreStyle}>
+            Ripristina
+          </button>
+          <button type="button" onClick={() => onDelete(p.id)} style={btnDeleteStyle}>
+            Elimina
+          </button>
+        </div>
       </td>
     </tr>
   )
@@ -78,11 +92,15 @@ function TrashedRow({ p, selected, onToggle, onRestore }: RowProps): React.JSX.E
 export function CestinoPage(): React.JSX.Element {
   const { data: trashed, isLoading, isError } = useTrashedPractices()
   const restore = useRestoreFromTrash()
+  const permanentDelete = usePermanentDelete()
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   // Pratiche oggetto della conferma di ripristino aperta (null = nessuna modale).
   const [restoreTargets, setRestoreTargets] = useState<number[] | null>(null)
   const [restoreError, setRestoreError] = useState<string | null>(null)
+  // Pratiche oggetto della conferma di cancellazione definitiva (null = chiusa).
+  const [deleteTargets, setDeleteTargets] = useState<number[] | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const rows = trashed ?? []
   // La selezione effettiva è l'intersezione con le righe presenti (le pratiche
@@ -123,6 +141,26 @@ export function CestinoPage(): React.JSX.Element {
           clearSelection()
         },
         onError: (e) => setRestoreError(ipcErrorMessage(e)),
+      }
+    )
+  }
+
+  const openDelete = (ids: number[]): void => {
+    setDeleteError(null)
+    setDeleteTargets(ids)
+  }
+
+  const handleConfirmDelete = (): void => {
+    if (deleteTargets == null) return
+    setDeleteError(null)
+    permanentDelete.mutate(
+      { ids: deleteTargets },
+      {
+        onSuccess: () => {
+          setDeleteTargets(null)
+          clearSelection()
+        },
+        onError: (e) => setDeleteError(ipcErrorMessage(e)),
       }
     )
   }
@@ -169,12 +207,12 @@ export function CestinoPage(): React.JSX.Element {
 
       {!isLoading && !isError && rows.length > 0 && (
         <>
-          {restoreError && (
+          {(restoreError || deleteError) && (
             <div style={{
               marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px',
               background: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)', color: 'var(--color-error)',
             }}>
-              {restoreError}
+              {restoreError ?? deleteError}
             </div>
           )}
 
@@ -196,6 +234,16 @@ export function CestinoPage(): React.JSX.Element {
                 }}
               >
                 Ripristina {selectedCount === 1 ? 'la pratica' : `le ${selectedCount} pratiche`}
+              </button>
+              <button
+                type="button"
+                onClick={() => openDelete(effectiveSelected)}
+                style={{
+                  padding: '6px 16px', background: 'var(--color-destructive)', color: '#fff',
+                  border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                }}
+              >
+                Elimina definitivamente {selectedCount === 1 ? 'la pratica' : `le ${selectedCount} pratiche`}
               </button>
               <button
                 type="button"
@@ -239,6 +287,7 @@ export function CestinoPage(): React.JSX.Element {
                     selected={selectedIds.has(p.id)}
                     onToggle={toggleOne}
                     onRestore={(id) => openRestore([id])}
+                    onDelete={(id) => openDelete([id])}
                   />
                 ))}
               </tbody>
@@ -253,6 +302,15 @@ export function CestinoPage(): React.JSX.Element {
           pending={restore.isPending}
           onConfirm={handleConfirmRestore}
           onClose={() => { if (!restore.isPending) setRestoreTargets(null) }}
+        />
+      )}
+
+      {deleteTargets != null && (
+        <PermanentDeleteModal
+          count={deleteTargets.length}
+          pending={permanentDelete.isPending}
+          onConfirm={handleConfirmDelete}
+          onClose={() => { if (!permanentDelete.isPending) setDeleteTargets(null) }}
         />
       )}
     </div>

@@ -127,7 +127,7 @@ Il contratto è la **chiave del campo** (uniche per contenitore/transizione nell
 
 1. Pratica = entità unica, mai duplicata.
 2. Collaboratore/Professionista collegati per **ID**; non eliminabili se hanno pratiche (solo disattivabili); le pratiche esistenti continuano a mostrarli.
-3. Cestino = `isTrashed`; le cestinate sono escluse da Dashboard, Report, filtri ordinari, alert, assistente; ripristino le riporta nei conteggi.
+3. Cestino = `isTrashed`; le cestinate sono escluse da Dashboard, Report, filtri ordinari, alert, assistente; ripristino le riporta nei conteggi. Il soft delete (cestino) è il default e resta reversibile. La **cancellazione definitiva** (S10.3, solo su pratiche già cestinate) è una **hard delete** irreversibile: rimuove la riga `practices` e tutti i figli che la referenziano — `documents`, `pec_recipients`, `history_events`, `transition_records` — in un'unica transazione (con `foreign_keys = ON`, i figli prima della pratica), più la cartella documenti `<percorsoDati>/documenti/<codiceIstanza>/`; non lascia traccia in `history_events` (l'entità è distrutta).
 4. Importi mancanti → "Non presente"/"Non calcolabile"; mai `NaN`.
 5. Coerenza fasi gestita dal motore (vedi workflow-engine), non da stringhe sparse.
 6. `version` incrementato a ogni update (predisposizione, non vincolo in mono-utente).

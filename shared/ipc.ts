@@ -59,6 +59,7 @@ export const IPC_CHANNELS = {
   PRACTICES_UPDATE: 'practices:updatePractice',
   PRACTICES_MOVE_TO_TRASH: 'practices:moveToTrash',
   PRACTICES_RESTORE: 'practices:restore',
+  PRACTICES_PERMANENT_DELETE: 'practices:permanentDelete',
   PRACTICES_LIST_TRASHED: 'practices:listTrashed',
   DOCUMENTS_LIST: 'documents:listByPractice',
   DOCUMENTS_UPLOAD: 'documents:upload',
@@ -562,6 +563,19 @@ export interface RestoreFromTrashResponse {
   restoredCount: number
 }
 
+// --- Cancellazione definitiva (hard delete irreversibile) — S10.3 ---
+// Elimina fisicamente N pratiche CESTINATE e tutti i loro figli (documents,
+// pec_recipients, history_events, transition_records) + la cartella documenti.
+// Solo da pagina Cestino. Idempotente: pratiche assenti o NON cestinate vengono
+// saltate, `deletedCount` riflette solo quelle effettivamente rimosse ora.
+export interface PermanentDeleteInput {
+  ids: number[]
+}
+
+export interface PermanentDeleteResponse {
+  deletedCount: number
+}
+
 // Riga della tabella Cestino (sola lettura in S10.1): pratica cestinata con data
 // e motivo della cestinazione.
 export interface TrashedPracticeItem {
@@ -734,6 +748,7 @@ export interface LexFlowApi {
     executeTransition(input: ExecuteTransitionInput): Promise<ExecuteTransitionResponse>
     moveToTrash(input: MoveToTrashInput): Promise<MoveToTrashResponse>
     restore(input: RestoreFromTrashInput): Promise<RestoreFromTrashResponse>
+    permanentDelete(input: PermanentDeleteInput): Promise<PermanentDeleteResponse>
     listTrashed(): Promise<PracticesListTrashedResponse>
   }
   documents: {

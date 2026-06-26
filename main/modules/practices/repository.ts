@@ -10,6 +10,7 @@ import {
   historyEvents,
   pecRecipients,
   transitionRecords,
+  documents,
   professionisti,
   collaboratori,
 } from '../../database/schema'
@@ -126,6 +127,7 @@ export function insertPractice(data: {
 
 export interface PracticeCore {
   id: number
+  codiceIstanza: string
   currentPhaseId: number
   previousPhaseId: number | null
   isTrashed: boolean
@@ -133,10 +135,12 @@ export interface PracticeCore {
 
 // Stato minimo della pratica, riletto dentro la transazione di avanzamento per
 // fondare il calcolo della destinazione sul currentPhaseId reale (S5.3).
+// `codiceIstanza` serve a S10.3 per rimuovere la cartella documenti.
 export function findPracticeCoreById(id: number): PracticeCore | null {
   const row = getDb()
     .select({
       id:              practices.id,
+      codiceIstanza:   practices.codiceIstanza,
       currentPhaseId:  practices.currentPhaseId,
       previousPhaseId: practices.previousPhaseId,
       isTrashed:       practices.isTrashed,
@@ -147,6 +151,7 @@ export function findPracticeCoreById(id: number): PracticeCore | null {
   if (!row) return null
   return {
     id:              row.id,
+    codiceIstanza:   row.codiceIstanza,
     currentPhaseId:  row.currentPhaseId,
     previousPhaseId: row.previousPhaseId ?? null,
     isTrashed:       row.isTrashed,
@@ -626,6 +631,39 @@ export function findTrashedPractices(): TrashedPracticeItem[] {
     trashedAt:               r.trashedAt ?? null,
     trashReason:             r.trashReason ?? null,
   }))
+}
+
+// --- S10.3: cancellazione definitiva (hard delete) ---
+// Cancellazione fisica dei figli di una pratica, una funzione per tabella. Con
+// `foreign_keys = ON` vanno chiamate PRIMA di deletePracticeRow, nell'ordine
+// documents → pec_recipients → history_events → transition_records → practices
+// (documents referenzia anche transition_records). Tutte dentro la stessa
+// transazione del service.
+
+export function deleteDocumentsByPractice(practiceId: number): void {
+  getDb().delete(documents).where(eq(documents.practiceId, practiceId)).run()
+}
+
+export function deletePecRecipientsByPractice(practiceId: number): void {
+  getDb().delete(pecRecipients).where(eq(pecRecipients.practiceId, practiceId)).run()
+}
+
+export function deleteHistoryEventsByPractice(practiceId: number): void {
+  getDb().delete(historyEvents).where(eq(historyEvents.practiceId, practiceId)).run()
+}
+
+export function deleteTransitionRecordsByPractice(practiceId: number): void {
+  getDb().delete(transitionRecords).where(eq(transitionRecords.practiceId, practiceId)).run()
+}
+
+// Cancella la riga pratica solo se cestinata (guard idempotente, come
+// moveToTrash/restoreFromTrash). Ritorna le righe effettivamente rimosse.
+export function deletePracticeRow(id: number): number {
+  const result = getDb()
+    .delete(practices)
+    .where(and(eq(practices.id, id), eq(practices.isTrashed, true)))
+    .run()
+  return result.changes
 }
 
 export function findAllActivePractices(): PracticeListItem[] {

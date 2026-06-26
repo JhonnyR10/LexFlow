@@ -43,7 +43,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S9.1   | Export CSV                                                   | TODO     |                                                                                                                                                                                                                          |
 | S10.1  | Sposta nel cestino                                           | FATTO    | **Apre E10 (Cestino).** Soft delete con conferma + motivo obbligatorio; azione dal dettaglio (singola) e in blocco dalla toolbar di selezione (S3.4). IPC `practices:moveToTrash` (N id + motivo, transazione atomica, idempotente, `HistoryEvent` `trashed`) e `practices:listTrashed`. Pagina Cestino di sola lettura (data + motivo). Nessuna migrazione (colonne già presenti). Ripristino→S10.2, cancellazione→S10.3. |
 | S10.2  | Ripristino                                                   | FATTO    | Ripristino dal cestino (singolo + multiplo) speculare a S10.1. IPC `practices:restore` (N id, transazione atomica, idempotente, azzera `trashedAt`/`trashReason`, `HistoryEvent` `restored`). Pagina Cestino interattiva (selezione + per-riga/bulk); pulsante «Ripristina» nel banner del dettaglio cestinata; modale di conferma leggera senza motivo (non distruttiva). Nessuna migrazione. Cancellazione→S10.3. |
-| S10.3  | Cancellazione definitiva                                     | TODO     |                                                                                                                                                                                                                          |
+| S10.3  | Cancellazione definitiva                                     | FATTO    | **E10 (Cestino) COMPLETATA.** Hard delete irreversibile, solo da Cestino (per riga + bulk), solo pratiche cestinate. IPC `practices:permanentDelete` (N id, una transazione: cancella figli `documents→pec_recipients→history_events→transition_records→practices` con FK ON, idempotente, `deletedCount`); cartella documenti rimossa post-commit (best-effort, helper `removePracticeDocumentsDir` esportato da documents/service). Nessun HistoryEvent (entità distrutta), tracciato via log. Modale forte senza digitazione. `PracticeCore` esteso con `codiceIstanza`. Nessuna migrazione. |
 | S11.1  | Tema + colori semantici fissi                                | TODO     |                                                                                                                                                                                                                          |
 | S11.2  | Percorso dati                                                | TODO     |                                                                                                                                                                                                                          |
 | S11.3  | Backup completo + ripristino                                 | TODO     |                                                                                                                                                                                                                          |
@@ -84,6 +84,67 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-26 — S10.3: Cancellazione definitiva — **E10 (Cestino) COMPLETATA**
+
+**Nessuna migrazione.** A differenza di S10.1/S10.2 (soft delete reversibile su
+colonne), questa è una **hard delete** irreversibile: rimuove la riga `practices`
+e tutti i suoi figli dal DB + la cartella documenti dal filesystem. Chiude il
+ciclo di vita della pratica (sposta → ripristina → **cancella**) e l'epica E10.
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `src/features/practices/PermanentDeleteModal.tsx` | Modale di conferma **forte** riusabile (riga singola + bulk): box d'avviso d'irreversibilità (`--color-error-*`), pulsante distruttivo `--color-destructive` (regola 8), **nessuna** digitazione richiesta (decisione utente). Props `count`/`pending`/`onConfirm()`/`onClose` |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `shared/ipc.ts` | Canale `PRACTICES_PERMANENT_DELETE`; tipi `PermanentDeleteInput { ids }`/`PermanentDeleteResponse { deletedCount }`; esteso `LexFlowApi.practices.permanentDelete` |
+| `main/modules/documents/service.ts` | Esportata `removePracticeDocumentsDir(codiceIstanza)` (best-effort `rmSync` ricorsivo della cartella `<codiceIstanza>`, errori loggati). Riusa `resolveDocumentPath` (unica fonte del path documenti) |
+| `main/modules/practices/repository.ts` | `PracticeCore` esteso con `codiceIstanza` (letto da `findPracticeCoreById`); `deleteDocumentsByPractice`/`deletePecRecipientsByPractice`/`deleteHistoryEventsByPractice`/`deleteTransitionRecordsByPractice`; `deletePracticeRow(id)` con guard `isTrashed=true` (idempotente, ritorna `changes`); import schema `documents` |
+| `main/modules/practices/service.ts` | `permanentDelete(input)`: una sola transazione; per ogni id `findPracticeCoreById` → salta se assente/non cestinata; cancella i figli nell'ordine FK `documents→pec_recipients→history_events→transition_records→practices`, poi `deletePracticeRow`; raccoglie i `codiceIstanza` rimossi; **dopo** il commit `removePracticeDocumentsDir` per ciascuno; `logger.info` riepilogativo; ritorna `deletedCount` |
+| `main/modules/practices/controller.ts` | `permanentDeleteSchema` (ids≥1) + handler `PRACTICES_PERMANENT_DELETE` |
+| `main/preload.ts` | `practices.permanentDelete` nel contextBridge |
+| `src/api/practices.ts` | Client `permanentDelete` |
+| `src/features/practices/usePractices.ts` | `usePermanentDelete` (invalida `['practices']`,`['trash']`,`['dashboard']`,`['practice',id]`) |
+| `src/pages/CestinoPage.tsx` | Pulsante «Elimina» per riga (distruttivo) accanto a «Ripristina»; toolbar bulk «Elimina definitivamente le N pratiche»; stato `deleteTargets`/`deleteError`; montaggio `PermanentDeleteModal`; svuota selezione al successo |
+| `docs/00-backlog-mvp.md` | S10.3 AC esplicitati (hard delete, ordine figli, cartella documenti, solo cestinate, idempotenza, nessun HistoryEvent, conferma forte) |
+| `docs/02-data-model.md` | Regola 3 estesa: distinzione soft delete (default reversibile) vs cancellazione definitiva (hard delete + figli + cartella) |
+
+**Invarianti / decisioni:**
+1. **Hard delete con FK ON**: `PRAGMA foreign_keys = ON` impone di cancellare i
+   figli prima della pratica. Ordine `documents → pec_recipients → history_events
+   → transition_records → practices`, tutto in **un'unica transazione** (coerenza
+   o rollback).
+2. **Solo pratiche cestinate** (`isTrashed=true`): la cancellazione è raggiungibile
+   solo via flusso Cestino. Assenti/non cestinate saltate (idempotenza),
+   `deletedCount` conta solo le rimosse ora (`deletedCount=0` senza errore).
+3. **Filesystem fuori transazione**: la cartella `<codiceIstanza>` è rimossa
+   **dopo** il commit, best-effort (log su errore), come gli `unlink` dei documenti
+   (E7). Un fallimento fs non annulla una cancellazione DB già avvenuta.
+4. **Nessun HistoryEvent** (eccezione motivata alla regola 9): la pratica e i suoi
+   `history_events` vengono distrutti; non esiste un contenitore dove conservarlo.
+   La cancellazione è tracciata via `logger.info`.
+5. **Conferma forte senza digitazione** (decisione utente) + colore distruttivo
+   fisso (regola 8).
+6. **Solo dalla pagina Cestino** (decisione utente): il banner del dettaglio di una
+   cestinata mantiene solo «Ripristina».
+7. Layer rispettati: query solo nel repository; logica/transazione nel service;
+   zod nel controller; nessun `any`. Riuso fs via helper esportato (no duplicazione
+   del path, no salto di layer).
+
+**Confine di storia:** E10 completa. Prossima epica per ordine di costruzione: E11
+(Impostazioni — tema/percorso dati/backup).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓.
+Verifica interattiva GUI (`npm run desktop`: cancellazione per riga e bulk dal
+Cestino, modale forte, sparizione definitiva, rimozione righe figlie + cartella
+documenti dal DB/fs dev, idempotenza) da completare manualmente.
+
+---
 
 ### 2026-06-26 — S10.2: Ripristino dal cestino (singolo e multiplo)
 

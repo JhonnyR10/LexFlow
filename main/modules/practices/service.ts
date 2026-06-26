@@ -17,6 +17,8 @@ import type {
   MoveToTrashResponse,
   RestoreFromTrashInput,
   RestoreFromTrashResponse,
+  PermanentDeleteInput,
+  PermanentDeleteResponse,
   PracticesListTrashedResponse,
 } from '../../../shared/ipc'
 import {
@@ -50,11 +52,18 @@ import {
   moveToTrash as moveToTrashRow,
   restoreFromTrash as restoreFromTrashRow,
   findTrashedPractices,
+  deleteDocumentsByPractice,
+  deletePecRecipientsByPractice,
+  deleteHistoryEventsByPractice,
+  deleteTransitionRecordsByPractice,
+  deletePracticeRow,
   type TransitionFieldRow,
   type ImportiUpdate,
 } from './repository'
+import { removePracticeDocumentsDir } from '../documents/service'
 import { getDb } from '../../database/connection'
 import { ValidationError, NotFoundError } from '../../errors/AppError'
+import { logger } from '../../utils/logger'
 
 // Genera il prossimo codice istanza disponibile.
 // Formato: AAAAMMGG_SIGLA_NNN (es. 20260624_NP_001).
@@ -752,6 +761,56 @@ export function restoreFromTrash(input: RestoreFromTrashInput): RestoreFromTrash
   })
 
   return { restoredCount }
+}
+
+// ---------- S10.3: cancellazione definitiva (hard delete) ----------
+
+// Elimina fisicamente le pratiche indicate e tutti i loro figli. Hard delete
+// irreversibile: SOLO pratiche cestinate (guard isTrashed); le assenti o non
+// cestinate vengono saltate (idempotenza), `deletedCount` conta solo quelle
+// rimosse ora. Con `foreign_keys = ON` i figli sono cancellati PRIMA della
+// pratica, nell'ordine documents → pec_recipients → history_events →
+// transition_records → practices, tutto in un'unica transazione (coerenza o
+// rollback). La cartella documenti viene rimossa DOPO il commit (best-effort:
+// un errore filesystem non deve far fallire una cancellazione DB già avvenuta).
+// Nessun HistoryEvent: la pratica e i suoi eventi vengono distrutti (eccezione
+// motivata alla regola 9); la cancellazione è tracciata via log.
+export function permanentDelete(input: PermanentDeleteInput): PermanentDeleteResponse {
+  if (input.ids.length === 0) {
+    throw new ValidationError('Nessuna pratica selezionata')
+  }
+
+  // Codici delle pratiche effettivamente cancellate: la pulizia della cartella
+  // documenti avviene fuori dalla transazione, dopo il commit.
+  const deletedCodici: string[] = []
+
+  getDb().transaction(() => {
+    for (const id of input.ids) {
+      const core = findPracticeCoreById(id)
+      if (!core || !core.isTrashed) continue  // assente o non cestinata: saltata
+
+      // Ordine vincolato dalle FK (foreign_keys = ON).
+      deleteDocumentsByPractice(id)
+      deletePecRecipientsByPractice(id)
+      deleteHistoryEventsByPractice(id)
+      deleteTransitionRecordsByPractice(id)
+      const changed = deletePracticeRow(id)
+      if (changed === 0) continue  // corsa improbabile in mono-utente: nessuna riga rimossa
+
+      deletedCodici.push(core.codiceIstanza)
+    }
+  })
+
+  // Rimozione delle cartelle documenti dopo il commit (best-effort, loggata).
+  for (const codice of deletedCodici) {
+    removePracticeDocumentsDir(codice)
+  }
+
+  if (deletedCodici.length > 0) {
+    logger.info('PRACTICES_PERMANENT_DELETE', `Cancellate definitivamente: ${deletedCodici.join(', ')}`)
+  }
+
+  return { deletedCount: deletedCodici.length }
 }
 
 export function listTrashedPractices(): PracticesListTrashedResponse {

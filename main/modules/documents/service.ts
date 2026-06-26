@@ -1,6 +1,6 @@
 import { app, dialog, shell, BrowserWindow } from 'electron'
 import { join, extname, basename } from 'path'
-import { mkdirSync, copyFileSync, statSync, unlinkSync } from 'fs'
+import { mkdirSync, copyFileSync, statSync, unlinkSync, rmSync } from 'fs'
 import type {
   DocumentKind,
   DocumentItem,
@@ -37,6 +37,20 @@ function getDocumentsRoot(): string {
 
 function resolveDocumentPath(relPath: string): string {
   return join(getDocumentsRoot(), relPath)
+}
+
+// Rimuove l'intera cartella documenti di una pratica (cancellazione definitiva,
+// S10.3). Best-effort: chiamata DOPO il commit della transazione DB, gli errori
+// sono loggati ma non propagati (un file orfano è preferibile a una pratica
+// non cancellabile). Esposta qui perché la logica del path documenti vive in
+// questo modulo (unica fonte; quando E11.2 introdurrà il percorso dati
+// configurabile basterà cambiare getDocumentsRoot).
+export function removePracticeDocumentsDir(codiceIstanza: string): void {
+  try {
+    rmSync(resolveDocumentPath(codiceIstanza), { recursive: true, force: true })
+  } catch (err) {
+    logger.warn('DOC_RMDIR_FAILED', `${codiceIstanza}: ${String(err)}`)
+  }
 }
 
 // Etichette per i titoli di storico (concordanza di genere it).

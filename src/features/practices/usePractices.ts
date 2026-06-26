@@ -20,6 +20,8 @@ import type {
   MoveToTrashResponse,
   RestoreFromTrashInput,
   RestoreFromTrashResponse,
+  PermanentDeleteInput,
+  PermanentDeleteResponse,
   PracticesListTrashedResponse,
 } from '../../../shared/ipc'
 
@@ -105,6 +107,24 @@ export function useRestoreFromTrash(): UseMutationResult<RestoreFromTrashRespons
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: RestoreFromTrashInput) => practicesApi.restore(input),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['practices'] })
+      queryClient.invalidateQueries({ queryKey: ['trash'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      for (const id of variables.ids) {
+        queryClient.invalidateQueries({ queryKey: ['practice', id] })
+      }
+    },
+  })
+}
+
+// Cancella definitivamente una o più pratiche cestinate (S10.3). Le pratiche
+// spariscono dal cestino e da ogni vista: invalidiamo le stesse query del
+// ripristino (cestino/elenco/dashboard) più il dettaglio di ciascuna.
+export function usePermanentDelete(): UseMutationResult<PermanentDeleteResponse, Error, PermanentDeleteInput, unknown> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: PermanentDeleteInput) => practicesApi.permanentDelete(input),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['practices'] })
       queryClient.invalidateQueries({ queryKey: ['trash'] })

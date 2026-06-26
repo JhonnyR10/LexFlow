@@ -11,6 +11,7 @@ import type {
   UpdatePracticeResponse,
   MoveToTrashResponse,
   RestoreFromTrashResponse,
+  PermanentDeleteResponse,
   PracticesListTrashedResponse,
 } from '../../../shared/ipc'
 import {
@@ -23,6 +24,7 @@ import {
   executeTransition,
   moveToTrash,
   restoreFromTrash,
+  permanentDelete,
   listTrashedPractices,
 } from './service'
 import { logger } from '../../utils/logger'
@@ -98,6 +100,10 @@ const moveToTrashSchema = z.object({
 })
 
 const restoreFromTrashSchema = z.object({
+  ids: z.array(z.number().int().positive()).min(1, 'Nessuna pratica selezionata'),
+})
+
+const permanentDeleteSchema = z.object({
   ids: z.array(z.number().int().positive()).min(1, 'Nessuna pratica selezionata'),
 })
 
@@ -179,6 +185,15 @@ export function registerPracticesHandlers(): void {
       logger.debug('IPC', IPC_CHANNELS.PRACTICES_RESTORE)
       const parsed = parseOrThrow(restoreFromTrashSchema, input)
       return restoreFromTrash(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.PRACTICES_PERMANENT_DELETE,
+    (_, input: unknown): PermanentDeleteResponse => {
+      logger.debug('IPC', IPC_CHANNELS.PRACTICES_PERMANENT_DELETE)
+      const parsed = parseOrThrow(permanentDeleteSchema, input)
+      return permanentDelete(parsed)
     }
   )
 

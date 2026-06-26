@@ -24,6 +24,8 @@ const api: LexFlowApi = {
       ipcRenderer.invoke('practices:moveToTrash', input),
     restore: (input) =>
       ipcRenderer.invoke('practices:restore', input),
+    permanentDelete: (input) =>
+      ipcRenderer.invoke('practices:permanentDelete', input),
     listTrashed: () =>
       ipcRenderer.invoke('practices:listTrashed')
   },
