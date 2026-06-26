@@ -7,6 +7,7 @@ import { DocumentsSection } from '../features/documents/DocumentsSection'
 import { useFields } from '../features/config/fields/useFields'
 import { useMenuSets } from '../features/config/menus/useMenus'
 import { computeImportoDifferences } from '../features/practices/importoCalc'
+import { daysSinceDeposit } from '../../shared/giorniDeposito'
 import type {
   PracticeDetail,
   PracticeDetailHistoryItem,
@@ -18,6 +19,13 @@ import type {
 
 const ABSENT = 'Non presente'
 const NOT_CALCULABLE = 'Non calcolabile'
+const DEPOSITO_ASSENTE = 'Data deposito non presente'
+
+// S8.3: giorni dalla data deposito, stesso calcolo puro degli alert (S8.2).
+function formatGiorniDeposito(dataDeposito: string | null): string {
+  const days = daysSinceDeposit(dataDeposito)
+  return days === null ? DEPOSITO_ASSENTE : String(days)
+}
 
 function formatDate(iso: string | null): string {
   if (!iso) return ABSENT
@@ -129,7 +137,7 @@ function FieldGrid({ children }: { children: React.ReactNode }): React.JSX.Eleme
 }
 
 function Field({ label, value }: { label: string; value: React.ReactNode }): React.JSX.Element {
-  const isAbsent = value === ABSENT || value === NOT_CALCULABLE
+  const isAbsent = value === ABSENT || value === NOT_CALCULABLE || value === DEPOSITO_ASSENTE
   return (
     <div>
       <div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', color: 'var(--color-text-muted)', marginBottom: '3px' }}>
@@ -370,7 +378,11 @@ export function DettaglioPraticaPage(): React.JSX.Element {
           <Field label="Autorità giudiziaria" value={textOrAbsent(practice.autoritaGiudiziaria)} />
           <Field
             label="Data deposito"
-            value={practice.dataDeposito ? formatDate(practice.dataDeposito) : 'Data deposito non presente'}
+            value={practice.dataDeposito ? formatDate(practice.dataDeposito) : DEPOSITO_ASSENTE}
+          />
+          <Field
+            label="Giorni dalla data deposito"
+            value={formatGiorniDeposito(practice.dataDeposito)}
           />
           <Field label="Modalità deposito" value={textOrAbsent(practice.modalitaDeposito)} />
         </FieldGrid>

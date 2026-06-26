@@ -38,7 +38,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S7.1   | Documenti decreto+fattura                                    | FATTO    | **E7 (Documenti) COMPLETATA.** Nuovo modulo `documents` (4 canali IPC), tabella `documents` (migrazione 0007). Upload via file dialog nativo nel main; file in `<userData>/documenti/<codiceIstanza>/`, `filePath` relativo in DB; sostituzione per kind (decreto/fattura); apri via shell; HistoryEvent su add/replace/remove; guard cestino su upload/elimina. `DocumentsSection` nel dettaglio (sostituisce stub). |
 | S8.1   | Card per fase dinamiche                                      | FATTO    | **Apre E8 (Dashboard).** Nuovo modulo `dashboard` (controller/service/repository), canale IPC `dashboard:phaseCounts`. Conteggio pratiche attive per fase (innerJoin practices→phases, GROUP BY, `isTrashed=false`, ordine `phases.order`): solo fasi con pratiche. `PhaseCountCards` con loading/empty/error; stato vuoto «Archivio vuoto…». Invalidazione `['dashboard']` su create/executeTransition. Nessuna migrazione. |
 | S8.2   | Alert aggregato per pratica                                  | FATTO    | Sezione «Avvisi» in Dashboard. Un box per pratica attiva (cestino + fasi finali esclusi) con anzianità da deposito > 30g; severità 30/60/90 → giallo/arancione/rosso (token semantici fissi); motivazioni aggregate (anzianità + «decreto ricevuto non inviato a SCP» per category `decree_received`). IPC `dashboard:alerts`, logica pura nel service. Nessuna migrazione. |
-| S8.3   | Giorni da deposito                                           | TODO     |                                                                                                                                                                                                                          |
+| S8.3   | Giorni da deposito                                           | FATTO    | Campo «Giorni dalla data deposito» nel dettaglio pratica (Dati generali); assente/non parsabile → «Data deposito non presente» (muted). Calcolo `daysSinceDeposit` estratto in `shared/giorniDeposito.ts`, riusato dal service alert (S8.2). Renderer-only, nessuna migrazione. |
 | S8.4   | Anzianità + stato vuoto + Vedi pratiche                      | TODO     |                                                                                                                                                                                                                          |
 | S9.1   | Export CSV                                                   | TODO     |                                                                                                                                                                                                                          |
 | S10.1  | Sposta nel cestino                                           | TODO     |                                                                                                                                                                                                                          |
@@ -84,6 +84,44 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-26 — S8.3: Giorni dalla data deposito — **E8 (Dashboard)**
+
+**Renderer-only + dedup. Nessuna modifica schema, nessuna migrazione, nessun
+nuovo canale IPC.** Il calcolo dell'anzianità da deposito (prima privato nel
+service alert di S8.2) è estratto in un modulo condiviso e riusato da entrambi i
+lati (CLAUDE.md regola 4: niente duplicazioni).
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `shared/giorniDeposito.ts` | Funzione pura `daysSinceDeposit(dataDeposito): number \| null` + costante `MS_PER_DAY`. Giorni interi ≥ 0 tra oggi (data locale) e la data deposito ISO; `null` se assente/non parsabile. Fonte di verità unica per alert (S8.2) e display (S8.3). |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `main/modules/dashboard/service.ts` | Rimossa la `daysSinceDeposit` locale e la costante `MS_PER_DAY`; ora importate da `shared/giorniDeposito`. Comportamento alert S8.2 invariato. |
+| `src/pages/DettaglioPraticaPage.tsx` | Costante `DEPOSITO_ASSENTE`; helper `formatGiorniDeposito` (riusa l'helper condiviso); nuovo `Field` «Giorni dalla data deposito» in «Dati generali»; `Field.isAbsent` esteso a `DEPOSITO_ASSENTE` (muted/italic); il `Field` «Data deposito» riusa la costante (assente ora reso muted, coerente con il pattern). |
+| `docs/00-backlog-mvp.md` | S8.3 AC esplicitati (dettaglio pratica, `null`→«Data deposito non presente», nessun NaN, calcolo condiviso; aggregati/«Vedi pratiche» → S8.4). |
+
+**Invarianti / decisioni:**
+1. **Collocazione**: metrica per-pratica nel dettaglio (sezione «Dati generali»),
+   non sulla Dashboard (decisione utente). L'anzianità aggregata resta S8.4.
+2. **Calcolo unico**: `daysSinceDeposit` condiviso → il numero nel dettaglio
+   coincide con il «Ferma da N giorni» dell'alert per la stessa pratica.
+3. **Assenza**: data deposito mancante/non parsabile → «Data deposito non
+   presente» (muted), mai `NaN`/`undefined`.
+
+**Confine di storia:** card anzianità aggregata, stato vuoto archivio con azione
+e «Vedi pratiche» → Pratiche filtrate restano **S8.4**.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓.
+Verifica interattiva GUI (`npm run desktop`: pratica con/senza data deposito,
+coerenza col conteggio dell'alert, nessun NaN) da completare manualmente.
+
+---
 
 ### 2026-06-26 — S8.2: Alert aggregato per pratica — **E8 (Dashboard)**
 

@@ -4,6 +4,7 @@ import type {
   DashboardAlertsResponse,
   DashboardPhaseCountsResponse,
 } from '../../../shared/ipc'
+import { daysSinceDeposit } from '../../../shared/giorniDeposito'
 import {
   findActivePhaseCounts,
   findActivePracticesForAlerts,
@@ -22,20 +23,7 @@ export function getDashboardPhaseCounts(): DashboardPhaseCountsResponse {
   }))
 }
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000
 const SEVERITY_RANK: Record<AlertSeverity, number> = { red: 3, orange: 2, yellow: 1 }
-
-// Giorni interi (>= 0) tra oggi (data locale) e la data deposito ISO YYYY-MM-DD.
-// null se la data è assente o non parsabile (→ nessun alert di anzianità in S8.2).
-function daysSinceDeposit(dataDeposito: string | null): number | null {
-  if (!dataDeposito) return null
-  const deposito = new Date(`${dataDeposito}T00:00:00`)
-  if (Number.isNaN(deposito.getTime())) return null
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const diff = Math.floor((today.getTime() - deposito.getTime()) / MS_PER_DAY)
-  return diff < 0 ? 0 : diff
-}
 
 // Soglie 30/60/90, strettamente maggiori. Driver unico della comparsa del box.
 function severityForDays(days: number): AlertSeverity | null {
