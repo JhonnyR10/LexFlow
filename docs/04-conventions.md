@@ -28,8 +28,10 @@ Ogni vista che carica dati gestisce: **loading**, **empty** (con messaggio utile
 
 ## Errori
 
-- Nel main: classi `AppError` tipizzate (es. `NotFoundError`, `ValidationError`, `ConflictError`), normalizzate in un payload IPC coerente.
-- Nel renderer: gli errori IPC diventano stati error gestiti dal componente; aggiungi `ErrorBoundary` per pagina/feature per evitare che un errore di rendering faccia esplodere l'app.
+- Nel main: classi `AppError` tipizzate (es. `NotFoundError`, `ValidationError`, `ConflictError`), sollevate dai controller con un messaggio utente.
+- Propagazione IPC: Electron serializza l'errore sollevato nel handler e lo restituisce come reject di `invoke()`, nella forma `"Error invoking remote method '<channel>': ErrorClass: messaggio"`. Nel renderer `src/utils/ipcError.ts` (`ipcErrorMessage`) estrae il messaggio utente; i componenti lo mostrano come stato error (pattern già in uso in `features/dashboard/*`).
+- **Scelta deliberata (mono-utente locale):** non esiste un middleware IPC formale né un envelope d'errore strutturato (es. `{ code, message, details }`). Per un'app desktop mono-utente la serializzazione nativa di Electron + il parsing del messaggio sono sufficienti; un envelope con codici machine-readable si introdurrà solo se servirà (es. gestione differenziata per tipo d'errore lato UI). Questa è una semplificazione voluta, non un debito.
+- Nel renderer: gli errori IPC diventano stati error gestiti dal componente. Un `ErrorBoundary` (componente di classe in `src/components/ui/ErrorBoundary.tsx`) avvolge le pagine in `AppLayout` con `key={location.key}`: cattura gli errori di **rendering** e mostra un fallback leggibile (colori semantici d'errore fissi, pulsanti «Riprova» / «Ricarica l'app») invece di uno schermo bianco; la navigazione lo rimonta e azzera lo stato d'errore.
 
 ## Backend (main)
 

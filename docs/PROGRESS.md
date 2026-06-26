@@ -11,16 +11,16 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | Storia | Descrizione                                                  | Stato    | Note                                                                                                                                                                                                                     |
 | ------ | ------------------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | S0.1   | Scaffolding Electron+React+TS+Vite (struttura e placeholder) | FATTO    | Senza DB (aggiunto in S0.4). Bridge IPC app:getVersion incluso.                                                                                                                                                          |
-| S0.2   | Bridge IPC tipizzato                                         | TODO     |                                                                                                                                                                                                                          |
-| S0.3   | Config zod + logging strutturato                             | IN CORSO | config/startup.ts (validazione zod + check scrittura) e utils/logger.ts fatti. Resto (gestione errori tipizzata, ErrorBoundary renderer) dopo.                                                                           |
+| S0.2   | Bridge IPC tipizzato                                         | FATTO    | Bridge IPC tipizzato (preload+contextBridge, `shared/ipc.ts`) implementato e usato da tutti i moduli (app/config/anagrafiche/practices/documents/dashboard); client renderer in `src/api/*`. Stato riallineato (era erroneamente TODO).                                                                                                                                                                          |
+| S0.3   | Config zod + logging strutturato                             | FATTO    | config/startup.ts (validazione zod + check scrittura) e utils/logger.ts. `ErrorBoundary` renderer (`components/ui/ErrorBoundary.tsx`) che avvolge le pagine in AppLayout (fallback leggibile, colori d'errore fissi). Gestione errori IPC (AppError serializzato da Electron + parsing in `utils/ipcError.ts`) documentata come scelta deliberata mono-utente in `04-conventions.md`: nessun middleware IPC formale.                                                                           |
 | S0.4   | Migrazioni Drizzle + seed (fasi/menu standard)               | FATTO    | DB aperto in userData, migrazioni auto, seed idempotente verificato. Riallineato al modello canonico (13 fasi, 40 transizioni) il 2026-06-24.                                                                            |
-| S1.1   | CRUD fasi + guscio applicativo                               | FATTO    | Routing HashRouter, sidebar, 6 pagine, QueryClientProvider. CRUD fasi completo. Guard disattivazione unica fase iniziale attivo; guard pratiche (TODO) documentato. Delete fisica rinviata (FK constraints).             |
+| S1.1   | CRUD fasi + guscio applicativo                               | FATTO    | Routing HashRouter, sidebar, 6 pagine, QueryClientProvider. CRUD fasi completo. Guard disattivazione unica fase iniziale attivo; guard «fase in uso da pratiche attive» chiuso in S-FIX-guards (BLOCCO, include `previousPhaseId`). Delete fisica rinviata (FK constraints).             |
 | S1.2   | CRUD transizioni                                             | FATTO    | Backend: createTransition/updateTransition/setTransitionActive/reorderTransitions con invarianti; UI: elenco raggruppato per fase, modale create/edit, riordino scoped, attiva/disattiva. Delete fisica rinviata (TODO). |
-| S1.3   | CRUD campi configurabili (generali e per transizione)        | FATTO    | Schema migrato: scope general\|transition, transitionId (FK transitions) sostituisce phaseId. Migrazioni rigenerate, DB dev resettato. Delete fisica e guard d'uso rinviati (TODO con tabella practices).                |
-| S1.4   | CRUD menu a tendina                                          | FATTO    | Backend: 7 canali IPC con invarianti (key immutabile, value univoco/immutabile). UI: layout due livelli, 5 set standard visibili. Delete fisica e guard d'uso rinviati (TODO).                                           |
+| S1.3   | CRUD campi configurabili (generali e per transizione)        | FATTO    | Schema migrato: scope general\|transition, transitionId (FK transitions) sostituisce phaseId. Migrazioni rigenerate, DB dev resettato. Guard d'uso chiuso in S-FIX-guards (AVVISO non bloccante: disattivazione consentita, nota informativa). Delete fisica rinviata (TODO).                |
+| S1.4   | CRUD menu a tendina                                          | FATTO    | Backend: 7 canali IPC con invarianti (key immutabile, value univoco/immutabile). UI: layout due livelli, 5 set standard visibili. Guard d'uso chiuso in S-FIX-guards (AVVISO non bloccante: disattivazione consentita, nota informativa). Delete fisica rinviata (TODO).                                           |
 | S1.5   | Regola PEC condizionale                                      | FATTO    | Schema migrato: tipo pec + conditionalOnFieldId/conditionalValue. Visibilità condizionale nel form campo, badge nella tabella, pulsante convenience PEC.                                                                  |
-| S2.1   | CRUD Professionisti                                          | FATTO    | Nuovo modulo anagrafiche (IPC namespace `anagrafiche:`), schema Drizzle + migrazione incrementale 0001_*.sql, CRUD completo, denominazione auto-derivata da cognome+nome, validazione CF/email morbida.                  |
-| S2.2   | CRUD Collaboratori                                           | FATTO    | Modulo anagrafiche esteso: schema Drizzle + migrazione incrementale 0002_*.sql, CRUD completo, denominazione auto-derivata da cognome+nome, codiceInterno opzionale.                                                     |
+| S2.1   | CRUD Professionisti                                          | FATTO    | Nuovo modulo anagrafiche (IPC namespace `anagrafiche:`), schema Drizzle + migrazione incrementale 0001_*.sql, CRUD completo, denominazione auto-derivata da cognome+nome, validazione CF/email morbida. Guard «non disattivare se collegato a pratiche attive» chiuso in S-FIX-guards (BLOCCO).                  |
+| S2.2   | CRUD Collaboratori                                           | FATTO    | Modulo anagrafiche esteso: schema Drizzle + migrazione incrementale 0002_*.sql, CRUD completo, denominazione auto-derivata da cognome+nome, codiceInterno opzionale. Guard «non disattivare se collegato a pratiche attive» chiuso in S-FIX-guards (BLOCCO).                                                     |
 | S3.1   | Tabella pratiche attive                                      | FATTO    | IPC practices:listPractices, LEFT JOIN phases/professionisti/collaboratori, PraticheTable con 7 colonne, route /pratiche/:id con DettaglioPraticaPage placeholder.                                                        |
 | S3.2   | Ricerca globale                                              | FATTO    | Barra di ricerca in `PratichePage`, filtro client-side in `PraticheTable` (case/accent-insensitive) su codice, nome, soggetti, autorità, note. `note` esposto in `PracticeListItem`. Stato filtrato-vuoto distinto. Procedimenti multipli fuori MVP. |
 | S3.3   | Filtri base                                                  | FATTO    | Filtri client-side combinabili (fase, collaboratore, professionista, data deposito da/a, importo richiesto min/max) + Azzera. Opzioni menu derivate dalle pratiche presenti. `practiceFilters.ts` (logica pura) + `PraticheFilters.tsx`. Importi concesso/fatturato/liquidato → E6. |
@@ -32,7 +32,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S5.2   | Pulsanti dinamici = transizioni                              | FATTO    | IPC `practices:listAvailableTransitions` (attive, non automatiche, dalla fase corrente; fase finale → nessuna azione). Componente `WorkflowActions` nel dettaglio: pulsanti generati dalla config, loading/empty/error. Form+salvataggio = S5.3.                                                                                              |
 | S5.3   | Form dinamico fase + salvataggio                             | FATTO    | Nuova tabella `transition_records` (migrazione 0005, incrementale). IPC `practices:executeTransition`: validazione campi lato main (required+condizionale+menu+pec), calcolo destinazione dentro transazione (self/sospensione/resume), TransitionRecord+HistoryEvent+PEC, version++. `TransitionFormModal` + `DynamicField`/`PecBlock` estratti in modulo condiviso. Guard liquidata = S5.4. |
 | S5.4   | Guard coerenza stati                                         | FATTO    | Backend-only, nessuna migrazione. Guard di liquidazione in `executeTransition` (dentro la transazione): destinazione `category='liquidated'` richiede categorie raggiunte `decree_received` + `awaiting_liquidation` (via HistoryEvent.toPhaseId). Ragiona per category canonica, non per key; difesa in profondità. |
-| S5.5   | Storico/timeline                                             | TODO     |                                                                                                                                                                                                                          |
+| S5.5   | Storico/timeline                                             | IN CORSO | Timeline consultabile **FATTA**: `TimelineSection` nel dettaglio pratica (`DettaglioPraticaPage.tsx`), storico `HistoryEvent` read-only ordinato. Filtri/ricerca sulla timeline = **residuo post-MVP** (non implementati).                                                                                                                                                                          |
 | S6.1   | Quattro importi                                              | FATTO    | concesso/fatturato/liquidato denormalizzati da `TransitionRecord.values` su 3 colonne pratica (cache derivata, non editabili a mano). Mappatura esplicita field-key→colonna (3 voci) in `executeTransition`. Seed di 3 campi `importo` su Registra decreto/invio a SCP/liquidazione. Migrazione incrementale 0006. Differenze calcolate = S6.2. |
 | S6.2   | Differenze calcolate                                         | FATTO    | **E6 (Importi) COMPLETATA.** Helper puro `importoCalc.ts` (richiesto−concesso, % riduzione con guard div/0, concesso−fatturato, fatturato−liquidato, concesso−liquidato; null se operando mancante). Sottosezione «Differenze» nel dettaglio; «Non calcolabile» per i null, nessun NaN. Renderer-only, nessuna migrazione. |
 | S7.1   | Documenti decreto+fattura                                    | FATTO    | **E7 (Documenti) COMPLETATA.** Nuovo modulo `documents` (4 canali IPC), tabella `documents` (migrazione 0007). Upload via file dialog nativo nel main; file in `<userData>/documenti/<codiceIstanza>/`, `filePath` relativo in DB; sostituzione per kind (decreto/fattura); apri via shell; HistoryEvent su add/replace/remove; guard cestino su upload/elimina. `DocumentsSection` nel dettaglio (sostituisce stub). |
@@ -84,6 +84,102 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-26 — Chiusura pendenze pre-E11: ErrorBoundary (S0.3) + allineamento stati S0.2/S5.5
+
+Intervento di chiusura pendenze emerse dall'audit di metà-MVP, su tre punti.
+
+**S0.3 — chiusura.** Aggiunto `ErrorBoundary` nel renderer (`src/components/ui/ErrorBoundary.tsx`):
+componente di classe con `getDerivedStateFromError` + `componentDidCatch`, che avvolge le pagine in
+`AppLayout` tramite `<ErrorBoundary key={location.key}>` (la navigazione lo rimonta e azzera l'errore).
+Un errore di rendering ora mostra un **fallback leggibile** (card con i token semantici d'errore fissi
+di `06-ui-ux.md` — non ridefiniti dal tema — titolo chiaro, dettaglio muted, pulsanti «Riprova» e
+«Ricarica l'app») invece dello schermo bianco. La gestione errori IPC esistente (AppError sollevati dai
+controller → serializzati da Electron nel reject di `invoke()` → messaggio estratto da
+`src/utils/ipcError.ts`) è stata **documentata come scelta deliberata di semplicità mono-utente** nella
+sezione «Errori» di `docs/04-conventions.md`: nessun middleware IPC formale né envelope d'errore
+strutturato (si introdurrà solo se servirà). Con ciò S0.3 è completa.
+
+**S0.2 — allineamento stato.** Il bridge IPC tipizzato (preload+contextBridge, `shared/ipc.ts`) è
+pienamente implementato e usato da tutti i moduli; client renderer in `src/api/*`. Stato in PROGRESS
+corretto da `TODO` a `FATTO` (era un disallineamento, non lavoro mancante).
+
+**S5.5 — residuo esplicitato.** La timeline consultabile è implementata (`TimelineSection` nel dettaglio
+pratica, storico `HistoryEvent` read-only). Riga PROGRESS aggiornata a `IN CORSO` con nota «timeline
+consultabile FATTA; filtri/ricerca = residuo post-MVP» (non marcata FATTO, per riflettere la realtà).
+
+File: `src/components/ui/ErrorBoundary.tsx` (nuovo), `src/components/layout/AppLayout.tsx` (wiring),
+`docs/04-conventions.md` (sezione Errori riscritta), `docs/PROGRESS.md` (stati + questa voce).
+Verifica fallback: throw temporaneo in una vista → fallback mostrato, non schermo bianco; throw rimosso.
+Nessuna migrazione. Gate: `typecheck` ✓ · `lint` ✓ · `build` ✓ · `desktop` ✓. Commit a cura dell'utente.
+
+### 2026-06-26 — S-FIX-guards: chiusura dei 5 guard «non disattivare se in uso da pratiche»
+
+Storia di rimedio. Chiusi i 5 punti di disattivazione lasciati come TODO in E0–E2
+(in attesa della tabella `practices`, ora esistente e popolata). Regole comuni: «in uso»
+considera **solo pratiche non cestinate** (`isTrashed = false`); il guard riguarda solo la
+**disattivazione** (`setActive=false`), la riattivazione è sempre permessa; messaggi con conteggio.
+
+Due comportamenti distinti, per natura della referenza:
+
+- **BLOCCO vero** (`ConflictError`, disattivazione impedita) per entità referenziate da **colonne**,
+  dove la verifica è economica e disattivarle romperebbe pratiche vive:
+  - **Professionista** (`anagrafiche/service.ts setProfessionistaActive`) — in uso se ∃ pratica non
+    cestinata con `professionistaId = id`.
+  - **Collaboratore** (`anagrafiche/service.ts setCollaboratoreActive`) — `collaboratoreId = id`.
+  - **Fase** (`config/service.ts assertCanDeactivate`) — in uso se è `currentPhaseId` **oppure**
+    `previousPhaseId` di una pratica non cestinata (`previousPhaseId` incluso esplicitamente: una
+    pratica sospesa lo ricorda per «Riprendi pratica»). Il vincolo preesistente «unica fase iniziale»
+    resta e precede il nuovo controllo.
+- **AVVISO non bloccante** (la disattivazione procede; il service ritorna `{ success: true, warning? }`)
+  per entità il cui valore vive dentro JSON, dove lo scan sarebbe costoso e disattivarle **non corrompe**
+  i dati esistenti (li nasconde solo dai nuovi form):
+  - **Opzione menu** (`config/service.ts setMenuOptionActive`) e **Campo / FieldDef**
+    (`config/service.ts setFieldActive`) — nota: «Disattivato. I valori già salvati nelle pratiche
+    restano invariati; l'elemento non comparirà nei nuovi inserimenti.» **Scelta deliberata MVP**:
+    nessuno scan di `customValues` / `transition_records.values`; lasciato un TODO mirato per un
+    controllo rigoroso futuro.
+
+Nuove query nei repository (nessuna query fuori dai repository): `countActivePracticesByProfessionista`,
+`countActivePracticesByCollaboratore` (`anagrafiche/repository.ts`), `countActivePracticesUsingPhase`
+(`config/repository.ts`). Tipi IPC `ConfigSetMenuOptionActiveResponse` e `ConfigSetFieldActiveResponse`
+estesi con `warning?: string` (i controller restano pass-through). Renderer: nota informativa mostrata
+in `MenusSection.tsx` (nuovo stato `inlineNote` + `inlineNoteStyle`) e `FieldsSection.tsx` (riusa
+`pecNote`); i guard di blocco usano il flusso d'errore esistente (`inlineError`/`setFormError`).
+
+AC del guard ora soddisfatti: **S1.1** (fase, BLOCCO con `previousPhaseId`), **S1.3** (campo, AVVISO),
+**S1.4** (opzione menu, AVVISO), **S2.1** (professionista, BLOCCO), **S2.2** (collaboratore, BLOCCO).
+TODO scaduti rimossi nei due service (resta solo il nuovo TODO mirato sullo scan JSON; il TODO
+`menuSetId` controllore in `setFieldActive`/`updateField` è altro tema, lasciato invariato).
+Nessuna migrazione. Gate: `typecheck` ✓ · `lint` ✓ · `build` ✓. Commit a cura dell'utente.
+
+### 2026-06-26 — Audit di metà-MVP (sola verifica, nessuna modifica al codice)
+
+Eseguito audit di coerenza doc↔codice su E0–E10, **a schermo**, su richiesta
+dell'utente. **Nessuno stato di storia alterato, nessuna correzione applicata**:
+solo report. Gate verdi: `typecheck` ✓ · `lint` ✓ · `build` ✓. Esiti principali
+(dettaglio completo nel report a schermo della sessione):
+
+- **Nessun bloccante.** FK attive, soft delete coerente (cestino escluso da elenco
+  `repository.ts:694`, card `dashboard/repository.ts:27`, alert+anzianità `:57`),
+  hard delete S10.3 FK-safe sui 4 figli.
+- **Storia IN CORSO = S0.3**: manca l'**ErrorBoundary nel renderer** (assente in
+  `src/`) e la formalizzazione della gestione errori IPC (oggi stringa + regex
+  `ipcError.ts`). zod/logger/AppError già presenti.
+- **Status PROGRESS da riallineare** (debito, non toccati ora): S0.2 «Bridge IPC»
+  marcata TODO ma di fatto FATTO; S5.5 «Storico/timeline» marcata TODO ma
+  `TimelineSection` è renderizzata nel dettaglio.
+- **5 TODO-guard scaduti** (presupposto «practices non esiste» caduto da S4.1, ora
+  implementabili; le FK NON coprono la *disattivazione*): `config/service.ts:103`
+  (fase), `:405` (opzione menu), `:597` (campo); `anagrafiche/service.ts:105`
+  (professionista), `:158` (collaboratore). Violano gli AC di S1.1/S1.3/S1.4/S2.1/S2.2.
+- **Divergenze documentali** (da correggere prima del codice relativo, non ora):
+  M1 `02-data-model.md` §PecRecipient cita `phaseRecordId` ma il codice usa
+  `transitionRecordId`; M2 `03-workflow-engine.md` §Sospensione dice «qualsiasi fase
+  aperta» mentre Liquidata (per `07-workflow-tree.md`) non ha «Sospendi».
+- **TODO ancora validi** (nessuna azione): `practices/service.ts:525` (PEC contesto,
+  post-MVP), `config/service.ts:560` (cambio menuSetId controllore),
+  `migrations.ts:11` (packaging `drizzle/` in extraResources, rilevante a release).
 
 ### 2026-06-26 — S10.3: Cancellazione definitiva — **E10 (Cestino) COMPLETATA**
 
