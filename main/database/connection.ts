@@ -2,17 +2,17 @@ import Database from 'better-sqlite3-multiple-ciphers'
 import type BetterSqlite3 from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import { app } from 'electron'
 import { join } from 'path'
 import * as schema from './schema'
 import { logger } from '../utils/logger'
+import { getDataPath } from '../config/dataPath'
 
 type DbSchema = typeof schema
 
 let db: BetterSQLite3Database<DbSchema> | null = null
 
 export function initDatabase(): BetterSQLite3Database<DbSchema> {
-  const dbPath = join(app.getPath('userData'), 'lexflow.db')
+  const dbPath = join(getDataPath(), 'lexflow.db')
   logger.info('DB_OPEN', dbPath)
 
   const sqlite = new Database(dbPath)

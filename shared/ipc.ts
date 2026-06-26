@@ -71,7 +71,8 @@ export const IPC_CHANNELS = {
   DASHBOARD_ALERTS: 'dashboard:alerts',
   DASHBOARD_AGING: 'dashboard:aging',
   SETTINGS_GET: 'settings:get',
-  SETTINGS_UPDATE_THEME: 'settings:updateTheme'
+  SETTINGS_UPDATE_THEME: 'settings:updateTheme',
+  SETTINGS_OPEN_DATA_FOLDER: 'settings:openDataFolder'
 } as const
 
 export type AppGetVersionResponse = string
@@ -718,16 +719,21 @@ export interface DashboardAgingItem {
 export type DashboardAgingResponse = DashboardAgingItem[]
 
 // --- Settings (E11) ---
-// Vista esposta all'MVP: per ora il solo tema (S11.1). Gli altri campi di
-// app_settings (dataPath, backup, security…) entrano con le storie successive.
+// Vista esposta all'MVP: tema (S11.1) e percorso dati corrente (S11.2, sola
+// lettura — risolto dal puntatore di bootstrap, non dalla colonna DB). Backup,
+// security… entrano con le storie successive.
 export interface AppSettingsView {
   theme: ThemeKey
+  dataPath: string
 }
 export type SettingsGetResponse = AppSettingsView
 export interface UpdateThemeInput {
   theme: ThemeKey
 }
 export type SettingsUpdateThemeResponse = AppSettingsView
+export interface SettingsOpenDataFolderResponse {
+  success: boolean
+}
 
 export interface LexFlowApi {
   app: {
@@ -736,6 +742,7 @@ export interface LexFlowApi {
   settings: {
     get(): Promise<SettingsGetResponse>
     updateTheme(input: UpdateThemeInput): Promise<SettingsUpdateThemeResponse>
+    openDataFolder(): Promise<SettingsOpenDataFolderResponse>
   }
   config: {
     listPhases(): Promise<ConfigListPhasesResponse>

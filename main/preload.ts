@@ -7,7 +7,8 @@ const api: LexFlowApi = {
   },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
-    updateTheme: (input) => ipcRenderer.invoke('settings:updateTheme', input)
+    updateTheme: (input) => ipcRenderer.invoke('settings:updateTheme', input),
+    openDataFolder: () => ipcRenderer.invoke('settings:openDataFolder')
   },
   practices: {
     generateCodiceIstanza: (input) =>

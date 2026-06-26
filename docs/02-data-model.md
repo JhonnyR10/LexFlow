@@ -109,7 +109,7 @@ Il contratto è la **chiave del campo** (uniche per contenitore/transizione nell
 
 `id, practiceId, transitionRecordId (null), kind (decreto|fattura|pec|altro), filePath, originalName, metadata (json), createdAt`. File su filesystem in `<percorsoDati>/documenti/<codiceIstanza>/`; in DB solo il riferimento. Decreto → fase decreto; fattura → fase SCP.
 
-**Storage (E7/S7.1).** Nell'MVP `kind` esposto in UI è `decreto | fattura` (una sola istanza per tipo: l'upload sostituisce). `filePath` è salvato **relativo** alla radice documenti (`<codiceIstanza>/<filename>`) e risolto in assoluto a runtime contro la radice `<percorsoDati>/documenti/`: percorso portabile per backup/ripristino (E11.3) e per il percorso dati configurabile (E11.2). Finché E11.2 non introduce `AppSettings.dataPath`, la radice è `app.getPath('userData')/documenti/`. `transitionRecordId` resta nullable e non popolato in S7.1. Ogni upload/sostituzione/eliminazione scrive un `HistoryEvent` (regola 9). I file **non** vengono toccati alla cestinazione: sopravvivono a cestino + ripristino.
+**Storage (E7/S7.1).** Nell'MVP `kind` esposto in UI è `decreto | fattura` (una sola istanza per tipo: l'upload sostituisce). `filePath` è salvato **relativo** alla radice documenti (`<codiceIstanza>/<filename>`) e risolto in assoluto a runtime contro la radice `<dataPath>/documenti/`: percorso portabile per backup/ripristino (E11.3). La radice `dataPath` è risolta dal **puntatore esterno** `config.json` in `userData` (S11.2, `main/config/dataPath.ts`); default = `app.getPath('userData')`. `transitionRecordId` resta nullable e non popolato in S7.1. Ogni upload/sostituzione/eliminazione scrive un `HistoryEvent` (regola 9). I file **non** vengono toccati alla cestinazione: sopravvivono a cestino + ripristino.
 
 ### MenuSet / MenuOption
 
@@ -117,7 +117,7 @@ Il contratto è la **chiave del campo** (uniche per contenitore/transizione nell
 
 ### AppSettings (riga singola)
 
-`theme, alertsEnabled (json per tipo), alertThresholds {giallo:30, arancione:60, rosso:90}, assistant {localEnabled, apiEnabled, provider, model, apiKeyRef, instructions}, dataPath, appVersion, **siglaCodice** (text, default `NP`, configurabile da E11 — usata per generare il codice istanza nel formato `AAAAMMGG_SIGLA_NNN`), backup {autoEnabled, trigger (onClose|interval|both), intervalHours, retentionCount, backupPath, lastBackupAt}, security {lockEnabled, encryptionEnabled} (security post-MVP: nell'MVP entrambi false)`.
+`theme, alertsEnabled (json per tipo), alertThresholds {giallo:30, arancione:60, rosso:90}, assistant {localEnabled, apiEnabled, provider, model, apiKeyRef, instructions}, dataPath _(valore legacy/di visualizzazione: l'**autorità runtime** del percorso dati è il puntatore esterno `config.json` in `userData`, non questa colonna — S11.2)_, appVersion, **siglaCodice** (text, default `NP`, configurabile da E11 — usata per generare il codice istanza nel formato `AAAAMMGG_SIGLA_NNN`), backup {autoEnabled, trigger (onClose|interval|both), intervalHours, retentionCount, backupPath, lastBackupAt}, security {lockEnabled, encryptionEnabled} (security post-MVP: nell'MVP entrambi false)`.
 
 ### Entità post-MVP (non creare nell'MVP)
 

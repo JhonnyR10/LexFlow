@@ -8,6 +8,7 @@ import {
 import { settingsApi } from '../../api/settings'
 import type {
   SettingsGetResponse,
+  SettingsOpenDataFolderResponse,
   SettingsUpdateThemeResponse,
   UpdateThemeInput,
 } from '../../../shared/ipc'
@@ -33,5 +34,16 @@ export function useUpdateTheme(): UseMutationResult<
       // il tema persistito senza attendere un refetch.
       queryClient.setQueryData<SettingsGetResponse>(['settings'], data)
     },
+  })
+}
+
+export function useOpenDataFolder(): UseMutationResult<
+  SettingsOpenDataFolderResponse,
+  Error,
+  void,
+  unknown
+> {
+  return useMutation({
+    mutationFn: () => settingsApi.openDataFolder(),
   })
 }

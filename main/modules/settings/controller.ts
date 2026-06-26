@@ -1,9 +1,13 @@
 import { ipcMain } from 'electron'
 import { z } from 'zod'
 import { IPC_CHANNELS } from '../../../shared/ipc'
-import type { SettingsGetResponse, SettingsUpdateThemeResponse } from '../../../shared/ipc'
+import type {
+  SettingsGetResponse,
+  SettingsOpenDataFolderResponse,
+  SettingsUpdateThemeResponse,
+} from '../../../shared/ipc'
 import { THEME_KEYS } from '../../../shared/themes'
-import { getAppSettings, updateTheme } from './service'
+import { getAppSettings, openDataFolder, updateTheme } from './service'
 import { logger } from '../../utils/logger'
 
 function parseOrThrow<T>(schema: z.ZodType<T>, input: unknown): T {
@@ -31,6 +35,14 @@ export function registerSettingsHandlers(): void {
       logger.debug('IPC', IPC_CHANNELS.SETTINGS_UPDATE_THEME)
       const parsed = parseOrThrow(updateThemeSchema, input)
       return updateTheme(parsed)
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.SETTINGS_OPEN_DATA_FOLDER,
+    (): Promise<SettingsOpenDataFolderResponse> => {
+      logger.debug('IPC', IPC_CHANNELS.SETTINGS_OPEN_DATA_FOLDER)
+      return openDataFolder()
     }
   )
 }

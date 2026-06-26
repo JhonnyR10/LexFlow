@@ -1,4 +1,4 @@
-import { app, dialog, shell, BrowserWindow } from 'electron'
+import { dialog, shell, BrowserWindow } from 'electron'
 import { join, extname, basename } from 'path'
 import { mkdirSync, copyFileSync, statSync, unlinkSync, rmSync } from 'fs'
 import type {
@@ -26,13 +26,13 @@ import type { DocumentRow } from '../../database/schema'
 import { getDb } from '../../database/connection'
 import { ValidationError, NotFoundError } from '../../errors/AppError'
 import { logger } from '../../utils/logger'
+import { getDataPath } from '../../config/dataPath'
 
-// Radice dei documenti. Coerente con dove risiede il DB (connection.ts).
-// `filePath` in DB è relativo a questa radice → portabile per backup/ripristino
-// e per il percorso dati configurabile (E11.2). Quando E11.2 introdurrà
-// `AppSettings.dataPath`, basterà cambiare questa funzione.
+// Radice dei documenti. Coerente con dove risiede il DB (connection.ts): entrambi
+// sotto il percorso dati risolto dal puntatore di bootstrap (config/dataPath.ts).
+// `filePath` in DB è relativo a questa radice → portabile per backup/ripristino.
 function getDocumentsRoot(): string {
-  return join(app.getPath('userData'), 'documenti')
+  return join(getDataPath(), 'documenti')
 }
 
 function resolveDocumentPath(relPath: string): string {

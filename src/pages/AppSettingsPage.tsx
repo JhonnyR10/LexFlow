@@ -1,5 +1,10 @@
+import { useState } from 'react'
 import { DEFAULT_THEME, THEMES, type ThemeKey } from '../../shared/themes'
-import { useAppSettings, useUpdateTheme } from '../features/settings/useSettings'
+import {
+  useAppSettings,
+  useOpenDataFolder,
+  useUpdateTheme,
+} from '../features/settings/useSettings'
 
 const wrapperStyle: React.CSSProperties = {
   padding: '32px 36px',
@@ -87,6 +92,47 @@ const currentBadgeStyle: React.CSSProperties = {
   color: 'var(--color-accent)',
 }
 
+const dataSectionStyle: React.CSSProperties = {
+  marginTop: '36px',
+}
+
+const pathBoxStyle: React.CSSProperties = {
+  fontFamily:
+    'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
+  fontSize: '13px',
+  color: 'var(--color-text)',
+  background: 'var(--color-surface)',
+  border: '1px solid var(--color-border)',
+  borderRadius: '8px',
+  padding: '10px 12px',
+  wordBreak: 'break-all',
+  marginBottom: '12px',
+}
+
+const buttonRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '10px',
+  flexWrap: 'wrap',
+}
+
+const actionButtonStyle: React.CSSProperties = {
+  fontSize: '13px',
+  fontWeight: 500,
+  color: 'var(--color-text)',
+  background: 'var(--color-surface)',
+  border: '1px solid var(--color-border)',
+  borderRadius: '8px',
+  padding: '8px 14px',
+  cursor: 'pointer',
+}
+
+const copiedFeedbackStyle: React.CSSProperties = {
+  fontSize: '13px',
+  color: 'var(--color-accent)',
+  fontWeight: 500,
+}
+
 // Swatch rappresentativi per l'anteprima di ciascun tema (coerenti con le
 // palette di global.css). Servono solo a dare un'idea visiva nella card.
 const PREVIEW: Record<ThemeKey, { sidebar: string; bg: string; surface: string; accent: string }> = {
@@ -130,6 +176,8 @@ function ThemePreview({ theme }: { theme: ThemeKey }): React.JSX.Element {
 export function AppSettingsPage(): React.JSX.Element {
   const { data, isLoading, isError, error } = useAppSettings()
   const updateTheme = useUpdateTheme()
+  const openDataFolder = useOpenDataFolder()
+  const [copied, setCopied] = useState(false)
 
   const current = data?.theme ?? DEFAULT_THEME
 
@@ -139,6 +187,14 @@ export function AppSettingsPage(): React.JSX.Element {
     // ThemeApplier reagisce al nuovo valore e applica data-theme su <html>.
     // L'IPC è locale e sincrono lato DB: il cambio è praticamente istantaneo.
     updateTheme.mutate({ theme })
+  }
+
+  async function handleCopyPath(): Promise<void> {
+    if (!data?.dataPath) return
+    // Copia la stringa del percorso (non i file) negli appunti.
+    await navigator.clipboard.writeText(data.dataPath)
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -187,6 +243,49 @@ export function AppSettingsPage(): React.JSX.Element {
           )}
         </>
       )}
+
+      <section style={dataSectionStyle}>
+        <h2 style={sectionTitleStyle}>Percorso dati</h2>
+        <p style={sectionHintStyle}>
+          {'Cartella in cui LexFlow conserva il database e i documenti. Per spostare i dati su un altro PC usa Backup e ripristino.'}
+        </p>
+
+        {isLoading ? (
+          <p style={messageStyle}>Caricamento…</p>
+        ) : isError ? (
+          <p style={errorStyle}>
+            Errore nel caricamento del percorso dati: {error?.message ?? 'errore sconosciuto'}
+          </p>
+        ) : (
+          <>
+            <div style={pathBoxStyle}>{data?.dataPath ?? 'Non disponibile'}</div>
+            <div style={buttonRowStyle}>
+              <button type="button" style={actionButtonStyle} onClick={handleCopyPath}>
+                Copia percorso
+              </button>
+              <button
+                type="button"
+                style={actionButtonStyle}
+                onClick={() => openDataFolder.mutate()}
+                disabled={openDataFolder.isPending}
+              >
+                Apri cartella
+              </button>
+              {copied && <span style={copiedFeedbackStyle}>Copiato negli appunti</span>}
+            </div>
+            {openDataFolder.isError && (
+              <p style={{ ...errorStyle, marginTop: '12px' }}>
+                Impossibile aprire la cartella: {openDataFolder.error?.message ?? 'errore sconosciuto'}
+              </p>
+            )}
+            {openDataFolder.data?.success === false && (
+              <p style={{ ...errorStyle, marginTop: '12px' }}>
+                Impossibile aprire la cartella dati.
+              </p>
+            )}
+          </>
+        )}
+      </section>
     </div>
   )
 }

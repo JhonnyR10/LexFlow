@@ -24,7 +24,8 @@ L'app gira su un solo PC, offline, con dati locali e un unico amministratore. Un
 
 Un solo codice gira su macOS e Windows; lo sviluppo avviene su Mac senza differenze. Accorgimenti obbligatori:
 
-- **Percorsi**: mai hardcodati. Percorso dati = `app.getPath('userData')`; documenti in `<userData>/documenti/<codiceIstanza>/`. Costruisci i percorsi solo con il modulo `path` di Node (gestisce i separatori `/` vs `\`).
+- **Percorsi**: mai hardcodati. Il **percorso dati** (`dataPath`) è risolto a runtime da un **puntatore esterno** `config.json` in `app.getPath('userData')` (vedi sotto), non più letto direttamente da `app.getPath('userData')`. DB (`<dataPath>/lexflow.db`) e documenti (`<dataPath>/documenti/<codiceIstanza>/`) vivono sotto `dataPath`. Costruisci i percorsi solo con il modulo `path` di Node (gestisce i separatori `/` vs `\`).
+- **Puntatore di bootstrap del percorso dati** (S11.2): all'avvio l'app legge `dataPath` da `<userData>/config.json`; se il file manca o è invalido lo (ri)crea con il default `dataPath = app.getPath('userData')`. Il puntatore vive **fuori dal DB** perché il DB risiede dentro la cartella dati e non può indicare dove aprirsi: la posizione fissa nota è `userData`. La risoluzione avviene **prima** dell'apertura del DB (modulo `main/config/dataPath.ts`, valore cachato a boot). Nell'MVP S11.2 espone solo **visualizza / copia stringa / apri cartella**; lo **spostamento effettivo** del percorso dati è una **storia post-MVP** dedicata. La portabilità dei dati nell'MVP è coperta da backup/ripristino (S11.3).
 - **Modulo nativo**: better-sqlite3 va ricompilato per Electron (electron-rebuild) e per ciascuna piattaforma target.
 - **Build dell'installer**: il `.exe`/installer Windows conviene generarlo **su una macchina Windows o via CI** (es. GitHub Actions con matrice `macos-latest` + `windows-latest`). Compilare il binario nativo Windows da macOS è inaffidabile. Output: `.dmg`/`.app` su Mac, installer `.exe` su Windows.
 

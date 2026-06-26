@@ -45,7 +45,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S10.2  | Ripristino                                                   | FATTO    | Ripristino dal cestino (singolo + multiplo) speculare a S10.1. IPC `practices:restore` (N id, transazione atomica, idempotente, azzera `trashedAt`/`trashReason`, `HistoryEvent` `restored`). Pagina Cestino interattiva (selezione + per-riga/bulk); pulsante «Ripristina» nel banner del dettaglio cestinata; modale di conferma leggera senza motivo (non distruttiva). Nessuna migrazione. Cancellazione→S10.3. |
 | S10.3  | Cancellazione definitiva                                     | FATTO    | **E10 (Cestino) COMPLETATA.** Hard delete irreversibile, solo da Cestino (per riga + bulk), solo pratiche cestinate. IPC `practices:permanentDelete` (N id, una transazione: cancella figli `documents→pec_recipients→history_events→transition_records→practices` con FK ON, idempotente, `deletedCount`); cartella documenti rimossa post-commit (best-effort, helper `removePracticeDocumentsDir` esportato da documents/service). Nessun HistoryEvent (entità distrutta), tracciato via log. Modale forte senza digitazione. `PracticeCore` esteso con `codiceIstanza`. Nessuna migrazione. |
 | S11.1  | Tema + colori semantici fissi                                | FATTO    | **Apre E11 (Impostazioni app).** Nuovo modulo `settings` (controller/service/repository), canali IPC `settings:get`/`settings:updateTheme`. 5 temi in `shared/themes.ts` (chiaro/scuro/pastello/deep-dark/grigio-senape), persistiti in `app_settings.theme` (no migrazione), applicati via `data-theme` su `<html>` (`ThemeApplier` in `App.tsx`). Palette CSS ridefiniscono solo token base/sidebar; token semantici restano in `:root` (regola 8 garantita per costruzione). Pagina Impostazioni app reale con anteprime. Nessun HistoryEvent (config app). |
-| S11.2  | Percorso dati                                                | TODO     |                                                                                                                                                                                                                          |
+| S11.2  | Percorso dati                                                | FATTO    | Visualizza + copia stringa + apri cartella in «Impostazioni app». Introdotto il **puntatore di bootstrap** `config.json` in userData (`main/config/dataPath.ts`): `dataPath` risolto a boot prima del DB; `connection.ts` e documents `getDocumentsRoot` usano `getDataPath()` invece di `app.getPath('userData')`. Default = userData; nessuno spostamento dati. **Cambio/spostamento percorso = post-MVP.** Nessuna migrazione (colonna `app_settings.dataPath` resta legacy/visualizzazione). |
 | S11.3  | Backup completo + ripristino                                 | TODO     |                                                                                                                                                                                                                          |
 | S11.4  | Reset con backup automatico                                  | TODO     |                                                                                                                                                                                                                          |
 | S11.7  | Backup automatico periodico + rotazione                      | TODO     | MVP (deciso 2026-06-23)                                                                                                                                                                                                  |
@@ -84,6 +84,53 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-26 — S11.2: Percorso dati (visualizza / copia / apri) + puntatore di bootstrap — **E11**
+
+**Nessuna migrazione.** Scope MVP (deciso con l'utente): la sezione «Percorso dati» fa solo
+**visualizza + copia stringa + apri cartella**; lo **spostamento/cambio effettivo del percorso è post-MVP**
+(storia dedicata). La portabilità dei dati nell'MVP è coperta da backup/ripristino (S11.3). Si introduce però
+ora l'infrastruttura di lettura: un **puntatore di bootstrap** esterno al DB.
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `main/config/dataPath.ts` | Unica fonte di verità del percorso dati a runtime. `resolveDataPath()` legge/crea `<userData>/config.json` (default `dataPath = app.getPath('userData')`), valida con zod, **cacha** il risultato; robusto (errori IO/parse → log + fallback al default, mai crash). `getDataPath()` ritorna il valore cachato. Risolto **prima** dell'apertura del DB perché il DB sta dentro la cartella dati e non può indicare dove aprirsi. |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `main/config/startup.ts` | `validateStartupConfig` risolve (`resolveDataPath`) e valida il **percorso dati effettivo** (mkdir + W_OK), non più `userData` direttamente. |
+| `main/database/connection.ts` | `dbPath = join(getDataPath(), 'lexflow.db')` (era `app.getPath('userData')`). |
+| `main/modules/documents/service.ts` | `getDocumentsRoot()` usa `join(getDataPath(), 'documenti')`; rimosso `app` dall'import electron; commento «quando E11.2…» risolto. |
+| `main/modules/settings/service.ts` | `getAppSettings`/`updateTheme` ritornano anche `dataPath` (= `getDataPath()`, **non** la colonna DB). Nuova `openDataFolder()` → `shell.openPath(getDataPath())`, ritorna `{ success }`, errore loggato. |
+| `main/modules/settings/controller.ts` | Handler `SETTINGS_OPEN_DATA_FOLDER` (nessun input). |
+| `main/preload.ts` | `settings.openDataFolder` nel contextBridge. |
+| `shared/ipc.ts` | Canale `SETTINGS_OPEN_DATA_FOLDER`; `AppSettingsView` esteso con `dataPath`; tipo `SettingsOpenDataFolderResponse`; `LexFlowApi.settings.openDataFolder`. |
+| `src/api/settings.ts` | Client `openDataFolder()`. |
+| `src/features/settings/useSettings.ts` | `useOpenDataFolder()` (mutation); `useAppSettings` invariato (response ora include `dataPath`). |
+| `src/pages/AppSettingsPage.tsx` | Nuova sezione «Percorso dati»: percorso in monospace, «Copia percorso» (`navigator.clipboard`, feedback «Copiato»), «Apri cartella» (`openDataFolder`); loading/error coerenti con la sezione tema. |
+| `docs/01-architecture.md` | Sezione «Percorsi»: `dataPath` risolto dal puntatore esterno; spostamento = post-MVP. |
+| `docs/02-data-model.md` | Radice documenti = `<dataPath>/documenti/` risolto dal puntatore; colonna `dataPath` = legacy/visualizzazione, non autoritativa. |
+| `docs/00-backlog-mvp.md` | S11.2 AC esplicitati (visualizza/copia/apri + puntatore; spostamento post-MVP). |
+
+**Invarianti / decisioni:**
+1. **Puntatore = autorità runtime** del percorso dati (`config.json` in userData), risolto a boot prima del DB;
+   default = userData. La colonna `app_settings.dataPath` resta legacy/visualizzazione (non rimossa, no migrazione).
+2. **Nessuno spostamento dati nell'MVP**: default invariato → percorso identico a oggi, nessuna regressione.
+3. **Robustezza boot**: errori del puntatore → log + fallback al default.
+4. **Copia = stringa** (renderer, `navigator.clipboard`); **Apri cartella** via `shell.openPath` (main).
+5. Layer rispettati (`getDataPath` è util di config, non query DB); nessun `any`; `path.join` (regola 11).
+   Nessun `HistoryEvent` (config app, coerente con S11.1).
+
+**Confine di storia:** spostamento/cambio percorso (post-MVP), backup/ripristino (S11.3), reset (S11.4),
+backup automatico (S11.7).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓. Verifica interattiva GUI
+(`npm run desktop`: `config.json` creato/ricreato al boot, sezione mostra il percorso, Copia/Apri cartella,
+regressione tema+documenti) da completare manualmente.
 
 ### 2026-06-26 — S11.1: Tema interfaccia + colori semantici fissi — **apre E11 (Impostazioni app)**
 
