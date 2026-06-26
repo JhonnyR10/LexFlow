@@ -1,3 +1,4 @@
+import { app } from 'electron'
 import { eq } from 'drizzle-orm'
 import { getDb } from '../../database/connection'
 import {
@@ -49,6 +50,28 @@ export function dumpAllTables(): Record<string, unknown[]> {
     out[name] = db.select().from(table).all()
   }
   return out
+}
+
+// Percorso di destinazione dei backup automatici (es. pre-reset, S11.4), letto da
+// `app_settings.backup.backupPath`. Fallback robusto a userData se assente/illeggibile.
+export function getBackupPath(): string {
+  const fallback = app.getPath('userData')
+  const row = getDb()
+    .select({ backup: appSettings.backup })
+    .from(appSettings)
+    .where(eq(appSettings.id, SETTINGS_ID))
+    .get()
+  if (!row) return fallback
+  try {
+    const parsed: unknown = JSON.parse(row.backup)
+    if (parsed && typeof parsed === 'object') {
+      const bp = (parsed as Record<string, unknown>).backupPath
+      if (typeof bp === 'string' && bp.trim()) return bp
+    }
+  } catch {
+    return fallback
+  }
+  return fallback
 }
 
 // Aggiorna `app_settings.backup.lastBackupAt` (JSON serializzato) dopo un backup

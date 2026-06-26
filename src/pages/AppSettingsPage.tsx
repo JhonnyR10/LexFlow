@@ -7,6 +7,8 @@ import {
 } from '../features/settings/useSettings'
 import { useExportBackup, useRestoreBackup } from '../features/settings/useBackup'
 import { RestoreBackupModal } from '../features/settings/RestoreBackupModal'
+import { useResetArchive } from '../features/settings/useReset'
+import { ResetArchiveModal } from '../features/settings/ResetArchiveModal'
 
 const wrapperStyle: React.CSSProperties = {
   padding: '32px 36px',
@@ -135,6 +137,18 @@ const copiedFeedbackStyle: React.CSSProperties = {
   fontWeight: 500,
 }
 
+// Azione distruttiva (zona pericolo): colore destructive fisso (regola 8).
+const dangerButtonStyle: React.CSSProperties = {
+  fontSize: '13px',
+  fontWeight: 500,
+  color: '#fff',
+  background: 'var(--color-destructive)',
+  border: 'none',
+  borderRadius: '8px',
+  padding: '8px 14px',
+  cursor: 'pointer',
+}
+
 // Swatch rappresentativi per l'anteprima di ciascun tema (coerenti con le
 // palette di global.css). Servono solo a dare un'idea visiva nella card.
 const PREVIEW: Record<ThemeKey, { sidebar: string; bg: string; surface: string; accent: string }> = {
@@ -181,8 +195,10 @@ export function AppSettingsPage(): React.JSX.Element {
   const openDataFolder = useOpenDataFolder()
   const exportBackup = useExportBackup()
   const restoreBackup = useRestoreBackup()
+  const resetArchive = useResetArchive()
   const [copied, setCopied] = useState(false)
   const [restoreOpen, setRestoreOpen] = useState(false)
+  const [resetOpen, setResetOpen] = useState(false)
 
   const current = data?.theme ?? DEFAULT_THEME
 
@@ -205,6 +221,10 @@ export function AppSettingsPage(): React.JSX.Element {
   function handleConfirmRestore(): void {
     // Al successo l'app si riavvia (gestito dal main); chiudiamo comunque la modale.
     restoreBackup.mutate(undefined, { onSettled: () => setRestoreOpen(false) })
+  }
+
+  function handleConfirmReset(): void {
+    resetArchive.mutate(undefined, { onSuccess: () => setResetOpen(false) })
   }
 
   return (
@@ -339,11 +359,51 @@ export function AppSettingsPage(): React.JSX.Element {
         )}
       </section>
 
+      <section style={dataSectionStyle}>
+        <h2 style={sectionTitleStyle}>Reset archivio</h2>
+        <p style={sectionHintStyle}>
+          {'Svuota l’archivio: elimina tutte le pratiche e le anagrafiche. La configurazione del workflow e le impostazioni restano. Viene creato automaticamente un backup prima del reset.'}
+        </p>
+
+        <div style={buttonRowStyle}>
+          <button
+            type="button"
+            style={dangerButtonStyle}
+            onClick={() => setResetOpen(true)}
+            disabled={resetArchive.isPending}
+          >
+            Reset archivio…
+          </button>
+        </div>
+
+        {resetArchive.data && (
+          <p style={{ ...messageStyle, marginTop: '12px' }}>
+            Archivio svuotato ({resetArchive.data.practicesDeleted} pratiche,{' '}
+            {resetArchive.data.professionistiDeleted} professionisti,{' '}
+            {resetArchive.data.collaboratoriDeleted} collaboratori). Backup creato:{' '}
+            {resetArchive.data.backupPath}
+          </p>
+        )}
+        {resetArchive.isError && (
+          <p style={{ ...errorStyle, marginTop: '12px' }}>
+            Impossibile eseguire il reset: {resetArchive.error?.message ?? 'errore sconosciuto'}
+          </p>
+        )}
+      </section>
+
       {restoreOpen && (
         <RestoreBackupModal
           pending={restoreBackup.isPending}
           onConfirm={handleConfirmRestore}
           onClose={() => setRestoreOpen(false)}
+        />
+      )}
+
+      {resetOpen && (
+        <ResetArchiveModal
+          pending={resetArchive.isPending}
+          onConfirm={handleConfirmReset}
+          onClose={() => setResetOpen(false)}
         />
       )}
     </div>

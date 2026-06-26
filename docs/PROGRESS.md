@@ -47,7 +47,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S11.1  | Tema + colori semantici fissi                                | FATTO    | **Apre E11 (Impostazioni app).** Nuovo modulo `settings` (controller/service/repository), canali IPC `settings:get`/`settings:updateTheme`. 5 temi in `shared/themes.ts` (chiaro/scuro/pastello/deep-dark/grigio-senape), persistiti in `app_settings.theme` (no migrazione), applicati via `data-theme` su `<html>` (`ThemeApplier` in `App.tsx`). Palette CSS ridefiniscono solo token base/sidebar; token semantici restano in `:root` (regola 8 garantita per costruzione). Pagina Impostazioni app reale con anteprime. Nessun HistoryEvent (config app). |
 | S11.2  | Percorso dati                                                | FATTO    | Visualizza + copia stringa + apri cartella in «Impostazioni app». Introdotto il **puntatore di bootstrap** `config.json` in userData (`main/config/dataPath.ts`): `dataPath` risolto a boot prima del DB; `connection.ts` e documents `getDocumentsRoot` usano `getDataPath()` invece di `app.getPath('userData')`. Default = userData; nessuno spostamento dati. **Cambio/spostamento percorso = post-MVP.** Nessuna migrazione (colonna `app_settings.dataPath` resta legacy/visualizzazione). |
 | S11.3  | Backup completo + ripristino                                 | FATTO    | Nuovo modulo `backup` (controller/service/repository) + `restoreBootstrap`. Export manuale → singolo `.zip` (adm-zip) con `lexflow.db` (checkpoint+copia) + `documenti/` + `data.json` (dump tabelle) + `manifest.json`; aggiorna `backup.lastBackupAt`. Ripristino → validazione manifest, estrazione in staging + marker `pending-restore.json`, conferma forte, `app.relaunch()`; swap a freddo al boot (`applyPendingRestore` in `app.ts`, prima del DB) con safety backup automatico `pre-restore-<ts>/`. Dep `adm-zip`. Nessuna migrazione, nessun HistoryEvent. |
-| S11.4  | Reset con backup automatico                                  | TODO     |                                                                                                                                                                                                                          |
+| S11.4  | Reset con backup automatico                                  | FATTO    | Nuovo modulo `reset`. Svuota pratiche+figli+anagrafiche (transazione FK-safe) + cartella documenti; mantiene workflow e impostazioni. Backup preventivo **obbligatorio** `pre-reset-<ts>.zip` sotto `backup.backupPath` (riusa `writeBackupZip` estratto da S11.3) — se fallisce, reset annullato. Doppia conferma (`ResetArchiveModal` a 2 passi). Nessun riavvio (delete live + `invalidateQueries()`). Nessuna migrazione, nessun HistoryEvent. |
 | S11.7  | Backup automatico periodico + rotazione                      | TODO     | MVP (deciso 2026-06-23)                                                                                                                                                                                                  |
 | S13.\* | Qualità trasversale (errori/loading/empty/PEC)               | TODO     |                                                                                                                                                                                                                          |
 
@@ -84,6 +84,52 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-27 — S11.4: Reset archivio con backup automatico preventivo + doppia conferma — **E11**
+
+**Nessuna migrazione.** Azione distruttiva che svuota l'archivio dopo un **backup preventivo obbligatorio**.
+Scope (deciso con l'utente): **pratiche + dati collegati + anagrafiche**; mantiene workflow e impostazioni app.
+Riusa le primitive di S11.3.
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `main/modules/reset/repository.ts` | `resetArchive()`: in una transazione bulk-delete FK-safe `documents → pec_recipients → history_events → transition_records → practices → professionisti → collaboratori`; ritorna i conteggi (`changes`). Query solo qui. |
+| `main/modules/reset/service.ts` | `resetArchive()`: 1) backup preventivo **obbligatorio** `pre-reset-<ts>.zip` sotto `getBackupPath()` via `writeBackupZip` (se fallisce, propaga errore → niente reset); 2) `resetArchive()` repository; 3) svuota la cartella documenti (`getDocumentsRoot`, rmSync+mkdirSync, best-effort); ritorna `{ backupPath, ...counts }`. |
+| `main/modules/reset/controller.ts` | `registerResetHandlers()`: handler `RESET_ARCHIVE` (nessun input). |
+| `src/api/reset.ts` | Client `archive()`. |
+| `src/features/settings/useReset.ts` | `useResetArchive()` (mutation; `onSuccess` → `invalidateQueries()`). |
+| `src/features/settings/ResetArchiveModal.tsx` | Conferma forte a **2 passi** (state step 1|2): passo 1 = cosa si cancella + backup automatico; passo 2 = avviso irreversibilità + pulsante `--color-destructive` «Esegui reset». Nessuna digitazione. |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `main/modules/backup/service.ts` | Estratto **`writeBackupZip(destPath)`** (build zip senza dialog) riusato da `exportBackup` (S11.3) e dal reset (S11.4). |
+| `main/modules/backup/repository.ts` | Aggiunto `getBackupPath()` (parse di `app_settings.backup.backupPath`, fallback userData). |
+| `main/server.ts` | `registerResetHandlers()`. |
+| `main/preload.ts` | namespace `reset: { archive }`. |
+| `shared/ipc.ts` | Canale `RESET_ARCHIVE`; tipo `ResetArchiveResponse`; `LexFlowApi.reset`. |
+| `src/pages/AppSettingsPage.tsx` | Sezione «Reset archivio» (zona pericolo): pulsante distruttivo + modale a 2 passi; esito con conteggi + percorso backup. |
+| `docs/00-backlog-mvp.md`, `docs/02-data-model.md`, `docs/01-architecture.md` | AC S11.4; reset come hard delete in blocco con backup preventivo; nota su `writeBackupZip`/`backupPath`. |
+
+**Invarianti / decisioni:**
+1. **Backup preventivo obbligatorio**: se `writeBackupZip` fallisce, il reset **non** procede.
+2. **Scope = pratiche + anagrafiche**; workflow (fasi/transizioni/campi/menu) e `app_settings` intatti. Ordine
+   FK-safe in una transazione (`practices` prima di `professionisti`/`collaboratori`).
+3. **Doppia conferma** a 2 passi, colore distruttivo fisso (regola 8), nessuna digitazione.
+4. **Live, nessun riavvio**: delete DB + svuotamento cartella + `invalidateQueries()`. Archivio già vuoto →
+   conteggi 0, nessun errore.
+5. Layer rispettati (query solo nel repository; fs/zip/orchestrazione nel service); nessun `any`; `path.join`.
+   **Nessun `HistoryEvent`** (entità distrutte; tracciato via log, come S10.3).
+
+**Confine di storia:** backup automatico periodico + rotazione → S11.7.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓
+(verifica interattiva GUI confermata dall'utente: reset a 2 passi → elenco/Dashboard/Cestino/Anagrafiche vuoti,
+workflow+impostazioni intatti, `pre-reset-<ts>.zip` presente, cartella documenti svuotata; reset su archivio vuoto
+→ conteggi 0; annullo modale → nessuna azione; nessuna regressione backup/tema/percorso).
 
 ### 2026-06-27 — S11.3: Backup completo (DB + documenti) e ripristino — **E11**
 

@@ -74,7 +74,8 @@ export const IPC_CHANNELS = {
   SETTINGS_UPDATE_THEME: 'settings:updateTheme',
   SETTINGS_OPEN_DATA_FOLDER: 'settings:openDataFolder',
   BACKUP_EXPORT: 'backup:export',
-  BACKUP_RESTORE: 'backup:restore'
+  BACKUP_RESTORE: 'backup:restore',
+  RESET_ARCHIVE: 'reset:archive'
 } as const
 
 export type AppGetVersionResponse = string
@@ -748,6 +749,14 @@ export interface BackupRestoreResponse {
   willRestart?: boolean
 }
 
+// --- Reset archivio (S11.4) ---
+export interface ResetArchiveResponse {
+  backupPath: string
+  practicesDeleted: number
+  professionistiDeleted: number
+  collaboratoriDeleted: number
+}
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
@@ -760,6 +769,9 @@ export interface LexFlowApi {
   backup: {
     export(): Promise<BackupExportResponse>
     restore(): Promise<BackupRestoreResponse>
+  }
+  reset: {
+    archive(): Promise<ResetArchiveResponse>
   }
   config: {
     listPhases(): Promise<ConfigListPhasesResponse>

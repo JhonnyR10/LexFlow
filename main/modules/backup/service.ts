@@ -40,15 +40,11 @@ async function showOpen(win: BrowserWindow | null): Promise<Electron.OpenDialogR
   return win ? dialog.showOpenDialog(win, options) : dialog.showOpenDialog(options)
 }
 
-// Export manuale: crea un singolo .zip con DB consistente + documenti + dump JSON
-// di sicurezza + manifest (S11.3).
-export async function exportBackup(win: BrowserWindow | null): Promise<BackupExportResponse> {
+// Costruisce e scrive l'archivio .zip in `destPath` (DB consistente + documenti +
+// dump JSON di sicurezza + manifest). Senza dialog: riusato dall'export manuale
+// (S11.3) e dal backup preventivo pre-reset (S11.4). Aggiorna `lastBackupAt`.
+export function writeBackupZip(destPath: string): void {
   const now = new Date()
-  const defaultPath = join(app.getPath('documents'), `lexflow-backup-${backupTimestamp(now)}.zip`)
-  const picked = await showSave(win, defaultPath)
-  if (picked.canceled || !picked.filePath) {
-    return { canceled: true }
-  }
 
   // Copia DB consistente: svuota il WAL nel file principale, poi aggiungilo così com'è.
   checkpointDb()
@@ -72,8 +68,19 @@ export async function exportBackup(win: BrowserWindow | null): Promise<BackupExp
   }
   zip.addFile('manifest.json', Buffer.from(JSON.stringify(manifest, null, 2)))
 
-  zip.writeZip(picked.filePath)
+  zip.writeZip(destPath)
   updateBackupLastBackupAt(now.toISOString())
+}
+
+// Export manuale: chiede il percorso e delega a writeBackupZip (S11.3).
+export async function exportBackup(win: BrowserWindow | null): Promise<BackupExportResponse> {
+  const defaultPath = join(app.getPath('documents'), `lexflow-backup-${backupTimestamp()}.zip`)
+  const picked = await showSave(win, defaultPath)
+  if (picked.canceled || !picked.filePath) {
+    return { canceled: true }
+  }
+
+  writeBackupZip(picked.filePath)
   logger.info('BACKUP_EXPORTED', picked.filePath)
 
   return { canceled: false, path: picked.filePath }
