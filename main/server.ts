@@ -5,6 +5,7 @@ import { registerPracticesHandlers } from './modules/practices/controller'
 import { registerDocumentsHandlers } from './modules/documents/controller'
 import { registerDashboardHandlers } from './modules/dashboard/controller'
 import { registerSettingsHandlers } from './modules/settings/controller'
+import { registerBackupHandlers } from './modules/backup/controller'
 
 export function bootstrap(): void {
   registerAppHandlers()
@@ -14,4 +15,5 @@ export function bootstrap(): void {
   registerDocumentsHandlers()
   registerDashboardHandlers()
   registerSettingsHandlers()
+  registerBackupHandlers()
 }

@@ -72,7 +72,9 @@ export const IPC_CHANNELS = {
   DASHBOARD_AGING: 'dashboard:aging',
   SETTINGS_GET: 'settings:get',
   SETTINGS_UPDATE_THEME: 'settings:updateTheme',
-  SETTINGS_OPEN_DATA_FOLDER: 'settings:openDataFolder'
+  SETTINGS_OPEN_DATA_FOLDER: 'settings:openDataFolder',
+  BACKUP_EXPORT: 'backup:export',
+  BACKUP_RESTORE: 'backup:restore'
 } as const
 
 export type AppGetVersionResponse = string
@@ -735,6 +737,17 @@ export interface SettingsOpenDataFolderResponse {
   success: boolean
 }
 
+// --- Backup / ripristino (S11.3) ---
+export interface BackupExportResponse {
+  canceled: boolean
+  path?: string
+}
+export interface BackupRestoreResponse {
+  canceled: boolean
+  // true quando il ripristino è stato preparato e l'app si sta riavviando.
+  willRestart?: boolean
+}
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
@@ -743,6 +756,10 @@ export interface LexFlowApi {
     get(): Promise<SettingsGetResponse>
     updateTheme(input: UpdateThemeInput): Promise<SettingsUpdateThemeResponse>
     openDataFolder(): Promise<SettingsOpenDataFolderResponse>
+  }
+  backup: {
+    export(): Promise<BackupExportResponse>
+    restore(): Promise<BackupRestoreResponse>
   }
   config: {
     listPhases(): Promise<ConfigListPhasesResponse>

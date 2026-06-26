@@ -5,6 +5,8 @@ import {
   useOpenDataFolder,
   useUpdateTheme,
 } from '../features/settings/useSettings'
+import { useExportBackup, useRestoreBackup } from '../features/settings/useBackup'
+import { RestoreBackupModal } from '../features/settings/RestoreBackupModal'
 
 const wrapperStyle: React.CSSProperties = {
   padding: '32px 36px',
@@ -177,7 +179,10 @@ export function AppSettingsPage(): React.JSX.Element {
   const { data, isLoading, isError, error } = useAppSettings()
   const updateTheme = useUpdateTheme()
   const openDataFolder = useOpenDataFolder()
+  const exportBackup = useExportBackup()
+  const restoreBackup = useRestoreBackup()
   const [copied, setCopied] = useState(false)
+  const [restoreOpen, setRestoreOpen] = useState(false)
 
   const current = data?.theme ?? DEFAULT_THEME
 
@@ -195,6 +200,11 @@ export function AppSettingsPage(): React.JSX.Element {
     await navigator.clipboard.writeText(data.dataPath)
     setCopied(true)
     window.setTimeout(() => setCopied(false), 2000)
+  }
+
+  function handleConfirmRestore(): void {
+    // Al successo l'app si riavvia (gestito dal main); chiudiamo comunque la modale.
+    restoreBackup.mutate(undefined, { onSettled: () => setRestoreOpen(false) })
   }
 
   return (
@@ -286,6 +296,56 @@ export function AppSettingsPage(): React.JSX.Element {
           </>
         )}
       </section>
+
+      <section style={dataSectionStyle}>
+        <h2 style={sectionTitleStyle}>Backup e ripristino</h2>
+        <p style={sectionHintStyle}>
+          {'Esporta un archivio completo (database e documenti) o ripristina i dati da un backup. Il ripristino sovrascrive i dati correnti e riavvia l’app.'}
+        </p>
+
+        <div style={buttonRowStyle}>
+          <button
+            type="button"
+            style={actionButtonStyle}
+            onClick={() => exportBackup.mutate()}
+            disabled={exportBackup.isPending}
+          >
+            {exportBackup.isPending ? 'Esportazione…' : 'Esporta backup…'}
+          </button>
+          <button
+            type="button"
+            style={actionButtonStyle}
+            onClick={() => setRestoreOpen(true)}
+            disabled={restoreBackup.isPending}
+          >
+            Ripristina da backup…
+          </button>
+        </div>
+
+        {exportBackup.data?.canceled === false && exportBackup.data.path && (
+          <p style={{ ...messageStyle, marginTop: '12px' }}>
+            Backup creato: {exportBackup.data.path}
+          </p>
+        )}
+        {exportBackup.isError && (
+          <p style={{ ...errorStyle, marginTop: '12px' }}>
+            Impossibile creare il backup: {exportBackup.error?.message ?? 'errore sconosciuto'}
+          </p>
+        )}
+        {restoreBackup.isError && (
+          <p style={{ ...errorStyle, marginTop: '12px' }}>
+            Impossibile ripristinare il backup: {restoreBackup.error?.message ?? 'errore sconosciuto'}
+          </p>
+        )}
+      </section>
+
+      {restoreOpen && (
+        <RestoreBackupModal
+          pending={restoreBackup.isPending}
+          onConfirm={handleConfirmRestore}
+          onClose={() => setRestoreOpen(false)}
+        />
+      )}
     </div>
   )
 }

@@ -117,7 +117,7 @@ Il contratto è la **chiave del campo** (uniche per contenitore/transizione nell
 
 ### AppSettings (riga singola)
 
-`theme, alertsEnabled (json per tipo), alertThresholds {giallo:30, arancione:60, rosso:90}, assistant {localEnabled, apiEnabled, provider, model, apiKeyRef, instructions}, dataPath _(valore legacy/di visualizzazione: l'**autorità runtime** del percorso dati è il puntatore esterno `config.json` in `userData`, non questa colonna — S11.2)_, appVersion, **siglaCodice** (text, default `NP`, configurabile da E11 — usata per generare il codice istanza nel formato `AAAAMMGG_SIGLA_NNN`), backup {autoEnabled, trigger (onClose|interval|both), intervalHours, retentionCount, backupPath, lastBackupAt}, security {lockEnabled, encryptionEnabled} (security post-MVP: nell'MVP entrambi false)`.
+`theme, alertsEnabled (json per tipo), alertThresholds {giallo:30, arancione:60, rosso:90}, assistant {localEnabled, apiEnabled, provider, model, apiKeyRef, instructions}, dataPath _(valore legacy/di visualizzazione: l'**autorità runtime** del percorso dati è il puntatore esterno `config.json` in `userData`, non questa colonna — S11.2)_, appVersion, **siglaCodice** (text, default `NP`, configurabile da E11 — usata per generare il codice istanza nel formato `AAAAMMGG_SIGLA_NNN`), backup {autoEnabled, trigger (onClose|interval|both), intervalHours, retentionCount, backupPath, lastBackupAt _(aggiornato anche dal backup manuale S11.3; l'archivio è un `.zip` con `lexflow.db` + `documenti/` + `data.json` + `manifest.json`)_}, security {lockEnabled, encryptionEnabled} (security post-MVP: nell'MVP entrambi false)`.
 
 ### Entità post-MVP (non creare nell'MVP)
 

@@ -46,7 +46,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S10.3  | Cancellazione definitiva                                     | FATTO    | **E10 (Cestino) COMPLETATA.** Hard delete irreversibile, solo da Cestino (per riga + bulk), solo pratiche cestinate. IPC `practices:permanentDelete` (N id, una transazione: cancella figli `documents→pec_recipients→history_events→transition_records→practices` con FK ON, idempotente, `deletedCount`); cartella documenti rimossa post-commit (best-effort, helper `removePracticeDocumentsDir` esportato da documents/service). Nessun HistoryEvent (entità distrutta), tracciato via log. Modale forte senza digitazione. `PracticeCore` esteso con `codiceIstanza`. Nessuna migrazione. |
 | S11.1  | Tema + colori semantici fissi                                | FATTO    | **Apre E11 (Impostazioni app).** Nuovo modulo `settings` (controller/service/repository), canali IPC `settings:get`/`settings:updateTheme`. 5 temi in `shared/themes.ts` (chiaro/scuro/pastello/deep-dark/grigio-senape), persistiti in `app_settings.theme` (no migrazione), applicati via `data-theme` su `<html>` (`ThemeApplier` in `App.tsx`). Palette CSS ridefiniscono solo token base/sidebar; token semantici restano in `:root` (regola 8 garantita per costruzione). Pagina Impostazioni app reale con anteprime. Nessun HistoryEvent (config app). |
 | S11.2  | Percorso dati                                                | FATTO    | Visualizza + copia stringa + apri cartella in «Impostazioni app». Introdotto il **puntatore di bootstrap** `config.json` in userData (`main/config/dataPath.ts`): `dataPath` risolto a boot prima del DB; `connection.ts` e documents `getDocumentsRoot` usano `getDataPath()` invece di `app.getPath('userData')`. Default = userData; nessuno spostamento dati. **Cambio/spostamento percorso = post-MVP.** Nessuna migrazione (colonna `app_settings.dataPath` resta legacy/visualizzazione). |
-| S11.3  | Backup completo + ripristino                                 | TODO     |                                                                                                                                                                                                                          |
+| S11.3  | Backup completo + ripristino                                 | FATTO    | Nuovo modulo `backup` (controller/service/repository) + `restoreBootstrap`. Export manuale → singolo `.zip` (adm-zip) con `lexflow.db` (checkpoint+copia) + `documenti/` + `data.json` (dump tabelle) + `manifest.json`; aggiorna `backup.lastBackupAt`. Ripristino → validazione manifest, estrazione in staging + marker `pending-restore.json`, conferma forte, `app.relaunch()`; swap a freddo al boot (`applyPendingRestore` in `app.ts`, prima del DB) con safety backup automatico `pre-restore-<ts>/`. Dep `adm-zip`. Nessuna migrazione, nessun HistoryEvent. |
 | S11.4  | Reset con backup automatico                                  | TODO     |                                                                                                                                                                                                                          |
 | S11.7  | Backup automatico periodico + rotazione                      | TODO     | MVP (deciso 2026-06-23)                                                                                                                                                                                                  |
 | S13.\* | Qualità trasversale (errori/loading/empty/PEC)               | TODO     |                                                                                                                                                                                                                          |
@@ -84,6 +84,57 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-27 — S11.3: Backup completo (DB + documenti) e ripristino — **E11**
+
+**Nessuna migrazione.** Backup **manuale** (export) + **ripristino** (import). L'automatico periodico + rotazione
+è S11.7; il pre-reset è S11.4 (entrambi fuori storia; S11.3 espone le primitive). Nuova dipendenza pura-JS
+**`adm-zip`** (+ `@types/adm-zip`). Scelte utente: archivio **singolo `.zip`**, incluso **`data.json`** (dump
+tabelle), ripristino con **safety backup automatico** + **swap a freddo al boot** + relaunch.
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `main/modules/backup/repository.ts` | `dumpAllTables()` (select * sulle 13 tabelle, nomi stabili), `tableNames()`, `updateBackupLastBackupAt(iso)` (parse/scrive il JSON `app_settings.backup`). Query solo qui. |
+| `main/modules/backup/service.ts` | `exportBackup(win)`: dialog salvataggio → `.zip` con `lexflow.db` (`checkpointDb()`+addLocalFile), `documenti/`, `data.json`, `manifest.json`; `updateBackupLastBackupAt`. `restoreBackup(win)`: dialog apertura → valida `manifest.json` (formato + `lexflow.db`) → estrae in `userData/restore-staging/` → scrive marker → `app.relaunch()`+`app.exit(0)`. |
+| `main/modules/backup/restoreBootstrap.ts` | `applyPendingRestore()`: a boot, prima del DB, se c'è il marker fa safety backup `pre-restore-<ts>/` dei dati correnti, poi swap `lexflow.db` (rimuove `-wal`/`-shm`) + `documenti/`, pulisce staging+marker. Robusto (try/catch, marker rimosso per evitare boot-loop). Esporta i nomi `RESTORE_STAGING_DIR`/`PENDING_RESTORE_MARKER`. |
+| `main/modules/backup/controller.ts` | `registerBackupHandlers()`: `BACKUP_EXPORT`/`BACKUP_RESTORE`, ricavano la `BrowserWindow` da `event.sender` (pattern documents). |
+| `main/modules/backup/naming.ts` | `backupTimestamp()` `AAAAMMGG-HHMMSS` (fonte unica per nome archivio + cartella safety). |
+| `src/api/backup.ts` | Client `export()`/`restore()`. |
+| `src/features/settings/useBackup.ts` | `useExportBackup()` / `useRestoreBackup()` (mutation). |
+| `src/features/settings/RestoreBackupModal.tsx` | Conferma **forte** (avviso d'irreversibilità, `--color-destructive`, regola 8): sovrascrive + safety backup + riavvio; nessuna digitazione. |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `main/database/connection.ts` | Riferimento a modulo `sqliteHandle`; `getDbFilePath()` e `checkpointDb()` (`wal_checkpoint(TRUNCATE)`) per la copia DB consistente. |
+| `main/modules/documents/service.ts` | `getDocumentsRoot()` esportata (riuso dal modulo backup; unica fonte del path documenti). |
+| `main/app.ts` | `applyPendingRestore()` tra `validateStartupConfig()` e `initDatabase()`. |
+| `main/server.ts` | `registerBackupHandlers()`. |
+| `main/preload.ts` | namespace `backup: { export, restore }`. |
+| `shared/ipc.ts` | Canali `BACKUP_EXPORT`/`BACKUP_RESTORE`; tipi `BackupExportResponse`/`BackupRestoreResponse`; `LexFlowApi.backup`. |
+| `src/pages/AppSettingsPage.tsx` | Sezione «Backup e ripristino»: «Esporta backup…» (esito/percorso) e «Ripristina da backup…» (modale forte). |
+| `docs/01-architecture.md`, `docs/02-data-model.md`, `docs/00-backlog-mvp.md` | Backup `.zip` (adm-zip), restore a freddo + safety backup, confine vs S11.4/S11.7. |
+| `package.json` | dep `adm-zip`, devDep `@types/adm-zip`. |
+
+**Invarianti / decisioni:**
+1. **Copia DB consistente**: `wal_checkpoint(TRUNCATE)` + file aggiunto allo zip (mono-utente, handler sincrono,
+   nessuna scrittura concorrente). Al restore i `-wal`/`-shm` correnti sono rimossi prima di sovrascrivere il DB.
+2. **Restore a freddo**: swap a boot **prima** dell'apertura del DB → nessun lock file su Windows; poi relaunch;
+   le migrazioni a boot allineano un DB ripristinato più vecchio.
+3. **Rete di sicurezza**: copia automatica dei dati correnti in `pre-restore-<ts>/` prima dello swap.
+4. **Validazione archivio**: `manifest.json` (`format` + presenza `lexflow.db`) → altrimenti errore senza toccare i dati.
+5. **Regola 8** (colore distruttivo) nella conferma; layer rispettati (query solo nel repository; fs/zip/relaunch
+   nel service/bootstrap); nessun `any`; `path.join` (regola 11). **Nessun `HistoryEvent`** (operazione di sistema, log).
+
+**Confine di storia:** backup automatico periodico + rotazione → S11.7; backup preventivo pre-reset → S11.4.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓
+(verifica interattiva GUI confermata dall'utente: export `.zip` col contenuto atteso; restore con conferma forte
+→ riavvio → dati del backup + `pre-restore-<ts>/` presente; zip non valido → errore senza sovrascrivere; annullo
+dialog → nessuna azione; nessuna regressione tema/percorso/documenti).
 
 ### 2026-06-26 — S11.2: Percorso dati (visualizza / copia / apri) + puntatore di bootstrap — **E11**
 

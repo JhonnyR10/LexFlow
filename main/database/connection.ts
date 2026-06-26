@@ -10,9 +10,15 @@ import { getDataPath } from '../config/dataPath'
 type DbSchema = typeof schema
 
 let db: BetterSQLite3Database<DbSchema> | null = null
+let sqliteHandle: BetterSqlite3.Database | null = null
+
+// Percorso assoluto del file DB. Unica fonte: il percorso dati risolto (S11.2).
+export function getDbFilePath(): string {
+  return join(getDataPath(), 'lexflow.db')
+}
 
 export function initDatabase(): BetterSQLite3Database<DbSchema> {
-  const dbPath = join(getDataPath(), 'lexflow.db')
+  const dbPath = getDbFilePath()
   logger.info('DB_OPEN', dbPath)
 
   const sqlite = new Database(dbPath)
@@ -23,8 +29,15 @@ export function initDatabase(): BetterSQLite3Database<DbSchema> {
   // Il cast è necessario perché drizzle-orm tipizza il parametro su better-sqlite3 direttamente.
   // In futuro, per abilitare la cifratura: sqlite.pragma("key = '<chiave>'") prima di questa riga,
   // leggendo la chiave da AppSettings.security.encryptionEnabled.
-  db = drizzle(sqlite as unknown as BetterSqlite3.Database, { schema })
+  sqliteHandle = sqlite as unknown as BetterSqlite3.Database
+  db = drizzle(sqliteHandle, { schema })
   return db
+}
+
+// Svuota il WAL nel file DB principale, così una copia del solo `lexflow.db`
+// è consistente (usato dal backup, S11.3). Il DB gira in WAL mode.
+export function checkpointDb(): void {
+  sqliteHandle?.pragma('wal_checkpoint(TRUNCATE)')
 }
 
 export function getDb(): BetterSQLite3Database<DbSchema> {

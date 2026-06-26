@@ -31,7 +31,8 @@ import { getDataPath } from '../../config/dataPath'
 // Radice dei documenti. Coerente con dove risiede il DB (connection.ts): entrambi
 // sotto il percorso dati risolto dal puntatore di bootstrap (config/dataPath.ts).
 // `filePath` in DB è relativo a questa radice → portabile per backup/ripristino.
-function getDocumentsRoot(): string {
+// Esportata come unica fonte del path documenti (riusata dal modulo backup, S11.3).
+export function getDocumentsRoot(): string {
   return join(getDataPath(), 'documenti')
 }
 

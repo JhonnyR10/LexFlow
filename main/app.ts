@@ -3,6 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { bootstrap } from './server'
 import { validateStartupConfig } from './config/startup'
+import { applyPendingRestore } from './modules/backup/restoreBootstrap'
 import { initDatabase } from './database/connection'
 import { runMigrations } from './database/migrations'
 import { runSeed } from './database/seed'
@@ -47,6 +48,8 @@ app.whenReady().then(async () => {
 
   try {
     await validateStartupConfig()
+    // Se è in sospeso un ripristino, fai lo swap a freddo PRIMA di aprire il DB (S11.3).
+    applyPendingRestore()
     initDatabase()
     runMigrations()
     runSeed()
