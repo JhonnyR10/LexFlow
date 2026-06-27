@@ -49,7 +49,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S11.3  | Backup completo + ripristino                                 | FATTO    | Nuovo modulo `backup` (controller/service/repository) + `restoreBootstrap`. Export manuale → singolo `.zip` (adm-zip) con `lexflow.db` (checkpoint+copia) + `documenti/` + `data.json` (dump tabelle) + `manifest.json`; aggiorna `backup.lastBackupAt`. Ripristino → validazione manifest, estrazione in staging + marker `pending-restore.json`, conferma forte, `app.relaunch()`; swap a freddo al boot (`applyPendingRestore` in `app.ts`, prima del DB) con safety backup automatico `pre-restore-<ts>/`. Dep `adm-zip`. Nessuna migrazione, nessun HistoryEvent. |
 | S11.4  | Reset con backup automatico                                  | FATTO    | Nuovo modulo `reset`. Svuota pratiche+figli+anagrafiche (transazione FK-safe) + cartella documenti; mantiene workflow e impostazioni. Backup preventivo **obbligatorio** `pre-reset-<ts>.zip` sotto `backup.backupPath` (riusa `writeBackupZip` estratto da S11.3) — se fallisce, reset annullato. Doppia conferma (`ResetArchiveModal` a 2 passi). Nessun riavvio (delete live + `invalidateQueries()`). Nessuna migrazione, nessun HistoryEvent. |
 | S11.7  | Backup automatico periodico + rotazione                      | FATTO    | **E11-MVP COMPLETATA.** Scheduler nel main (`scheduler.ts`): onClose via `before-quit` (sync, guard anti-rientro) + interval via timer riavviabile. Auto-backup `lexflow-autobackup-<ts>.zip` sotto `backup.backupPath` (riusa `writeBackupZip`), poi rotazione che tocca **solo** quel prefisso (manuali e `pre-reset-*` salvi). Config completa editabile in «Impostazioni app» (`AutoBackupSection`): on/off, trigger, ore, N copie, percorso modificabile (folder picker) + apri cartella + ultimo backup. IPC `backup:getConfig/updateConfig/changeFolder/openFolder`. Nessuna migrazione, nessun HistoryEvent. |
-| S13.\* | Qualità trasversale (errori/loading/empty/PEC)               | TODO     |                                                                                                                                                                                                                          |
+| S13.\* | Qualità trasversale (errori/loading/empty/PEC)               | FATTO    | **MVP COMPLETO.** Audit di chiusura: S13.1–13.4 verificati conformi (loading/empty/error su tutte le viste, zod renderer+main, HistoryEvent con eccezioni motivate, PEC multi-destinatario). Rifiniture: Report → pagina informativa (rimanda a «Pratiche → Esporta CSV»); rimossa pagina demo IPC (`/dev/ipc`) + link dev sidebar + file morti (IpcDemoPage/PlaceholderPage/PlaceholderSection). Numeri procedimento multipli post-MVP. |
 
 (Storie post-MVP non elencate finché non promosse: report avanzati, assistente, numeri procedimento multipli, ecc.)
 
@@ -84,6 +84,39 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-27 — S13.*: Qualità trasversale (audit di chiusura) — **MVP COMPLETO**
+
+Storia di **audit**, non di nuova feature: i criteri E13 erano già implementati storia-per-storia. Verifica
+sistematica doc↔codice + rifiniture mirate concordate con l'utente.
+
+**Esito audit (conforme):**
+- **S13.1** loading/empty/error su tutte le viste dati (config/anagrafiche/documenti/dashboard/dettaglio/cestino/
+  pratiche/impostazioni); `importoCalc.ts`/`giorniDeposito.ts` evitano `NaN` («Non presente»/«Non calcolabile»/«—»).
+- **S13.2** zod su tutti i form renderer (config ×5, anagrafiche ×2, pratiche ×3) e sui controller main.
+- **S13.3** HistoryEvent: created/updated/transizioni(+fase)/trashed/restored/documenti(add·replace·remove).
+  Eccezioni motivate: S10.3 hard delete e S11.4 reset (entità distrutte → log); config/tema/percorso/backup
+  (operazioni di sistema). 
+- **S13.4** PEC multi-destinatario (`pec_recipients` + campo `pec`); numeri procedimento multipli **post-MVP**.
+
+**Rifiniture applicate:**
+- `src/pages/ReportPage.tsx`: da placeholder «in costruzione» a **pagina informativa** (rimanda a
+  «Pratiche → Esporta CSV»; riepiloghi aggregati = versione successiva; link a `/pratiche`).
+- Rimossa la **pagina demo IPC**: `src/routes/Router.tsx` (rotta `/dev/ipc`), `src/components/layout/Sidebar.tsx`
+  (link dev + stile `bottomStyle` inutilizzato). **Eliminati** file morti: `src/pages/IpcDemoPage.tsx`,
+  `src/pages/PlaceholderPage.tsx`, `src/pages/PlaceholderSection.tsx`.
+- Docs: `docs/00-backlog-mvp.md` §E13 annotato (criteri soddisfatti + eccezioni); questo log.
+
+**Nessuna migrazione, nessun nuovo IPC, nessun `HistoryEvent`.** Il canale `app:getVersion` resta (riuso futuro
+S11.6 «Info app», Should/post-MVP).
+
+**Stato MVP:** tutte le epiche MVP completate — E0–E8, E9.1, E10, E11 (S11.1/2/3/4/7), E13. Restano fuori MVP:
+report aggregati (S9.2/9.3), assistente (E12), protezione dati/cifratura (E14), scadenzario (E15), export PDF
+(E16), card alert configurabili (S11.5), info app (S11.6), numeri procedimento multipli.
+
+**Verifiche:** `grep` riferimenti residui → nessuno; `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓.
+Verifica interattiva GUI (`npm run desktop`: sidebar senza link dev, `/dev/ipc` non raggiungibile, Report
+informativo con link, giro di regressione viste) **da completare manualmente**.
 
 ### 2026-06-27 — S9.1: Export CSV delle pratiche filtrate — **E9.1 COMPLETATA**
 

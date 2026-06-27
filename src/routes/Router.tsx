@@ -7,7 +7,6 @@ import { ReportPage } from '../pages/ReportPage'
 import { InstanceSettingsPage } from '../pages/InstanceSettingsPage'
 import { AppSettingsPage } from '../pages/AppSettingsPage'
 import { CestinoPage } from '../pages/CestinoPage'
-import { IpcDemoPage } from '../pages/IpcDemoPage'
 
 export function Router(): React.JSX.Element {
   return (
@@ -22,7 +21,6 @@ export function Router(): React.JSX.Element {
           <Route path="/impostazioni-istanze" element={<InstanceSettingsPage />} />
           <Route path="/impostazioni-app" element={<AppSettingsPage />} />
           <Route path="/cestino" element={<CestinoPage />} />
-          <Route path="/dev/ipc" element={<IpcDemoPage />} />
         </Route>
       </Routes>
     </HashRouter>

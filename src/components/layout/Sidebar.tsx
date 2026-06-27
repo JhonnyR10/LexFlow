@@ -43,11 +43,6 @@ const navStyle: React.CSSProperties = {
   overflowY: 'auto'
 }
 
-const bottomStyle: React.CSSProperties = {
-  padding: '12px 0',
-  borderTop: '1px solid var(--sidebar-border)'
-}
-
 function linkClassName({ isActive }: { isActive: boolean }): string {
   return isActive ? 'sidebar-link sidebar-link--active' : 'sidebar-link'
 }
@@ -66,12 +61,6 @@ export function Sidebar(): React.JSX.Element {
           </NavLink>
         ))}
       </nav>
-
-      <div style={bottomStyle}>
-        <NavLink to="/dev/ipc" className={linkClassName} style={{ fontSize: '12px', opacity: 0.6 }}>
-          Diagnostica IPC
-        </NavLink>
-      </div>
 
       <style>{`
         .sidebar-link {

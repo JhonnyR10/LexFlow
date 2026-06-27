@@ -149,10 +149,12 @@ Priorità MoSCoW. `MVP` = nel primo rilascio usabile end-to-end.
 
 ### E13 — Qualità trasversale `MVP` (Must)
 
-- **S13.1** Gestione errori + loading state + empty state su ogni vista.
-- **S13.2** Validazioni input (zod) lato renderer e main.
-- **S13.3** Audit = HistoryEvent su ogni operazione rilevante.
-- **S13.4** Numeri procedimento multipli e PEC multi-destinatario per fase. _(PEC `MVP` perché legata a deposito/SCP; numeri procedimento post-MVP)_.
+Requisiti soddisfatti **storia-per-storia**; S13.* è stato un **audit di chiusura MVP** (verifica doc↔codice + rifiniture mirate: Report informativo, rimozione pagina demo IPC e file morti). Vedi log in `PROGRESS.md`.
+
+- **S13.1** Gestione errori + loading state + empty state su ogni vista. _FATTO: tutte le viste dati gestiscono loading/empty/error; importi/date mancanti → «Non presente»/«Non calcolabile»/«—», mai `NaN`._
+- **S13.2** Validazioni input (zod) lato renderer e main. _FATTO: tutti i form renderer + controller main con zod._
+- **S13.3** Audit = HistoryEvent su ogni operazione rilevante. _FATTO: created/updated/transizioni/cestino/ripristino/documenti. Eccezioni motivate: hard delete (S10.3) e reset (S11.4) distruggono l'entità → log; operazioni di configurazione (tema/percorso/backup) non sono sulla pratica._
+- **S13.4** Numeri procedimento multipli e PEC multi-destinatario per fase. _PEC multi-destinatario FATTO (`pec_recipients` + campo `pec`); numeri procedimento multipli **post-MVP**._
 
 ### E14 — Protezione dati sensibili (post-MVP)
 
