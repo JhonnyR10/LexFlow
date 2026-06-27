@@ -685,6 +685,9 @@ export function findAllActivePractices(): PracticeListItem[] {
       professionistaId:          practices.professionistaId,
       professionistaDenominazione: professionisti.denominazione,
       importoRichiesto:          practices.importoRichiesto,
+      importoConcesso:           practices.importoConcesso,
+      importoFatturato:          practices.importoFatturato,
+      importoLiquidato:          practices.importoLiquidato,
       createdAt:                 practices.createdAt,
     })
     .from(practices)
@@ -712,6 +715,9 @@ export function findAllActivePractices(): PracticeListItem[] {
     professionistaId:            r.professionistaId ?? null,
     professionistaDenominazione: r.professionistaDenominazione ?? null,
     importoRichiesto:            r.importoRichiesto ?? null,
+    importoConcesso:             r.importoConcesso ?? null,
+    importoFatturato:            r.importoFatturato ?? null,
+    importoLiquidato:            r.importoLiquidato ?? null,
     createdAt:                   r.createdAt,
   }))
 }

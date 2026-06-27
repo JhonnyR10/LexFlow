@@ -40,7 +40,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S8.2   | Alert aggregato per pratica                                  | FATTO    | Sezione «Avvisi» in Dashboard. Un box per pratica attiva (cestino + fasi finali esclusi) con anzianità da deposito > 30g; severità 30/60/90 → giallo/arancione/rosso (token semantici fissi); motivazioni aggregate (anzianità + «decreto ricevuto non inviato a SCP» per category `decree_received`). IPC `dashboard:alerts`, logica pura nel service. Nessuna migrazione. |
 | S8.3   | Giorni da deposito                                           | FATTO    | Campo «Giorni dalla data deposito» nel dettaglio pratica (Dati generali); assente/non parsabile → «Data deposito non presente» (muted). Calcolo `daysSinceDeposit` estratto in `shared/giorniDeposito.ts`, riusato dal service alert (S8.2). Renderer-only, nessuna migrazione. |
 | S8.4   | Anzianità + stato vuoto + Vedi pratiche                      | FATTO    | **E8 (Dashboard) COMPLETATA.** Sezione «Pratiche più vecchie» (top-5 pratiche aperte per giorni da deposito desc, riusa query alert + `daysSinceDeposit` condiviso); stato vuoto archivio unico a livello Dashboard con azione «Crea una nuova pratica»; card per fase cliccabili → `/pratiche?phaseId=` con filtro Fase preimpostato (`filtersFromSearchParams` + `useSearchParams`). Nuovo IPC `dashboard:aging`, nessuna migrazione. |
-| S9.1   | Export CSV                                                   | TODO     |                                                                                                                                                                                                                          |
+| S9.1   | Export CSV                                                   | FATTO    | **E9.1 COMPLETATA.** Pulsante «Esporta CSV» in Pratiche → CSV Excel-IT (`;`+BOM, decimali virgola, date gg/mm/aaaa) delle pratiche filtrate/cercate (riusa `filterPractices`, estratta da PraticheTable), cestino escluso. 4 importi (query elenco + `PracticeListItem` estesi con concesso/fatturato/liquidato). CSV puro in `practicesCsv.ts`; scrittura via dialog nel main (`modules/export`). Nessuna migrazione, nessun HistoryEvent. |
 | S10.1  | Sposta nel cestino                                           | FATTO    | **Apre E10 (Cestino).** Soft delete con conferma + motivo obbligatorio; azione dal dettaglio (singola) e in blocco dalla toolbar di selezione (S3.4). IPC `practices:moveToTrash` (N id + motivo, transazione atomica, idempotente, `HistoryEvent` `trashed`) e `practices:listTrashed`. Pagina Cestino di sola lettura (data + motivo). Nessuna migrazione (colonne già presenti). Ripristino→S10.2, cancellazione→S10.3. |
 | S10.2  | Ripristino                                                   | FATTO    | Ripristino dal cestino (singolo + multiplo) speculare a S10.1. IPC `practices:restore` (N id, transazione atomica, idempotente, azzera `trashedAt`/`trashReason`, `HistoryEvent` `restored`). Pagina Cestino interattiva (selezione + per-riga/bulk); pulsante «Ripristina» nel banner del dettaglio cestinata; modale di conferma leggera senza motivo (non distruttiva). Nessuna migrazione. Cancellazione→S10.3. |
 | S10.3  | Cancellazione definitiva                                     | FATTO    | **E10 (Cestino) COMPLETATA.** Hard delete irreversibile, solo da Cestino (per riga + bulk), solo pratiche cestinate. IPC `practices:permanentDelete` (N id, una transazione: cancella figli `documents→pec_recipients→history_events→transition_records→practices` con FK ON, idempotente, `deletedCount`); cartella documenti rimossa post-commit (best-effort, helper `removePracticeDocumentsDir` esportato da documents/service). Nessun HistoryEvent (entità distrutta), tracciato via log. Modale forte senza digitazione. `PracticeCore` esteso con `codiceIstanza`. Nessuna migrazione. |
@@ -84,6 +84,46 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-27 — S9.1: Export CSV delle pratiche filtrate — **E9.1 COMPLETATA**
+
+**Nessuna migrazione** (colonne importi già su `practices`). **Nessun `HistoryEvent`** (export, sola lettura).
+Formato Excel-IT (`;`+BOM, decimali con virgola, date gg/mm/aaaa) + 4 importi (scelte utente).
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `main/modules/export/service.ts` | `exportCsv(win, input)`: dialog salvataggio → `writeFileSync(BOM+content)`. Contenuto già pronto dal renderer (niente ricalcolo nel main). |
+| `main/modules/export/controller.ts` | `registerExportHandlers()`: `EXPORT_CSV` (zod `{content, suggestedName}`, window da `event.sender`). |
+| `src/features/practices/practicesCsv.ts` | Puro: `practicesToCsv(rows)` (sep `;`, EOL `\r\n`, header IT, escaping RFC4180, date gg/mm/aaaa, importi con virgola) + `buildCsvFileName()` (`pratiche-<ts>.csv`). |
+| `src/api/export.ts`, `src/features/practices/useExportCsv.ts` | Client + hook mutation. |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `shared/ipc.ts` | `PracticeListItem` esteso (importoConcesso/Fatturato/Liquidato); canale `EXPORT_CSV`; tipi `ExportCsvInput`/`ExportCsvResponse`; `LexFlowApi.export`. |
+| `main/modules/practices/repository.ts` | `findAllActivePractices`: select+map dei 3 importi denormalizzati (E6). |
+| `main/server.ts`, `main/preload.ts` | `registerExportHandlers()`; `export.csv` nel contextBridge. |
+| `src/features/practices/practiceFilters.ts` | Estratte `normalizeForSearch`/`searchableBlob` + nuova `filterPractices(list, term, filters)` (fonte unica filtro+ricerca). |
+| `src/features/practices/PraticheTable.tsx` | Usa `filterPractices` (rimosse le copie locali); comportamento invariato. |
+| `src/pages/PratichePage.tsx` | `useActivePractices` (cache) → `exportable = filterPractices(...)`; pulsante «Esporta CSV (N)» (disabilitato a 0) + feedback percorso/errore. |
+| `docs/00-backlog-mvp.md` | AC S9.1 esplicitati. |
+
+**Invarianti / decisioni:**
+1. **Rispetta filtri+ricerca per costruzione**: export e tabella usano la stessa `filterPractices`; cestino già
+   escluso a monte (`isTrashed=false`).
+2. **Excel-IT**: `;`+BOM+decimali virgola+date gg/mm/aaaa, escaping corretto.
+3. **Niente fs nel renderer**: CSV costruito nel renderer (dati in cache), scritto nel main via dialog.
+4. **4 importi**: query elenco estesa (additivo). Layer rispettati; zod nel controller; nessun `any`.
+
+**Confine di storia:** riepiloghi/aggregati (S9.2 Should), export Excel (S9.3 Could) fuori MVP. Resta per l'MVP la
+qualità trasversale **S13.\*** (errori/loading/empty/validazioni/audit).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓
+(verifica interattiva GUI confermata dall'utente: export rispetta ricerca/filtri, cestino escluso, apertura in
+Excel IT con colonne/decimali/accenti corretti, 4 importi, pulsante disabilitato a 0, annulla dialog → nessun file).
 
 ### 2026-06-27 — S11.7: Backup automatico periodico + rotazione — **E11-MVP COMPLETATA**
 

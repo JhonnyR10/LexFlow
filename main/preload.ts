@@ -21,6 +21,9 @@ const api: LexFlowApi = {
   reset: {
     archive: () => ipcRenderer.invoke('reset:archive')
   },
+  export: {
+    csv: (input) => ipcRenderer.invoke('export:csv', input)
+  },
   practices: {
     generateCodiceIstanza: (input) =>
       ipcRenderer.invoke('practices:generateCodiceIstanza', input),

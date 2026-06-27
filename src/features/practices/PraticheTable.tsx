@@ -3,26 +3,8 @@ import { Link } from 'react-router-dom'
 import { useActivePractices, useMoveToTrash } from './usePractices'
 import { MoveToTrashModal } from './MoveToTrashModal'
 import { ipcErrorMessage } from '../../utils/ipcError'
-import { type PracticeFilters, matchesFilters } from './practiceFilters'
+import { type PracticeFilters, filterPractices } from './practiceFilters'
 import type { PracticeListItem } from '../../../shared/ipc'
-
-// Normalizza per la ricerca: minuscolo + rimozione dei segni diacritici, così
-// il confronto è case-insensitive e accent-insensitive ("AUTORITA" trova "Autorità").
-function normalizeForSearch(s: string): string {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-}
-
-// Stringa cercabile per riga: concatena i campi su cui opera la ricerca globale.
-function searchableBlob(p: PracticeListItem): string {
-  return normalizeForSearch([
-    p.codiceIstanza,
-    p.nomeIstanza,
-    p.collaboratoreDenominazione,
-    p.professionistaDenominazione,
-    p.autoritaGiudiziaria,
-    p.note,
-  ].filter((v): v is string => v != null).join(' '))
-}
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—'
@@ -248,11 +230,7 @@ export function PraticheTable({
     )
   }
 
-  const normalizedTerm = normalizeForSearch(searchTerm.trim())
-  const filtered = practices.filter(p =>
-    matchesFilters(p, filters) &&
-    (normalizedTerm === '' || searchableBlob(p).includes(normalizedTerm))
-  )
+  const filtered = filterPractices(practices, searchTerm, filters)
 
   if (filtered.length === 0) {
     return (

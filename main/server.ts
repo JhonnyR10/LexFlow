@@ -7,6 +7,7 @@ import { registerDashboardHandlers } from './modules/dashboard/controller'
 import { registerSettingsHandlers } from './modules/settings/controller'
 import { registerBackupHandlers } from './modules/backup/controller'
 import { registerResetHandlers } from './modules/reset/controller'
+import { registerExportHandlers } from './modules/export/controller'
 
 export function bootstrap(): void {
   registerAppHandlers()
@@ -18,4 +19,5 @@ export function bootstrap(): void {
   registerSettingsHandlers()
   registerBackupHandlers()
   registerResetHandlers()
+  registerExportHandlers()
 }

@@ -79,7 +79,8 @@ export const IPC_CHANNELS = {
   BACKUP_UPDATE_CONFIG: 'backup:updateConfig',
   BACKUP_CHANGE_FOLDER: 'backup:changeFolder',
   BACKUP_OPEN_FOLDER: 'backup:openFolder',
-  RESET_ARCHIVE: 'reset:archive'
+  RESET_ARCHIVE: 'reset:archive',
+  EXPORT_CSV: 'export:csv'
 } as const
 
 export type AppGetVersionResponse = string
@@ -495,6 +496,9 @@ export interface PracticeListItem {
   professionistaId: number | null
   professionistaDenominazione: string | null
   importoRichiesto: number | null
+  importoConcesso: number | null
+  importoFatturato: number | null
+  importoLiquidato: number | null
   createdAt: string
 }
 
@@ -785,6 +789,16 @@ export interface ResetArchiveResponse {
   collaboratoriDeleted: number
 }
 
+// --- Export CSV (S9.1) ---
+export interface ExportCsvInput {
+  content: string
+  suggestedName: string
+}
+export interface ExportCsvResponse {
+  canceled: boolean
+  path?: string
+}
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
@@ -804,6 +818,9 @@ export interface LexFlowApi {
   }
   reset: {
     archive(): Promise<ResetArchiveResponse>
+  }
+  export: {
+    csv(input: ExportCsvInput): Promise<ExportCsvResponse>
   }
   config: {
     listPhases(): Promise<ConfigListPhasesResponse>

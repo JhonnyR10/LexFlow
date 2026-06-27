@@ -77,6 +77,45 @@ export function matchesFilters(p: PracticeListItem, f: PracticeFilters): boolean
   return true
 }
 
+// --- Ricerca globale (S3.2) ---
+// Estratte da PraticheTable per essere condivise con l'export CSV (S9.1): un'unica
+// fonte della logica di filtro+ricerca, così l'export rispetta esattamente la vista.
+
+// Normalizza per la ricerca: minuscolo + rimozione dei segni diacritici, così il
+// confronto è case-insensitive e accent-insensitive ("AUTORITA" trova "Autorità").
+export function normalizeForSearch(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+}
+
+// Stringa cercabile per riga: concatena i campi su cui opera la ricerca globale.
+export function searchableBlob(p: PracticeListItem): string {
+  return normalizeForSearch(
+    [
+      p.codiceIstanza,
+      p.nomeIstanza,
+      p.collaboratoreDenominazione,
+      p.professionistaDenominazione,
+      p.autoritaGiudiziaria,
+      p.note,
+    ]
+      .filter((v): v is string => v != null)
+      .join(' ')
+  )
+}
+
+// Insieme risultante da ricerca + filtri combinati (AND). Riusato da PraticheTable
+// (vista) e dall'export CSV (S9.1).
+export function filterPractices(
+  list: PracticeListItem[],
+  searchTerm: string,
+  filters: PracticeFilters
+): PracticeListItem[] {
+  const term = normalizeForSearch(searchTerm.trim())
+  return list.filter(
+    (p) => matchesFilters(p, filters) && (term === '' || searchableBlob(p).includes(term))
+  )
+}
+
 export interface FilterOption {
   id: number
   label: string
