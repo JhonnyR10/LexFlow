@@ -4,6 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { bootstrap } from './server'
 import { validateStartupConfig } from './config/startup'
 import { applyPendingRestore } from './modules/backup/restoreBootstrap'
+import { runOnCloseBackup, startAutoBackupScheduler } from './modules/backup/scheduler'
 import { initDatabase } from './database/connection'
 import { runMigrations } from './database/migrations'
 import { runSeed } from './database/seed'
@@ -64,11 +65,21 @@ app.whenReady().then(async () => {
   })
 
   bootstrap()
+  startAutoBackupScheduler()
   createWindow()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+})
+
+// Backup automatico alla chiusura (S11.7): sincrono, una sola volta, con il DB
+// ancora aperto. È best-effort (errori loggati dentro runAutoBackup).
+let onCloseBackupDone = false
+app.on('before-quit', () => {
+  if (onCloseBackupDone) return
+  onCloseBackupDone = true
+  runOnCloseBackup()
 })
 
 app.on('window-all-closed', () => {

@@ -1,5 +1,6 @@
 import { app } from 'electron'
 import { eq } from 'drizzle-orm'
+import type { BackupConfig, BackupTrigger, UpdateBackupConfigInput } from '../../../shared/ipc'
 import { getDb } from '../../database/connection'
 import {
   appSettings,
@@ -52,53 +53,75 @@ export function dumpAllTables(): Record<string, unknown[]> {
   return out
 }
 
-// Percorso di destinazione dei backup automatici (es. pre-reset, S11.4), letto da
-// `app_settings.backup.backupPath`. Fallback robusto a userData se assente/illeggibile.
-export function getBackupPath(): string {
-  const fallback = app.getPath('userData')
+// --- Config backup (JSON `app_settings.backup`) ---
+// Lettura/scrittura centralizzate dell'oggetto JSON, robuste a valori illeggibili.
+
+function readBackupObject(): Record<string, unknown> {
   const row = getDb()
     .select({ backup: appSettings.backup })
     .from(appSettings)
     .where(eq(appSettings.id, SETTINGS_ID))
     .get()
-  if (!row) return fallback
+  if (!row) return {}
   try {
     const parsed: unknown = JSON.parse(row.backup)
-    if (parsed && typeof parsed === 'object') {
-      const bp = (parsed as Record<string, unknown>).backupPath
-      if (typeof bp === 'string' && bp.trim()) return bp
-    }
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {}
   } catch {
-    return fallback
+    return {}
   }
-  return fallback
 }
 
-// Aggiorna `app_settings.backup.lastBackupAt` (JSON serializzato) dopo un backup
-// manuale riuscito. Robusto: se il JSON fosse illeggibile, riparte da un oggetto vuoto.
-export function updateBackupLastBackupAt(iso: string): void {
-  const db = getDb()
-  const row = db
-    .select({ backup: appSettings.backup })
-    .from(appSettings)
-    .where(eq(appSettings.id, SETTINGS_ID))
-    .get()
-  if (!row) return
-
-  let backup: Record<string, unknown> = {}
-  try {
-    const parsed: unknown = JSON.parse(row.backup)
-    if (parsed && typeof parsed === 'object') {
-      backup = parsed as Record<string, unknown>
-    }
-  } catch {
-    backup = {}
-  }
-  backup.lastBackupAt = iso
-
-  db
+function writeBackupObject(obj: Record<string, unknown>): void {
+  getDb()
     .update(appSettings)
-    .set({ backup: JSON.stringify(backup) })
+    .set({ backup: JSON.stringify(obj) })
     .where(eq(appSettings.id, SETTINGS_ID))
     .run()
+}
+
+const VALID_TRIGGERS: readonly BackupTrigger[] = ['onClose', 'interval', 'both']
+
+// Config completa, con default per ogni campo mancante/illeggibile (robusto).
+export function getBackupConfig(): BackupConfig {
+  const o = readBackupObject()
+  const bp = typeof o.backupPath === 'string' && o.backupPath.trim() ? o.backupPath : app.getPath('userData')
+  const trigger = VALID_TRIGGERS.includes(o.trigger as BackupTrigger) ? (o.trigger as BackupTrigger) : 'onClose'
+  const intervalHours = typeof o.intervalHours === 'number' && o.intervalHours >= 1 ? o.intervalHours : 24
+  const retentionCount = typeof o.retentionCount === 'number' && o.retentionCount >= 1 ? o.retentionCount : 10
+  return {
+    autoEnabled: typeof o.autoEnabled === 'boolean' ? o.autoEnabled : true,
+    trigger,
+    intervalHours,
+    retentionCount,
+    backupPath: bp,
+    lastBackupAt: typeof o.lastBackupAt === 'string' ? o.lastBackupAt : null,
+  }
+}
+
+// Percorso di destinazione dei backup automatici (S11.4/S11.7). Fallback a userData.
+export function getBackupPath(): string {
+  return getBackupConfig().backupPath
+}
+
+// Aggiorna i soli campi editabili da form (S11.7), preservando backupPath/lastBackupAt.
+export function updateBackupConfig(input: UpdateBackupConfigInput): void {
+  const o = readBackupObject()
+  o.autoEnabled = input.autoEnabled
+  o.trigger = input.trigger
+  o.intervalHours = input.intervalHours
+  o.retentionCount = input.retentionCount
+  writeBackupObject(o)
+}
+
+export function updateBackupPath(path: string): void {
+  const o = readBackupObject()
+  o.backupPath = path
+  writeBackupObject(o)
+}
+
+// Aggiorna `lastBackupAt` dopo un backup riuscito (manuale o automatico).
+export function updateBackupLastBackupAt(iso: string): void {
+  const o = readBackupObject()
+  o.lastBackupAt = iso
+  writeBackupObject(o)
 }

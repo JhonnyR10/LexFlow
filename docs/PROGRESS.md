@@ -48,7 +48,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S11.2  | Percorso dati                                                | FATTO    | Visualizza + copia stringa + apri cartella in «Impostazioni app». Introdotto il **puntatore di bootstrap** `config.json` in userData (`main/config/dataPath.ts`): `dataPath` risolto a boot prima del DB; `connection.ts` e documents `getDocumentsRoot` usano `getDataPath()` invece di `app.getPath('userData')`. Default = userData; nessuno spostamento dati. **Cambio/spostamento percorso = post-MVP.** Nessuna migrazione (colonna `app_settings.dataPath` resta legacy/visualizzazione). |
 | S11.3  | Backup completo + ripristino                                 | FATTO    | Nuovo modulo `backup` (controller/service/repository) + `restoreBootstrap`. Export manuale → singolo `.zip` (adm-zip) con `lexflow.db` (checkpoint+copia) + `documenti/` + `data.json` (dump tabelle) + `manifest.json`; aggiorna `backup.lastBackupAt`. Ripristino → validazione manifest, estrazione in staging + marker `pending-restore.json`, conferma forte, `app.relaunch()`; swap a freddo al boot (`applyPendingRestore` in `app.ts`, prima del DB) con safety backup automatico `pre-restore-<ts>/`. Dep `adm-zip`. Nessuna migrazione, nessun HistoryEvent. |
 | S11.4  | Reset con backup automatico                                  | FATTO    | Nuovo modulo `reset`. Svuota pratiche+figli+anagrafiche (transazione FK-safe) + cartella documenti; mantiene workflow e impostazioni. Backup preventivo **obbligatorio** `pre-reset-<ts>.zip` sotto `backup.backupPath` (riusa `writeBackupZip` estratto da S11.3) — se fallisce, reset annullato. Doppia conferma (`ResetArchiveModal` a 2 passi). Nessun riavvio (delete live + `invalidateQueries()`). Nessuna migrazione, nessun HistoryEvent. |
-| S11.7  | Backup automatico periodico + rotazione                      | TODO     | MVP (deciso 2026-06-23)                                                                                                                                                                                                  |
+| S11.7  | Backup automatico periodico + rotazione                      | FATTO    | **E11-MVP COMPLETATA.** Scheduler nel main (`scheduler.ts`): onClose via `before-quit` (sync, guard anti-rientro) + interval via timer riavviabile. Auto-backup `lexflow-autobackup-<ts>.zip` sotto `backup.backupPath` (riusa `writeBackupZip`), poi rotazione che tocca **solo** quel prefisso (manuali e `pre-reset-*` salvi). Config completa editabile in «Impostazioni app» (`AutoBackupSection`): on/off, trigger, ore, N copie, percorso modificabile (folder picker) + apri cartella + ultimo backup. IPC `backup:getConfig/updateConfig/changeFolder/openFolder`. Nessuna migrazione, nessun HistoryEvent. |
 | S13.\* | Qualità trasversale (errori/loading/empty/PEC)               | TODO     |                                                                                                                                                                                                                          |
 
 (Storie post-MVP non elencate finché non promosse: report avanzati, assistente, numeri procedimento multipli, ecc.)
@@ -84,6 +84,47 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-06-27 — S11.7: Backup automatico periodico + rotazione — **E11-MVP COMPLETATA**
+
+**Nessuna migrazione** (config già in `app_settings.backup`). Scheduler nel main; riusa `writeBackupZip` (S11.3)
+e `getBackupPath` (S11.4). Pre-reset (S11.4) resta indipendente dalla rotazione. Livello **configurabile completo**
++ percorso modificabile (scelte utente).
+
+**File nuovi:**
+
+| File | Descrizione |
+| ---- | ----------- |
+| `main/modules/backup/scheduler.ts` | `startAutoBackupScheduler()`/`restartAutoBackupScheduler()` (timer `setInterval` se `autoEnabled && trigger∈{interval,both}`, ogni `intervalHours`); `runOnCloseBackup()` per il trigger di chiusura. Handle a modulo, clear prima di ricreare. |
+| `src/features/settings/AutoBackupSection.tsx` | Form config: toggle on/off, checkbox alla chiusura / a intervallo, ore, N copie, percorso (Cambia cartella…/Apri cartella), ultimo backup, «Salva». Sync render-time guardato dal ref della query (no setState-in-effect). |
+
+**File modificati:**
+
+| File | Modifica |
+| ---- | -------- |
+| `main/modules/backup/repository.ts` | `readBackupObject`/`writeBackupObject` (helper JSON centralizzati); `getBackupConfig` (default robusti), `updateBackupConfig`, `updateBackupPath`; `getBackupPath`/`updateBackupLastBackupAt` rifattorizzati sugli helper. |
+| `main/modules/backup/service.ts` | `AUTO_BACKUP_PREFIX`/regex; `runAutoBackup(reason)` (no-op se disabilitato/trigger non corrisponde; try/catch totale); `rotateAutoBackups(dir,keep)` (solo prefisso auto); `readBackupConfig`/`saveBackupConfig`/`changeBackupFolder`(dialog openDirectory)/`openBackupFolder`. |
+| `main/modules/backup/controller.ts` | Handler `BACKUP_GET_CONFIG`/`UPDATE_CONFIG` (zod, poi `restartAutoBackupScheduler`)/`CHANGE_FOLDER`/`OPEN_FOLDER`. |
+| `main/app.ts` | `startAutoBackupScheduler()` dopo bootstrap; `before-quit` → `runOnCloseBackup()` (sync, guard `onCloseBackupDone`). |
+| `main/preload.ts` | `backup.getConfig/updateConfig/changeFolder/openFolder`. |
+| `shared/ipc.ts` | 4 canali; tipi `BackupTrigger`/`BackupConfig`/`UpdateBackupConfigInput`/`BackupChangeFolderResponse`/`BackupOpenFolderResponse`; `LexFlowApi.backup` esteso. |
+| `src/api/backup.ts`, `src/features/settings/useBackup.ts` | Client + hook `useBackupConfig`/`useUpdateBackupConfig`/`useChangeBackupFolder`/`useOpenBackupFolder`. |
+| `src/pages/AppSettingsPage.tsx` | Monta `<AutoBackupSection/>` tra «Backup e ripristino» e «Reset archivio». |
+| `docs/00-backlog-mvp.md`, `docs/01-architecture.md`, `docs/02-data-model.md` | AC S11.7; scheduler + rotazione per prefisso; naming auto-backup. |
+
+**Invarianti / decisioni:**
+1. **Rotazione sicura**: solo `lexflow-autobackup-*.zip`; manuali e `pre-reset-*` mai toccati.
+2. **Auto-backup best-effort**: ogni errore loggato, mai crash/blocco chiusura.
+3. **Trigger**: `onClose` (before-quit sync, DB aperto) + `interval` (timer riavviato al cambio config).
+4. **Pre-reset (S11.4) indipendente** da naming/rotazione.
+5. Layer rispettati; zod nel controller; nessun `any`; `path.join`. Nessun `HistoryEvent` (operazione di sistema).
+
+**Confine di storia:** E11-MVP completa (S11.1/2/3/4/7). Restano S11.5 (card alert configurabili) e S11.6 (info app)
+come _Should_, fuori MVP. Prossima per ordine di costruzione: **E9.1 Export CSV** (S9.1).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓
+(verifica interattiva GUI confermata dall'utente: config persistita; auto-backup alla chiusura; rotazione a N;
+cambio/apri cartella; off → niente backup; pre-reset/manuali non ruotati).
 
 ### 2026-06-27 — S11.4: Reset archivio con backup automatico preventivo + doppia conferma — **E11**
 

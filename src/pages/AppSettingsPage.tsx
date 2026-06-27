@@ -7,6 +7,7 @@ import {
 } from '../features/settings/useSettings'
 import { useExportBackup, useRestoreBackup } from '../features/settings/useBackup'
 import { RestoreBackupModal } from '../features/settings/RestoreBackupModal'
+import { AutoBackupSection } from '../features/settings/AutoBackupSection'
 import { useResetArchive } from '../features/settings/useReset'
 import { ResetArchiveModal } from '../features/settings/ResetArchiveModal'
 
@@ -358,6 +359,8 @@ export function AppSettingsPage(): React.JSX.Element {
           </p>
         )}
       </section>
+
+      <AutoBackupSection />
 
       <section style={dataSectionStyle}>
         <h2 style={sectionTitleStyle}>Reset archivio</h2>

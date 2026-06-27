@@ -12,7 +12,11 @@ const api: LexFlowApi = {
   },
   backup: {
     export: () => ipcRenderer.invoke('backup:export'),
-    restore: () => ipcRenderer.invoke('backup:restore')
+    restore: () => ipcRenderer.invoke('backup:restore'),
+    getConfig: () => ipcRenderer.invoke('backup:getConfig'),
+    updateConfig: (input) => ipcRenderer.invoke('backup:updateConfig', input),
+    changeFolder: () => ipcRenderer.invoke('backup:changeFolder'),
+    openFolder: () => ipcRenderer.invoke('backup:openFolder')
   },
   reset: {
     archive: () => ipcRenderer.invoke('reset:archive')

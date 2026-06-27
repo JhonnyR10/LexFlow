@@ -1,18 +1,38 @@
-import { app, dialog, type BrowserWindow } from 'electron'
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'fs'
+import { app, dialog, shell, type BrowserWindow } from 'electron'
+import { existsSync, mkdirSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import AdmZip from 'adm-zip'
-import type { BackupExportResponse, BackupRestoreResponse } from '../../../shared/ipc'
+import type {
+  BackupChangeFolderResponse,
+  BackupConfig,
+  BackupExportResponse,
+  BackupOpenFolderResponse,
+  BackupRestoreResponse,
+  UpdateBackupConfigInput,
+} from '../../../shared/ipc'
 import { ValidationError } from '../../errors/AppError'
 import { checkpointDb, getDbFilePath } from '../../database/connection'
 import { getDocumentsRoot } from '../documents/service'
 import { logger } from '../../utils/logger'
 import { backupTimestamp } from './naming'
 import { PENDING_RESTORE_MARKER, RESTORE_STAGING_DIR } from './restoreBootstrap'
-import { dumpAllTables, tableNames, updateBackupLastBackupAt } from './repository'
+import {
+  dumpAllTables,
+  getBackupConfig,
+  getBackupPath,
+  tableNames,
+  updateBackupConfig,
+  updateBackupLastBackupAt,
+  updateBackupPath,
+} from './repository'
 
 const BACKUP_FORMAT = 'lexflow-backup'
 const BACKUP_FORMAT_VERSION = 1
+
+// Prefisso dedicato agli auto-backup (S11.7): la rotazione opera SOLO su questi
+// file, mai sui backup manuali (`lexflow-backup-`) né sui pre-reset (`pre-reset-`).
+const AUTO_BACKUP_PREFIX = 'lexflow-autobackup-'
+const AUTO_BACKUP_RE = /^lexflow-autobackup-.*\.zip$/
 
 interface BackupManifest {
   format: string
@@ -142,4 +162,78 @@ export async function restoreBackup(win: BrowserWindow | null): Promise<BackupRe
   app.exit(0)
 
   return { canceled: false, willRestart: true }
+}
+
+// --- Backup automatico (S11.7) ---
+
+// Elimina gli auto-backup oltre le ultime `keep` copie. Tocca SOLO i file con il
+// prefisso dedicato (mai i backup manuali o i pre-reset). Best-effort.
+function rotateAutoBackups(dir: string, keep: number): void {
+  if (!existsSync(dir)) return
+  const files = readdirSync(dir)
+    .filter((f) => AUTO_BACKUP_RE.test(f))
+    .sort() // il timestamp nel nome ordina cronologicamente (ascendente)
+  const excess = files.length - keep
+  for (let i = 0; i < excess; i++) {
+    try {
+      unlinkSync(join(dir, files[i]))
+    } catch (err) {
+      logger.warn('AUTO_BACKUP_ROTATE_FAILED', `${files[i]}: ${String(err)}`)
+    }
+  }
+}
+
+// Esegue un auto-backup se la config lo prevede per il `reason` indicato. Non deve
+// mai far crashare l'app: ogni errore è loggato e non propagato.
+export function runAutoBackup(reason: 'onClose' | 'interval'): void {
+  try {
+    const cfg = getBackupConfig()
+    if (!cfg.autoEnabled) return
+    const triggered = cfg.trigger === 'both' || cfg.trigger === reason
+    if (!triggered) return
+
+    const dest = join(cfg.backupPath, `${AUTO_BACKUP_PREFIX}${backupTimestamp()}.zip`)
+    writeBackupZip(dest)
+    rotateAutoBackups(cfg.backupPath, cfg.retentionCount)
+    logger.info('AUTO_BACKUP_DONE', `${reason}: ${dest}`)
+  } catch (err) {
+    logger.error('AUTO_BACKUP_FAILED', err instanceof Error ? err.message : String(err))
+  }
+}
+
+// --- Config (S11.7) ---
+
+export function readBackupConfig(): BackupConfig {
+  return getBackupConfig()
+}
+
+export function saveBackupConfig(input: UpdateBackupConfigInput): BackupConfig {
+  updateBackupConfig(input)
+  return getBackupConfig()
+}
+
+export async function changeBackupFolder(win: BrowserWindow | null): Promise<BackupChangeFolderResponse> {
+  const options: Electron.OpenDialogOptions = {
+    title: 'Scegli la cartella dei backup',
+    properties: ['openDirectory', 'createDirectory'],
+  }
+  const picked = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+  if (picked.canceled || picked.filePaths.length === 0) {
+    return { canceled: true }
+  }
+  updateBackupPath(picked.filePaths[0])
+  return { canceled: false, config: getBackupConfig() }
+}
+
+export async function openBackupFolder(): Promise<BackupOpenFolderResponse> {
+  const dir = getBackupPath()
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true })
+  }
+  const errMsg = await shell.openPath(dir)
+  if (errMsg) {
+    logger.warn('BACKUP_OPEN_FOLDER_FAILED', `${dir}: ${errMsg}`)
+    return { success: false }
+  }
+  return { success: true }
 }

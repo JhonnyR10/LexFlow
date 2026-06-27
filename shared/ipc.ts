@@ -75,6 +75,10 @@ export const IPC_CHANNELS = {
   SETTINGS_OPEN_DATA_FOLDER: 'settings:openDataFolder',
   BACKUP_EXPORT: 'backup:export',
   BACKUP_RESTORE: 'backup:restore',
+  BACKUP_GET_CONFIG: 'backup:getConfig',
+  BACKUP_UPDATE_CONFIG: 'backup:updateConfig',
+  BACKUP_CHANGE_FOLDER: 'backup:changeFolder',
+  BACKUP_OPEN_FOLDER: 'backup:openFolder',
   RESET_ARCHIVE: 'reset:archive'
 } as const
 
@@ -749,6 +753,30 @@ export interface BackupRestoreResponse {
   willRestart?: boolean
 }
 
+// --- Backup automatico (S11.7) ---
+export type BackupTrigger = 'onClose' | 'interval' | 'both'
+export interface BackupConfig {
+  autoEnabled: boolean
+  trigger: BackupTrigger
+  intervalHours: number
+  retentionCount: number
+  backupPath: string
+  lastBackupAt: string | null
+}
+export interface UpdateBackupConfigInput {
+  autoEnabled: boolean
+  trigger: BackupTrigger
+  intervalHours: number
+  retentionCount: number
+}
+export interface BackupChangeFolderResponse {
+  canceled: boolean
+  config?: BackupConfig
+}
+export interface BackupOpenFolderResponse {
+  success: boolean
+}
+
 // --- Reset archivio (S11.4) ---
 export interface ResetArchiveResponse {
   backupPath: string
@@ -769,6 +797,10 @@ export interface LexFlowApi {
   backup: {
     export(): Promise<BackupExportResponse>
     restore(): Promise<BackupRestoreResponse>
+    getConfig(): Promise<BackupConfig>
+    updateConfig(input: UpdateBackupConfigInput): Promise<BackupConfig>
+    changeFolder(): Promise<BackupChangeFolderResponse>
+    openFolder(): Promise<BackupOpenFolderResponse>
   }
   reset: {
     archive(): Promise<ResetArchiveResponse>
