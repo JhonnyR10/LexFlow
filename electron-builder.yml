@@ -5,6 +5,18 @@ directories:
   output: release/${version}
 files:
   - out/**
+
+# Il binario nativo (.node di better-sqlite3-multiple-ciphers) deve stare FUORI
+# dall'asar per essere caricabile a runtime.
+asarUnpack:
+  - '**/*.node'
+
+# Le migrazioni Drizzle vengono copiate in <resources>/drizzle: a runtime, con
+# app.isPackaged, main/database/migrations.ts legge da process.resourcesPath/drizzle.
+extraResources:
+  - from: drizzle
+    to: drizzle
+
 mac:
   target:
     - dmg

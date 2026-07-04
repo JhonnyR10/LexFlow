@@ -7,7 +7,7 @@ Guida per configurare da zero l'ambiente di sviluppo su una macchina nuova.
 ## Piattaforme supportate
 
 - **macOS** (sviluppo primario; build produzione via `npm run build:mac`)
-- **Windows** (build produzione via `npm run build:win` — eseguire su Windows o via CI)
+- **Windows** (build produzione via `npm run build:win` — eseguire su Windows o via CI). **Guida completa: [`docs/BUILD-WINDOWS.md`](docs/BUILD-WINDOWS.md)** (prerequisiti, trasferimento sorgenti, rebuild nativo, installer, troubleshooting, CI).
 
 ---
 

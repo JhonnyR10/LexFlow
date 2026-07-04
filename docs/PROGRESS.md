@@ -85,6 +85,36 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-04 — Release-prep: packaging Windows + piano di collaudo + roadmap
+
+Storia di **rilascio/collaudo**, solo config + documentazione (nessuna migrazione, IPC, HistoryEvent o logica di
+dominio). Prepara la produzione dell'installer Windows e il collaudo dell'MVP.
+
+**Packaging Windows:**
+- `electron-builder.yml`: aggiunti i due blocchi mancanti e critici — **`asarUnpack: ['**/*.node']`** (binario
+  nativo caricabile) e **`extraResources: [{from: drizzle, to: drizzle}]`** (migrazioni impacchettate →
+  `process.resourcesPath/drizzle`, come già previsto da `migrations.ts`). Config preesistente (appId, target
+  NSIS/DMG, output `release/<versione>/`) invariata.
+- `main/database/migrations.ts`: aggiornato solo il commento (TODO packaging risolto).
+- `docs/BUILD-WINDOWS.md` (nuovo): guida passo-passo (⚠️ mai copiare `node_modules` dal Mac; prerequisiti VS
+  Build Tools C++/Python; `npm install`→rebuild; `npm run build:win`; output; verifiche primo avvio;
+  troubleshooting; icona futura).
+- `.github/workflows/build-win.yml` (nuovo): CI `windows-latest` (workflow_dispatch + tag `v*`) → artifact `.exe`.
+- `SETUP.md`, `docs/01-architecture.md`: rimando alla guida e nota su electron-builder configurato.
+
+**Collaudo:**
+- `docs/TEST-PLAN-MVP.md` (nuovo): checklist eseguibile per epica (A–M), con passi/atteso/esito.
+
+**Correzioni & roadmap:**
+- `docs/COLLAUDO.md` (nuovo): registro difetti (ID/gravità/stato) + processo (segnalazione → registrazione →
+  stima in ROADMAP → implementazione per DoD).
+- `docs/ROADMAP.md` (nuovo): piano stimato S/M/L — §1 correzioni collaudo, §2 rifiniture, §3 post-MVP (E14
+  cifratura, S9.2/9.3, E15, E16, E12, S11.5/11.6, numeri procedimento, code signing, spostamento percorso dati).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ (electron-vite, su Mac). La
+produzione dell'`.exe` (`build:win`) **non è verificabile su macOS** (modulo nativo): va eseguita su Windows /
+via CI (poi collaudo con `TEST-PLAN-MVP.md`).
+
 ### 2026-06-27 — S13.*: Qualità trasversale (audit di chiusura) — **MVP COMPLETO**
 
 Storia di **audit**, non di nuova feature: i criteri E13 erano già implementati storia-per-storia. Verifica

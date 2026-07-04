@@ -7,9 +7,9 @@ import { logger } from '../utils/logger'
 export function runMigrations(): void {
   const db = getDb()
 
-  // In sviluppo: le migrazioni sono in <project-root>/drizzle/ (2 livelli sopra out/main/)
-  // In produzione: TODO packaging — aggiungere drizzle/ a extraResources in electron-builder.yml
-  //   e usare join(process.resourcesPath, 'drizzle') quando app.isPackaged === true
+  // In sviluppo: le migrazioni sono in <project-root>/drizzle/ (2 livelli sopra out/main/).
+  // In produzione: la cartella drizzle/ è impacchettata via `extraResources` in
+  // electron-builder.yml → disponibile in process.resourcesPath/drizzle.
   const migrationsFolder = app.isPackaged
     ? join(process.resourcesPath, 'drizzle')
     : join(__dirname, '../../drizzle')
