@@ -39,6 +39,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S8.1   | Card per fase dinamiche                                      | FATTO    | **Apre E8 (Dashboard).** Nuovo modulo `dashboard` (controller/service/repository), canale IPC `dashboard:phaseCounts`. Conteggio pratiche attive per fase (innerJoin practices→phases, GROUP BY, `isTrashed=false`, ordine `phases.order`): solo fasi con pratiche. `PhaseCountCards` con loading/empty/error; stato vuoto «Archivio vuoto…». Invalidazione `['dashboard']` su create/executeTransition. Nessuna migrazione. |
 | S8.2   | Alert aggregato per pratica                                  | FATTO    | Sezione «Avvisi» in Dashboard. Un box per pratica attiva (cestino + fasi finali esclusi) con anzianità da deposito > 30g; severità 30/60/90 → giallo/arancione/rosso (token semantici fissi); motivazioni aggregate (anzianità + «decreto ricevuto non inviato a SCP» per category `decree_received`). IPC `dashboard:alerts`, logica pura nel service. Nessuna migrazione. |
 | S8.3   | Giorni da deposito                                           | FATTO    | Campo «Giorni dalla data deposito» nel dettaglio pratica (Dati generali); assente/non parsabile → «Data deposito non presente» (muted). Calcolo `daysSinceDeposit` estratto in `shared/giorniDeposito.ts`, riusato dal service alert (S8.2). Renderer-only, nessuna migrazione. |
+| S8.5   | Card «Documenti mancanti» (Sprint 3)                         | FATTO    | Sezione Dashboard: pratiche attive non finali cui manca un documento **atteso per la fase raggiunta** (ragiona per category canonica come S8.2: decreto da `decree_received` in poi; fattura da `awaiting_liquidation` in poi). IPC `dashboard:missingDocuments`, query con flag documenti (LEFT JOIN + `max(case…)`), logica soglie nel service. Badge dei kind mancanti, link al dettaglio; invalidazione `['dashboard']` aggiunta su upload/elimina documento. Nessuna migrazione, nessun `HistoryEvent`. |
 | S8.4   | Anzianità + stato vuoto + Vedi pratiche                      | FATTO    | **E8 (Dashboard) COMPLETATA.** Sezione «Pratiche più vecchie» (top-5 pratiche aperte per giorni da deposito desc, riusa query alert + `daysSinceDeposit` condiviso); stato vuoto archivio unico a livello Dashboard con azione «Crea una nuova pratica»; card per fase cliccabili → `/pratiche?phaseId=` con filtro Fase preimpostato (`filtersFromSearchParams` + `useSearchParams`). Nuovo IPC `dashboard:aging`, nessuna migrazione. |
 | S9.1   | Export CSV                                                   | FATTO    | **E9.1 COMPLETATA.** Pulsante «Esporta CSV» in Pratiche → CSV Excel-IT (`;`+BOM, decimali virgola, date gg/mm/aaaa) delle pratiche filtrate/cercate (riusa `filterPractices`, estratta da PraticheTable), cestino escluso. 4 importi (query elenco + `PracticeListItem` estesi con concesso/fatturato/liquidato). CSV puro in `practicesCsv.ts`; scrittura via dialog nel main (`modules/export`). Nessuna migrazione, nessun HistoryEvent. |
 | S10.1  | Sposta nel cestino                                           | FATTO    | **Apre E10 (Cestino).** Soft delete con conferma + motivo obbligatorio; azione dal dettaglio (singola) e in blocco dalla toolbar di selezione (S3.4). IPC `practices:moveToTrash` (N id + motivo, transazione atomica, idempotente, `HistoryEvent` `trashed`) e `practices:listTrashed`. Pagina Cestino di sola lettura (data + motivo). Nessuna migrazione (colonne già presenti). Ripristino→S10.2, cancellazione→S10.3. |
@@ -84,6 +85,43 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-07-21 — Sprint 3 / S8.5: Card «Documenti mancanti» in Dashboard
+
+Seconda voce dello **Sprint 3**. Nuova sezione Dashboard che elenca le pratiche **attive non finali**
+(`isTrashed=false`, fase non finale) a cui manca un documento **atteso per la fase raggiunta**. **Nessuna
+migrazione** (usa `documents` di E7), **nessun `HistoryEvent`** (aggregato in sola lettura, come le altre
+sezioni dashboard).
+
+**Definizione «atteso» (per category canonica, come l'alert S8.2 — non per key):**
+- **Decreto** atteso se category ∈ {`decree_received`, `awaiting_correction`, `awaiting_appeal`,
+  `awaiting_liquidation`, `awaiting_integration_scp`, `liquidated`}.
+- **Fattura** attesa se category ∈ {`awaiting_liquidation`, `awaiting_integration_scp`, `liquidated`}.
+- Fasi iniziali (`deposited`/`awaiting_decree`/`awaiting_integration`) e `suspended`: documento non ancora
+  atteso → la pratica non compare (evita rumore). Set di category esplicite e commentate nel service.
+
+**File nuovi:** `src/features/dashboard/MissingDocumentsSection.tsx` (sezione con loading/empty/error, link al
+dettaglio, badge dei kind mancanti; colori via token, regola 8).
+**File modificati:**
+- `shared/ipc.ts`: canale `DASHBOARD_MISSING_DOCUMENTS`, tipi `DashboardMissingDocItem`/
+  `DashboardMissingDocumentsResponse`, `LexFlowApi.dashboard.missingDocuments`.
+- `main/modules/dashboard/repository.ts`: `findActiveOpenPracticesWithDocFlags()` — pratiche aperte + flag
+  `hasDecreto`/`hasFattura` via LEFT JOIN `documents` + aggregazione condizionale `max(case…)`; solo lettura.
+- `main/modules/dashboard/service.ts`: `getDashboardMissingDocuments()` — applica le soglie per category,
+  costruisce `missing[]`, scarta chi non manca nulla, ordina per n° mancanti poi codice istanza.
+- `main/modules/dashboard/controller.ts`, `main/preload.ts`, `src/api/dashboard.ts`,
+  `src/features/dashboard/useDashboard.ts`: wiring del canale (handler senza input → nessun zod, come gli altri
+  dashboard).
+- `src/pages/DashboardPage.tsx`: monta `<MissingDocumentsSection/>` dopo «Avvisi».
+- `src/features/documents/useDocuments.ts`: invalida anche `['dashboard']` su upload/elimina documento (prima
+  mancava) → la card si aggiorna subito.
+
+**Docs prima del codice:** `00-backlog-mvp.md` (nuova storia S8.5 con AC), `06-ui-ux.md` (sezione Dashboard).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓ (verifica
+interattiva GUI confermata dall'utente: pratica in «Decreto ricevuto» senza decreto → badge «Manca Decreto»;
+caricato il decreto → sparisce; pratica in fase iniziale non compare; fattura attesa da fase SCP; empty state;
+temi scuri leggibili).
 
 ### 2026-07-21 — Sprint 3 / S5.5: Filtri e ricerca sulla timeline del dettaglio pratica
 

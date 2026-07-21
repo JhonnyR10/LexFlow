@@ -64,7 +64,9 @@ const api: LexFlowApi = {
     alerts: () =>
       ipcRenderer.invoke('dashboard:alerts'),
     aging: () =>
-      ipcRenderer.invoke('dashboard:aging')
+      ipcRenderer.invoke('dashboard:aging'),
+    missingDocuments: () =>
+      ipcRenderer.invoke('dashboard:missingDocuments')
   },
   config: {
     listPhases: () => ipcRenderer.invoke('config:listPhases'),

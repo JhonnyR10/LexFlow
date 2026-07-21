@@ -3,9 +3,15 @@ import { IPC_CHANNELS } from '../../../shared/ipc'
 import type {
   DashboardAgingResponse,
   DashboardAlertsResponse,
+  DashboardMissingDocumentsResponse,
   DashboardPhaseCountsResponse,
 } from '../../../shared/ipc'
-import { getDashboardAging, getDashboardAlerts, getDashboardPhaseCounts } from './service'
+import {
+  getDashboardAging,
+  getDashboardAlerts,
+  getDashboardMissingDocuments,
+  getDashboardPhaseCounts,
+} from './service'
 import { logger } from '../../utils/logger'
 
 export function registerDashboardHandlers(): void {
@@ -30,6 +36,14 @@ export function registerDashboardHandlers(): void {
     (): DashboardAgingResponse => {
       logger.debug('IPC', IPC_CHANNELS.DASHBOARD_AGING)
       return getDashboardAging()
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.DASHBOARD_MISSING_DOCUMENTS,
+    (): DashboardMissingDocumentsResponse => {
+      logger.debug('IPC', IPC_CHANNELS.DASHBOARD_MISSING_DOCUMENTS)
+      return getDashboardMissingDocuments()
     }
   )
 }

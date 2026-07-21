@@ -3,6 +3,7 @@ import { dashboardApi } from '../../api/dashboard'
 import type {
   DashboardAgingResponse,
   DashboardAlertsResponse,
+  DashboardMissingDocumentsResponse,
   DashboardPhaseCountsResponse,
 } from '../../../shared/ipc'
 
@@ -24,5 +25,12 @@ export function useDashboardAging(): UseQueryResult<DashboardAgingResponse, Erro
   return useQuery({
     queryKey: ['dashboard', 'aging'],
     queryFn: () => dashboardApi.aging(),
+  })
+}
+
+export function useDashboardMissingDocuments(): UseQueryResult<DashboardMissingDocumentsResponse, Error> {
+  return useQuery({
+    queryKey: ['dashboard', 'missingDocs'],
+    queryFn: () => dashboardApi.missingDocuments(),
   })
 }

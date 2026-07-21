@@ -77,6 +77,7 @@ export const IPC_CHANNELS = {
   DASHBOARD_PHASE_COUNTS: 'dashboard:phaseCounts',
   DASHBOARD_ALERTS: 'dashboard:alerts',
   DASHBOARD_AGING: 'dashboard:aging',
+  DASHBOARD_MISSING_DOCUMENTS: 'dashboard:missingDocuments',
   SETTINGS_GET: 'settings:get',
   SETTINGS_UPDATE_THEME: 'settings:updateTheme',
   SETTINGS_OPEN_DATA_FOLDER: 'settings:openDataFolder',
@@ -736,6 +737,20 @@ export interface DashboardAgingItem {
 }
 export type DashboardAgingResponse = DashboardAgingItem[]
 
+// Documenti mancanti (S8.5): pratiche attive non finali cui manca un documento
+// atteso per la fase raggiunta. L'attesa ragiona per category canonica (come
+// S8.2): decreto da `decree_received` in poi; fattura da `awaiting_liquidation`
+// in poi. `missing` elenca i kind ancora assenti (mai vuoto: le pratiche senza
+// mancanze non entrano nella risposta). Esclude cestino e fasi finali.
+export interface DashboardMissingDocItem {
+  practiceId: number
+  codiceIstanza: string
+  nomeIstanza: string
+  currentPhaseDisplayName: string | null
+  missing: DocumentKind[]
+}
+export type DashboardMissingDocumentsResponse = DashboardMissingDocItem[]
+
 // --- Settings (E11) ---
 // Vista esposta all'MVP: tema (S11.1) e percorso dati corrente (S11.2, sola
 // lettura — risolto dal puntatore di bootstrap, non dalla colonna DB). Backup,
@@ -892,6 +907,7 @@ export interface LexFlowApi {
     phaseCounts(): Promise<DashboardPhaseCountsResponse>
     alerts(): Promise<DashboardAlertsResponse>
     aging(): Promise<DashboardAgingResponse>
+    missingDocuments(): Promise<DashboardMissingDocumentsResponse>
   }
   anagrafiche: {
     listProfessionisti(): Promise<AnagraficheListProfessionistiResponse>

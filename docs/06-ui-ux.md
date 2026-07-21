@@ -39,7 +39,8 @@ I **banner informativi** (avvisi neutri, notifiche di successo — es. la nota i
 - Card di conteggio per fase (dinamiche: solo fasi con pratiche attive).
 - Alert: **un solo box per pratica**, severità = massima tra le soglie, più motivazioni nello stesso box. Esempio: "Pratica aperta ferma da 111 giorni dalla data deposito; decreto ricevuto ma non ancora inviato a SCP."
 - "Giorni dalla data deposito: X"; se manca → "Data deposito non presente".
-- Card anzianità (pratiche aperte più vecchie), documenti mancanti.
+- Card anzianità (pratiche aperte più vecchie).
+- Sezione «Documenti mancanti» (S8.5): pratiche attive non finali cui manca un documento **atteso per la fase raggiunta** (decreto dalla fase «Decreto ricevuto» in poi; fattura dalla fase «In attesa di liquidazione SCP» in poi). Ogni riga: codice istanza (link), nome, fase e badge dei kind mancanti. Una pratica in fase iniziale non compare (niente rumore).
 - "Vedi pratiche" su una card → apre Pratiche con filtro coerente.
 - Esclude sempre le pratiche cestinate.
 - Stato vuoto: "Archivio vuoto. Puoi iniziare creando una nuova pratica oppure ripristinare un backup." Mai mostrare dati mock come reali.

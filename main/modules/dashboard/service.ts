@@ -4,12 +4,17 @@ import type {
   DashboardAgingResponse,
   DashboardAlert,
   DashboardAlertsResponse,
+  DashboardMissingDocItem,
+  DashboardMissingDocumentsResponse,
   DashboardPhaseCountsResponse,
+  DocumentKind,
 } from '../../../shared/ipc'
 import { daysSinceDeposit } from '../../../shared/giorniDeposito'
 import {
   findActiveOpenPracticesWithDeposit,
+  findActiveOpenPracticesWithDocFlags,
   findActivePhaseCounts,
+  type OpenPracticeDocFlagsRow,
   type OpenPracticeRow,
 } from './repository'
 
@@ -95,4 +100,58 @@ export function getDashboardAging(limit = AGING_LIMIT): DashboardAgingResponse {
     .filter((i): i is DashboardAgingItem => i !== null)
     .sort((a, b) => b.daysSinceDeposit - a.daysSinceDeposit)
     .slice(0, limit)
+}
+
+// Category in cui un documento diventa **atteso** (fase raggiunta). Si ragiona per
+// category canonica come gli alert (S8.2), non per key: il decreto è dovuto dalla
+// fase «Decreto ricevuto» in avanti; la fattura dalla fase «In attesa di
+// liquidazione SCP» in avanti. Prima di queste soglie il documento non manca:
+// non è ancora dovuto (evita rumore sulle pratiche appena depositate).
+const DECRETO_EXPECTED_CATEGORIES: ReadonlySet<string> = new Set([
+  'decree_received',
+  'awaiting_correction',
+  'awaiting_appeal',
+  'awaiting_liquidation',
+  'awaiting_integration_scp',
+  'liquidated',
+])
+const FATTURA_EXPECTED_CATEGORIES: ReadonlySet<string> = new Set([
+  'awaiting_liquidation',
+  'awaiting_integration_scp',
+  'liquidated',
+])
+
+function missingDocsForRow(row: OpenPracticeDocFlagsRow): DocumentKind[] {
+  const missing: DocumentKind[] = []
+  if (DECRETO_EXPECTED_CATEGORIES.has(row.currentPhaseCategory) && !row.hasDecreto) {
+    missing.push('decreto')
+  }
+  if (FATTURA_EXPECTED_CATEGORIES.has(row.currentPhaseCategory) && !row.hasFattura) {
+    missing.push('fattura')
+  }
+  return missing
+}
+
+// Documenti mancanti (S8.5): per ogni pratica aperta, i documenti attesi per la
+// fase raggiunta ma assenti. Le pratiche senza mancanze non entrano nel risultato.
+// Ordinate per numero di documenti mancanti decrescente, poi per codice istanza.
+export function getDashboardMissingDocuments(): DashboardMissingDocumentsResponse {
+  return findActiveOpenPracticesWithDocFlags()
+    .map((row): DashboardMissingDocItem | null => {
+      const missing = missingDocsForRow(row)
+      if (missing.length === 0) return null
+      return {
+        practiceId:              row.practiceId,
+        codiceIstanza:           row.codiceIstanza,
+        nomeIstanza:             row.nomeIstanza,
+        currentPhaseDisplayName: row.currentPhaseDisplayName,
+        missing,
+      }
+    })
+    .filter((i): i is DashboardMissingDocItem => i !== null)
+    .sort(
+      (a, b) =>
+        b.missing.length - a.missing.length ||
+        a.codiceIstanza.localeCompare(b.codiceIstanza, 'it')
+    )
 }

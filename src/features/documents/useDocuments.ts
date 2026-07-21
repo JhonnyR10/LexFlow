@@ -32,6 +32,9 @@ export function useUploadDocument(
       // Lista documenti + dettaglio (nuovo evento storico) vanno ricaricati.
       queryClient.invalidateQueries({ queryKey: ['documents', practiceId] })
       queryClient.invalidateQueries({ queryKey: ['practice', practiceId] })
+      // Card «documenti mancanti» (S8.5): aggiungere/rimuovere un documento può
+      // far comparire o sparire la pratica dalla sezione Dashboard.
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })
 }
@@ -45,6 +48,9 @@ export function useDeleteDocument(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents', practiceId] })
       queryClient.invalidateQueries({ queryKey: ['practice', practiceId] })
+      // Card «documenti mancanti» (S8.5): aggiungere/rimuovere un documento può
+      // far comparire o sparire la pratica dalla sezione Dashboard.
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })
 }
