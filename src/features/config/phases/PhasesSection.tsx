@@ -3,6 +3,7 @@ import type { PhaseListItem, PhaseCategory } from '../../../../shared/ipc'
 import { useAllPhases, useSetPhaseActive, useReorderPhases } from './usePhases'
 import { PhaseFormModal } from './PhaseFormModal'
 import { ipcErrorMessage } from '../../../utils/ipcError'
+import { AlertModal } from '../../../components/ui/AlertModal'
 
 const CATEGORY_LABELS: Record<PhaseCategory, string> = {
   deposited: 'Depositata',
@@ -142,14 +143,6 @@ const errorBoxStyle: React.CSSProperties = {
   fontSize: '13px'
 }
 
-const inlineErrorStyle: React.CSSProperties = {
-  padding: '10px 20px',
-  background: 'var(--color-error-bg)',
-  borderTop: '1px solid var(--color-error-border)',
-  color: 'var(--color-error)',
-  fontSize: '13px'
-}
-
 function Badge({
   children,
   bg,
@@ -183,13 +176,13 @@ export function PhasesSection(): React.JSX.Element {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editPhase, setEditPhase] = useState<PhaseListItem | null>(null)
-  const [inlineError, setInlineError] = useState<string | null>(null)
+  const [alertMessage, setAlertMessage] = useState<string | null>(null)
 
   function handleMoveUp(idx: number): void {
     if (!phases || idx === 0) return
     const prev = phases[idx - 1]
     const curr = phases[idx]
-    setInlineError(null)
+    setAlertMessage(null)
     reorderMutation.mutate(
       [
         { id: curr.id, order: prev.order },
@@ -197,7 +190,7 @@ export function PhasesSection(): React.JSX.Element {
       ],
       {
         onError: (err) =>
-          setInlineError(ipcErrorMessage(err))
+          setAlertMessage(ipcErrorMessage(err))
       }
     )
   }
@@ -206,7 +199,7 @@ export function PhasesSection(): React.JSX.Element {
     if (!phases || idx === phases.length - 1) return
     const curr = phases[idx]
     const next = phases[idx + 1]
-    setInlineError(null)
+    setAlertMessage(null)
     reorderMutation.mutate(
       [
         { id: curr.id, order: next.order },
@@ -214,13 +207,13 @@ export function PhasesSection(): React.JSX.Element {
       ],
       {
         onError: (err) =>
-          setInlineError(ipcErrorMessage(err))
+          setAlertMessage(ipcErrorMessage(err))
       }
     )
   }
 
   function handleToggleActive(phase: PhaseListItem): void {
-    setInlineError(null)
+    setAlertMessage(null)
     const action = phase.isActive ? 'disattivare' : 'attivare'
     if (!window.confirm(`Vuoi ${action} la fase "${phase.displayName}"?`)) return
 
@@ -228,7 +221,7 @@ export function PhasesSection(): React.JSX.Element {
       { id: phase.id, isActive: !phase.isActive },
       {
         onError: (err) =>
-          setInlineError(ipcErrorMessage(err))
+          setAlertMessage(ipcErrorMessage(err))
       }
     )
   }
@@ -342,7 +335,9 @@ export function PhasesSection(): React.JSX.Element {
         </table>
       )}
 
-      {inlineError && <div style={inlineErrorStyle}>{inlineError}</div>}
+      {alertMessage && (
+        <AlertModal message={alertMessage} onClose={() => setAlertMessage(null)} />
+      )}
 
       {(createOpen || editPhase) && (
         <PhaseFormModal

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import type { BackupConfig, BackupTrigger } from '../../../shared/ipc'
+import { ipcErrorMessage } from '../../utils/ipcError'
 import {
   useBackupConfig,
   useChangeBackupFolder,
@@ -117,7 +118,7 @@ export function AutoBackupSection(): React.JSX.Element {
         <p style={messageStyle}>Caricamento…</p>
       ) : isError ? (
         <p style={errorStyle}>
-          Errore nel caricamento della configurazione: {error?.message ?? 'errore sconosciuto'}
+          Errore nel caricamento della configurazione: {ipcErrorMessage(error)}
         </p>
       ) : (
         <>
@@ -217,7 +218,7 @@ export function AutoBackupSection(): React.JSX.Element {
           {formError && <p style={errorStyle}>{formError}</p>}
           {updateConfig.isError && (
             <p style={errorStyle}>
-              Impossibile salvare: {updateConfig.error?.message ?? 'errore sconosciuto'}
+              Impossibile salvare: {ipcErrorMessage(updateConfig.error)}
             </p>
           )}
           {openFolder.data?.success === false && (

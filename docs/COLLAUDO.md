@@ -18,12 +18,12 @@ implementa storia-per-storia secondo la DoD (`ways-of-working.md`).
 
 ## Registro
 
-| ID | Data | Area / caso | Gravità | Descrizione | Atteso | Ottenuto | Stato | Commit |
-|----|------|-------------|---------|-------------|--------|----------|-------|--------|
-| B2-B3 | 04/07/2026 | GUARD FASE INIZIALE | LIEVE | IL MESSAGGIO DI ERRORE ESCE MA IN UNA POSIZIONE DA RIVEDERE | IL MESSAGGIO DI ERRORE ESCE IN UNA FINESTRA POPUP | IL MESSAGGIO DI ERRORE ESCE IN FONDO ALLA CARD "FASI DEL WORKFLOW"| APERTO |  |
-| B6 | 04/07/2026 | CRUD MENU | LIEVE | MANCA OPZIONE PER ELIMINARE IL MENU A TENDINA (ANCHE IN CAMPI) O ELEMENTI DAI SET | POSSIBILITÀ DI ELMINARE FASI, TRANSIZIONI, CAMPI, MENU, COLLABORATORI E PROFESSIONISTI | SOLO POSSIBILITÀ DI DISATTIVARE | APERTO |  |
-| I3 - K1 | 04/07/2026 | DASHBORD & IMPOSTAZIONI APP | LIEVE | QUANDO SI METTONO I TEMI DEEP DARK E SCURO, NON è LEGGIBILE L'avviso ALL'INTERNO DELLA SEZIONE CESTINO "Le pratiche qui elencate sono cestinate (eliminazione logica): restano escluse da dashboard, elenco e avvisi. Puoi ripristinarle per riportarle tra le pratiche attive. I dati e i documenti sono conservati finché non vengono cancellati definitivamente." POICHè IL COLORE DELLA SCRITTA SULLO SFONDO GIALLINO NON RENDE LEGGIBILE IL TUTTO | A QUALUNQUE CAMBIO TEMA TUTTO RIMANE LEGGBILE L'AVVISO ALL'INTERNO DELLA SEZIONE CESTINO NON SI LEGGE CON I DUE TEMI DEEP DARK E SCURO POICHè IL COLORE DELLA SCRITTA SULLO SFONDO GIALLINO NON RENDE LEGGIBILE IL TUTTO | A QUALUNQUE CAMBIO TEMA TUTTO RIMANE LEGGBILE | APERTO |  |
-| K5 | 04/07/2026 | IMPOSTAZIONI APP | LIEVE | QUANDO SI FA UN BACKUP CON UN FILE ZIP NO VALIDO, L'ERRORE CHE ESCE è TROPPO LUNGO ED INUTILE | ESCE UN MESSAGGIO DI ERRORE SEMPLICE "IMPOSSIBILE RIPRISTINARE IL BACKUP: ARCHIVIO NON VALIDO" | IL MESSAGGIO DI ERRORE CHE ESCE È IL SEGUENTE Impossibile ripristinare il backup: Error invoking remote method 'backup:restore': ValidationError: Archivio non valido: manifest mancante" | APERTO |  |
+| ID | Data | Area / caso | Gravità | Descrizione | Atteso | Ottenuto | Sprint | Stato | Commit |
+|----|------|-------------|---------|-------------|--------|----------|--------|-------|--------|
+| C-001 | 2026-07-04 | E1 / B2-B3 — guard fase | bassa | Il messaggio di blocco del guard (disattivazione fase iniziale / fase in uso) compare in fondo alla card «Fasi del workflow», posizione poco visibile | Messaggio in un popup | Messaggio inline in fondo alla card | 1 | risolto | Sprint 1 |
+| C-002 | 2026-07-04 | E1/E2 / B6 — eliminazione | media | Manca l'eliminazione fisica di fasi, transizioni, campi, menu (set/opzioni) e anagrafiche: si può solo disattivare | Poter eliminare (quando non in uso) fasi, transizioni, campi, menu, collaboratori, professionisti | Solo disattivazione | 2 | aperto | |
+| C-003 | 2026-07-04 | E10/E11 / I3-K1 — temi | bassa | Il banner informativo del Cestino («Le pratiche qui elencate sono cestinate…») è illeggibile con i temi Scuro e Deep dark: testo chiaro su sfondo giallo semantico fisso | L'avviso resta leggibile in ogni tema | Illeggibile in Scuro/Deep dark | 1 | risolto | Sprint 1 |
+| C-004 | 2026-07-04 | E11 / K5 — restore | bassa | Ripristinando uno zip non valido, il messaggio d'errore è tecnico e lungo | Messaggio semplice, es. «Impossibile ripristinare il backup: archivio non valido» | «…Error invoking remote method 'backup:restore': ValidationError: Archivio non valido: manifest mancante» | 1 | risolto | Sprint 1 |
 
 
 <!--

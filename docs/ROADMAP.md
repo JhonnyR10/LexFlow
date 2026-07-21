@@ -1,50 +1,72 @@
 # ROADMAP — Piano post-MVP e correzioni
 
-Documento **vivo**. Raccoglie, in ordine di priorità, il lavoro successivo al completamento dell'MVP: prima le
-**correzioni** emerse dal collaudo (`COLLAUDO.md`), poi le **rifiniture**, infine le **epiche post-MVP** già
-previste dai documenti. Le stime sono grossolane: **S** (~mezza giornata), **M** (~1–2 giorni), **L** (≥3 giorni).
-
-Le stime si affinano quando la voce diventa una storia con criteri d'accettazione (`00-backlog-mvp.md` /
+Documento **vivo**. Organizza il lavoro successivo all'MVP in **sprint** prioritizzati: prima le correzioni dal
+collaudo (`COLLAUDO.md`), poi i residui/rifiniture emersi durante lo sviluppo (`PROGRESS.md`), infine le epiche
+post-MVP previste dai documenti. Stime grossolane: **S** (~mezza giornata) · **M** (~1–2 giorni) · **L** (≥3 giorni).
+Le stime si affinano quando una voce diventa una storia con criteri d'accettazione (`00-backlog-mvp.md` /
 `ways-of-working.md`).
 
 ---
 
-## 1. Correzioni dal collaudo — priorità massima
+## Sprint 1 — Fix rapidi del collaudo `FATTO`
 
-Popolata dai difetti `bloccante`/`alta` (e selezionati `media`) di `COLLAUDO.md`. Ogni voce cita l'ID del difetto.
-
-| Priorità | Voce | Origine (COLLAUDO) | Stima | Stato |
+| Voce | Origine | Descrizione | Stima | Stato |
 |---|---|---|---|---|
-| _(da compilare dopo il collaudo)_ | | | | |
+| **C-001** Guard in popup | COLLAUDO C-001 | I messaggi di blocco dei guard (fase iniziale/in uso; anagrafica in uso) escono in un `AlertModal` invece che inline in fondo alla card | S | ✅ fatto |
+| **C-003** Banner leggibili | COLLAUDO C-003 | Banner informativi (Cestino, «pratica creata») tema-aware: niente `--color-text` su sfondo semantico fisso | S | ✅ fatto |
+| **C-004** Errori IPC puliti | COLLAUDO C-004 | Instradare gli errori IPC in `ipcErrorMessage`; semplificare i testi `ValidationError` del restore | S | ✅ fatto |
 
-## 2. Rifiniture (media/bassa)
+## Sprint 2 — Eliminazione fisica (C-002) `PROSSIMO`
 
-| Voce | Stima | Note |
-|---|---|---|
-| _(da compilare)_ | | |
-| Icona applicazione/installer (`resources/icon.ico`/`.icns`) | S | Predisposto in `electron-builder.yml` (commentato). |
-| Bonifica colori hardcoded residui (badge, hex) | S–M | Annotata da S11.1; non bloccante. |
+**C-002** (COLLAUDO, media). Consentire l'**eliminazione fisica** di **fasi, transizioni, campi, menu (set e
+opzioni), professionisti, collaboratori** — **solo quando non in uso** (coerente con CLAUDE.md regola 7:
+«non eliminabili se collegati → solo disattivabili», quindi eliminabili quando non collegati). **Stima: M–L.**
 
-## 3. Post-MVP — epiche/funzioni previste dai documenti
+Richiede:
+- **Doc prima del codice**: `02-data-model.md` (regole di integrità: hard delete config/anagrafiche se non
+  referenziate) e `00-backlog-mvp.md` (AC delle relative storie).
+- **Backend**: nuovi canali IPC `delete*` per ciascuna entità; guard «non in uso» nei service (riuso del pattern
+  `assertCanDeactivate` / `countActivePracticesUsingPhase` in `config/service.ts` e degli analoghi in
+  `anagrafiche/service.ts`); `delete` nei repository; verifica FK (una fase referenziata da transizioni/pratiche,
+  un menu set con opzioni/campi collegati, ecc.) → blocco con messaggio se referenziata.
+- **Frontend**: pulsante «Elimina» nelle sezioni config/anagrafiche + modale di conferma (riuso pattern
+  `PermanentDeleteModal`), con blocco via `AlertModal` (Sprint 1) se in uso.
 
-Priorità indicativa; da concordare dopo il collaudo.
+> Nota: chiude i «Delete fisica rinviata (TODO)» annotati su S1.1/S1.2/S1.3/S1.4 e i guard-delete di E2.
+
+## Sprint 3 — Rifiniture / residui MVP `DA PIANIFICARE`
+
+Raccolti dai TODO/residui di `PROGRESS.md`. Priorità e raggruppamento da concordare.
+
+| Voce | Origine | Descrizione | Stima |
+|---|---|---|---|
+| Filtri/ricerca sulla timeline | S5.5 | Filtrare lo storico nel dettaglio pratica (oggi solo consultabile) | S |
+| Bonifica colori hardcoded | S11.1 | ~51 hex/colori residui (badge, banner, `#fff` su accent) → token dove sensato | S–M |
+| Contesto PEC configurabile | `practices/service.ts` | Rendere configurabile sul campo `pec` il contesto (oggi derivato dalla toPhase) | S–M |
+| Cambio `menuSetId` su campo | `config/service.ts` | Gestire il cambio del menu collegato a un campo con valori già salvati | S |
+| Scan JSON rigoroso in disattivazione | S-FIX-guards | Controllo d'uso reale di opzione menu/campo dentro `customValues`/`transition_records.values` (oggi avviso non bloccante) | M |
+| Card «documenti mancanti» in Dashboard | S8.2/8.4 | Aggregato dei documenti mancanti | S |
+| Icona app/installer | release-prep | `resources/icon.ico`/`.icns` + scommentare in `electron-builder.yml` | S |
+
+## Sprint 4+ — Post-MVP (epiche/funzioni previste) `BACKLOG`
+
+Priorità indicativa; da concordare dopo gli sprint 1–3.
 
 | Epica / storia | Descrizione | Stima | Note |
 |---|---|---|---|
-| **E14** Protezione dati | Lock con password (S14.1) + **cifratura DB a riposo** (S14.2, SQLCipher via better-sqlite3-multiple-ciphers) | L | Driver già cifrabile (cifratura spenta): nessun cambio di driver. Rilevante per dati sensibili (collaboratori di giustizia). |
-| **S9.2** Report aggregati | Riepiloghi per stato/collaboratore/professionista/importi/documenti | M | Should. La pagina Report è già predisposta (informativa). |
+| **E14** Protezione dati | Lock con password (S14.1) + **cifratura DB a riposo** (S14.2, SQLCipher via better-sqlite3-multiple-ciphers) | L | Driver già cifrabile (cifratura spenta): nessun cambio di driver. Dati sensibili (collaboratori di giustizia). |
+| **S11.2b** Spostamento percorso dati | Cambio effettivo del percorso dati (swap a freddo + riavvio) | M | Infrastruttura puntatore già pronta (S11.2). |
+| **S9.2** Report aggregati | Riepiloghi per stato/collaboratore/professionista/importi/documenti | M | Should. Pagina Report già predisposta (informativa). |
 | **S9.3** Export Excel | Export `.xlsx` oltre al CSV | M | Could. |
-| **E15** Scadenzario/termini | Entità scadenza per pratica + alert dedicati in Dashboard | L | Could. Distinti dagli alert giorni-da-deposito. |
-| **E16** Export PDF scheda | PDF della scheda di una singola pratica (dati/importi/storico/documenti) | M | Could. |
-| **E12** Assistente locale | Assistente rule-based su dati attivi (conteggi/riepiloghi); API opzionale spenta | L | Post-MVP (v1.1+). |
-| **S11.5** Card Alert configurabili | Attiva/disattiva + soglie configurabili degli alert | S–M | Should. Config già presente in `app_settings.alertThresholds`/`alertsEnabled`. |
-| **S11.6** Info app | Versione/stato sistema/percorsi in Impostazioni | S | Should. Riusa il canale `app:getVersion`. |
-| Numeri procedimento multipli | Più numeri di procedimento per pratica | M | Post-MVP (da backlog). |
-| **Code signing installer** | Firma dell'`.exe` (e notarizzazione `.app`) per evitare SmartScreen/Gatekeeper | M | Richiede certificato. Vedi `BUILD-WINDOWS.md`. |
-| Percorso dati: **spostamento** | Cambio effettivo del percorso dati (oltre a visualizza/copia/apri) con spostamento a freddo + riavvio | M | Rimandato da S11.2; l'infrastruttura del puntatore è già pronta. |
-| Filtri/ricerca sulla **timeline** | Filtrare lo storico nel dettaglio pratica | S | Residuo S5.5. |
-| CI: **release automatica** | Pubblicare l'installer come GitHub Release al tag | S | Estende `build-win.yml`. |
+| **S11.5** Card Alert configurabili | Attiva/disattiva + soglie configurabili | S–M | Should. Config già in `app_settings`. |
+| **S11.6** Info app | Versione/stato sistema/percorsi in Impostazioni | S | Should. Riusa `app:getVersion`. |
+| **E15** Scadenzario/termini | Entità scadenza per pratica + alert dedicati | L | Could. |
+| **E16** Export PDF scheda | PDF della scheda di una singola pratica | M | Could. |
+| **E12** Assistente locale | Assistente rule-based su dati attivi; API opzionale spenta | L | v1.1+. |
+| Numeri procedimento multipli | Più numeri di procedimento per pratica | M | Post-MVP. |
+| Code signing installer | Firma `.exe` (+ notarizzazione `.app`) | M | Richiede certificato. Vedi `BUILD-WINDOWS.md`. |
+| CI release automatica | Pubblicare l'installer come GitHub Release al tag | S | Estende `build-win.yml`. |
 
 ---
 
-_Aggiornare questo file quando arrivano gli esiti del collaudo o cambiano le priorità._
+_Aggiornare quando arrivano nuovi esiti dal collaudo o cambiano le priorità._

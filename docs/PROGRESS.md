@@ -85,6 +85,35 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-21 — Post-collaudo Sprint 1: fix rapidi (C-001, C-003, C-004) + organizzazione ROADMAP
+
+Dopo il collaudo dell'MVP (tutti i casi OK in `TEST-PLAN-MVP.md`), registrate 4 osservazioni lievi in
+`COLLAUDO.md` (C-001…C-004). Organizzato il da-farsi in `ROADMAP.md` (Sprint 1 fix rapidi; Sprint 2 = C-002
+eliminazione fisica; Sprint 3 residui MVP; Sprint 4+ post-MVP). Implementato **Sprint 1** (3 fix lievi).
+Nessuna migrazione, nessun nuovo IPC, nessun `HistoryEvent`.
+
+**C-004 — messaggi d'errore IPC puliti:** gli errori delle mutation IPC in `AppSettingsPage.tsx` e
+`AutoBackupSection.tsx` ora passano da `ipcErrorMessage` (rimuove il prefisso «Error invoking remote method…»).
+`main/modules/backup/service.ts`: testi `ValidationError` del restore unificati in «Archivio di backup non
+valido.» (motivo tecnico spostato in `logger.warn`).
+
+**C-003 — banner informativi leggibili in ogni tema:** il banner del Cestino (`CestinoPage.tsx`) passa da
+sfondo semantico giallo fisso + `--color-text` a **neutro tema-aware** (`--color-bg-subtle`/`--color-border`/
+`--color-text-secondary`); il banner «pratica creata» (`PratichePage.tsx`) usa testo `--color-success` (fisso
+leggibile) sul suo sfondo success fisso. Regola 8 rispettata (i banner sono informativi, non alert semantici).
+Nota aggiunta in `docs/06-ui-ux.md`.
+
+**C-001 — errore guard in popup:** nuovo componente riusabile `src/components/ui/AlertModal.tsx` (notifica
+titolo+messaggio+OK). I messaggi di blocco dei guard (disattivazione: unica fase iniziale / fase o anagrafica in
+uso) in `PhasesSection.tsx`, `ProfessionistiSection.tsx`, `CollaboratoriSection.tsx` ora escono in **popup**
+invece che inline in fondo alla card (`inlineError`→`AlertModal`; rimossi gli `inlineErrorStyle` inutilizzati).
+Le note non bloccanti (disattivazione campo/opzione menu) e le validazioni dei form restano inline.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓
+(verifica interattiva GUI confermata dall'utente: restore zip invalido → messaggio breve; temi Scuro/Deep dark →
+banner leggibili; guard → popup). C-001/C-003/C-004 marcati «risolto» in `COLLAUDO.md`; Sprint 1 chiuso in
+`ROADMAP.md`. **Prossimo: Sprint 2 — C-002 eliminazione fisica.**
+
 ### 2026-07-04 — Release-prep: packaging Windows + piano di collaudo + roadmap
 
 Storia di **rilascio/collaudo**, solo config + documentazione (nessuna migrazione, IPC, HistoryEvent o logica di

@@ -172,8 +172,8 @@ export function CestinoPage(): React.JSX.Element {
       </h1>
       <div style={{
         marginBottom: '20px', padding: '12px 16px', borderRadius: '8px',
-        background: 'var(--color-warning-yellow-bg, #fef9c3)', border: '1px solid var(--color-warning-orange, #f59e0b)',
-        color: 'var(--color-text)', fontSize: '13px',
+        background: 'var(--color-bg-subtle)', border: '1px solid var(--color-border)',
+        color: 'var(--color-text-secondary)', fontSize: '13px',
       }}>
         Le pratiche qui elencate sono cestinate (eliminazione logica): restano escluse da dashboard,
         elenco e avvisi. Puoi ripristinarle per riportarle tra le pratiche attive. I dati e i documenti

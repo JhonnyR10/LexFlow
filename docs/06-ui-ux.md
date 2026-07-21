@@ -29,6 +29,10 @@ Devono restare riconoscibili in qualsiasi tema:
 
 Implementazione: definire questi colori come token semantici separati dai token di tema, così che i temi non possano ridefinirli.
 
+### Banner informativi/notifiche: leggibili in ogni tema
+
+I **banner informativi** (avvisi neutri, notifiche di successo — es. la nota in testa al Cestino, «pratica creata») **devono seguire il tema**: non usare mai il testo di tema (`--color-text`) su uno sfondo semantico **fisso** (giallo/verde/rosso), perché nei temi scuri il testo chiaro diventa illeggibile sullo sfondo chiaro fisso. Usare uno **stile neutro tema-aware** (`--color-bg-subtle` + `--color-border` + `--color-text-secondary`) oppure, se si vuole mantenere lo sfondo semantico fisso, un **testo con token semantico fisso** (es. `--color-success` su `--color-success-bg`). I colori semantici sopra restano riservati ad alert/errori/azioni distruttive.
+
 ## Dashboard
 
 - Centro di controllo, **non** di inserimento dati.

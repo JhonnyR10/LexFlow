@@ -3,6 +3,7 @@ import type { ProfessionistaListItem } from '../../../../shared/ipc'
 import { useAllProfessionisti, useSetProfessionistaActive } from './useProfessionisti'
 import { ProfessionistaFormModal } from './ProfessionistaFormModal'
 import { ipcErrorMessage } from '../../../utils/ipcError'
+import { AlertModal } from '../../../components/ui/AlertModal'
 
 /* ---- stili (stesso sistema delle sezioni esistenti) ---- */
 const sectionStyle: React.CSSProperties = {
@@ -49,11 +50,6 @@ const errorBoxStyle: React.CSSProperties = {
   border: '1px solid var(--color-error-border)', borderRadius: '6px',
   color: 'var(--color-error)', fontSize: '13px'
 }
-const inlineErrorStyle: React.CSSProperties = {
-  padding: '10px 20px', background: 'var(--color-error-bg)',
-  borderTop: '1px solid var(--color-error-border)',
-  color: 'var(--color-error)', fontSize: '13px'
-}
 
 function Badge({ children, bg, color }: { children: React.ReactNode; bg: string; color: string }): React.JSX.Element {
   return (
@@ -87,15 +83,15 @@ export function ProfessionistiSection(): React.JSX.Element {
 
   const [createOpen,     setCreateOpen]     = useState(false)
   const [editItem,       setEditItem]       = useState<ProfessionistaListItem | null>(null)
-  const [inlineError,    setInlineError]    = useState<string | null>(null)
+  const [alertMessage,   setAlertMessage]   = useState<string | null>(null)
 
   function handleToggleActive(item: ProfessionistaListItem): void {
-    setInlineError(null)
+    setAlertMessage(null)
     const action = item.isActive ? 'disattivare' : 'attivare'
     if (!window.confirm(`Vuoi ${action} il professionista "${item.denominazione}"?`)) return
     setActiveMutation.mutate(
       { id: item.id, isActive: !item.isActive },
-      { onError: (err) => setInlineError(ipcErrorMessage(err)) }
+      { onError: (err) => setAlertMessage(ipcErrorMessage(err)) }
     )
   }
 
@@ -181,7 +177,9 @@ export function ProfessionistiSection(): React.JSX.Element {
         </table>
       )}
 
-      {inlineError && <div style={inlineErrorStyle}>{inlineError}</div>}
+      {alertMessage && (
+        <AlertModal message={alertMessage} onClose={() => setAlertMessage(null)} />
+      )}
 
       {(createOpen || editItem) && (
         <ProfessionistaFormModal

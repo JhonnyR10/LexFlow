@@ -10,6 +10,7 @@ import { RestoreBackupModal } from '../features/settings/RestoreBackupModal'
 import { AutoBackupSection } from '../features/settings/AutoBackupSection'
 import { useResetArchive } from '../features/settings/useReset'
 import { ResetArchiveModal } from '../features/settings/ResetArchiveModal'
+import { ipcErrorMessage } from '../utils/ipcError'
 
 const wrapperStyle: React.CSSProperties = {
   padding: '32px 36px',
@@ -242,7 +243,7 @@ export function AppSettingsPage(): React.JSX.Element {
         <p style={messageStyle}>Caricamento…</p>
       ) : isError ? (
         <p style={errorStyle}>
-          Errore nel caricamento delle impostazioni: {error?.message ?? 'errore sconosciuto'}
+          Errore nel caricamento delle impostazioni: {ipcErrorMessage(error)}
         </p>
       ) : (
         <>
@@ -269,7 +270,7 @@ export function AppSettingsPage(): React.JSX.Element {
           </div>
           {updateTheme.isError && (
             <p style={{ ...errorStyle, marginTop: '12px' }}>
-              Impossibile salvare il tema: {updateTheme.error?.message ?? 'errore sconosciuto'}
+              Impossibile salvare il tema: {ipcErrorMessage(updateTheme.error)}
             </p>
           )}
         </>
@@ -285,7 +286,7 @@ export function AppSettingsPage(): React.JSX.Element {
           <p style={messageStyle}>Caricamento…</p>
         ) : isError ? (
           <p style={errorStyle}>
-            Errore nel caricamento del percorso dati: {error?.message ?? 'errore sconosciuto'}
+            Errore nel caricamento del percorso dati: {ipcErrorMessage(error)}
           </p>
         ) : (
           <>
@@ -306,7 +307,7 @@ export function AppSettingsPage(): React.JSX.Element {
             </div>
             {openDataFolder.isError && (
               <p style={{ ...errorStyle, marginTop: '12px' }}>
-                Impossibile aprire la cartella: {openDataFolder.error?.message ?? 'errore sconosciuto'}
+                Impossibile aprire la cartella: {ipcErrorMessage(openDataFolder.error)}
               </p>
             )}
             {openDataFolder.data?.success === false && (
@@ -350,12 +351,12 @@ export function AppSettingsPage(): React.JSX.Element {
         )}
         {exportBackup.isError && (
           <p style={{ ...errorStyle, marginTop: '12px' }}>
-            Impossibile creare il backup: {exportBackup.error?.message ?? 'errore sconosciuto'}
+            Impossibile creare il backup: {ipcErrorMessage(exportBackup.error)}
           </p>
         )}
         {restoreBackup.isError && (
           <p style={{ ...errorStyle, marginTop: '12px' }}>
-            Impossibile ripristinare il backup: {restoreBackup.error?.message ?? 'errore sconosciuto'}
+            Impossibile ripristinare il backup: {ipcErrorMessage(restoreBackup.error)}
           </p>
         )}
       </section>
@@ -389,7 +390,7 @@ export function AppSettingsPage(): React.JSX.Element {
         )}
         {resetArchive.isError && (
           <p style={{ ...errorStyle, marginTop: '12px' }}>
-            Impossibile eseguire il reset: {resetArchive.error?.message ?? 'errore sconosciuto'}
+            Impossibile eseguire il reset: {ipcErrorMessage(resetArchive.error)}
           </p>
         )}
       </section>

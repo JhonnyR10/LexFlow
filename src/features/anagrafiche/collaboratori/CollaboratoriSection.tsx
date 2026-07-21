@@ -3,6 +3,7 @@ import type { CollaboratoreListItem } from '../../../../shared/ipc'
 import { useAllCollaboratori, useSetCollaboratoreActive } from './useCollaboratori'
 import { CollaboratoreFormModal } from './CollaboratoreFormModal'
 import { ipcErrorMessage } from '../../../utils/ipcError'
+import { AlertModal } from '../../../components/ui/AlertModal'
 
 const sectionStyle: React.CSSProperties = {
   background: 'var(--color-surface)', borderRadius: '10px',
@@ -48,11 +49,6 @@ const errorBoxStyle: React.CSSProperties = {
   border: '1px solid var(--color-error-border)', borderRadius: '6px',
   color: 'var(--color-error)', fontSize: '13px'
 }
-const inlineErrorStyle: React.CSSProperties = {
-  padding: '10px 20px', background: 'var(--color-error-bg)',
-  borderTop: '1px solid var(--color-error-border)',
-  color: 'var(--color-error)', fontSize: '13px'
-}
 
 function Badge({ children, bg, color }: { children: React.ReactNode; bg: string; color: string }): React.JSX.Element {
   return (
@@ -71,15 +67,15 @@ export function CollaboratoriSection(): React.JSX.Element {
 
   const [createOpen,  setCreateOpen]  = useState(false)
   const [editItem,    setEditItem]    = useState<CollaboratoreListItem | null>(null)
-  const [inlineError, setInlineError] = useState<string | null>(null)
+  const [alertMessage, setAlertMessage] = useState<string | null>(null)
 
   function handleToggleActive(item: CollaboratoreListItem): void {
-    setInlineError(null)
+    setAlertMessage(null)
     const action = item.isActive ? 'disattivare' : 'attivare'
     if (!window.confirm(`Vuoi ${action} il collaboratore "${item.denominazione}"?`)) return
     setActiveMutation.mutate(
       { id: item.id, isActive: !item.isActive },
-      { onError: (err) => setInlineError(ipcErrorMessage(err)) }
+      { onError: (err) => setAlertMessage(ipcErrorMessage(err)) }
     )
   }
 
@@ -161,7 +157,9 @@ export function CollaboratoriSection(): React.JSX.Element {
         </table>
       )}
 
-      {inlineError && <div style={inlineErrorStyle}>{inlineError}</div>}
+      {alertMessage && (
+        <AlertModal message={alertMessage} onClose={() => setAlertMessage(null)} />
+      )}
 
       {(createOpen || editItem) && (
         <CollaboratoreFormModal

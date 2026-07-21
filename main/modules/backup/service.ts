@@ -118,21 +118,27 @@ export async function restoreBackup(win: BrowserWindow | null): Promise<BackupRe
   const archivePath = picked.filePaths[0]
   const zip = new AdmZip(archivePath)
 
+  // Messaggio utente unico e semplice (C-004); il motivo tecnico resta nei log.
+  const invalidArchive = (reason: string): ValidationError => {
+    logger.warn('BACKUP_RESTORE_INVALID', reason)
+    return new ValidationError('Archivio di backup non valido.')
+  }
+
   const manifestEntry = zip.getEntry('manifest.json')
   if (!manifestEntry) {
-    throw new ValidationError('Archivio non valido: manifest mancante')
+    throw invalidArchive('manifest mancante')
   }
   let manifest: Partial<BackupManifest>
   try {
     manifest = JSON.parse(zip.readAsText(manifestEntry)) as Partial<BackupManifest>
   } catch {
-    throw new ValidationError('Archivio non valido: manifest illeggibile')
+    throw invalidArchive('manifest illeggibile')
   }
   if (manifest.format !== BACKUP_FORMAT) {
-    throw new ValidationError('Archivio non valido: non è un backup di LexFlow')
+    throw invalidArchive('formato non riconosciuto')
   }
   if (!zip.getEntry('lexflow.db')) {
-    throw new ValidationError('Archivio non valido: database mancante')
+    throw invalidArchive('database mancante')
   }
 
   // Estrazione in staging (in userData, ripulito prima).
@@ -146,7 +152,7 @@ export async function restoreBackup(win: BrowserWindow | null): Promise<BackupRe
 
   if (!existsSync(join(stagingPath, 'lexflow.db'))) {
     rmSync(stagingPath, { recursive: true, force: true })
-    throw new ValidationError('Archivio non valido: estrazione del database fallita')
+    throw invalidArchive('estrazione del database fallita')
   }
 
   // Marker letto a boot da applyPendingRestore().

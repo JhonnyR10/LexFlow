@@ -62,7 +62,7 @@ export function PratichePage(): React.JSX.Element {
         <div style={{
           padding: '12px 16px', background: 'var(--color-success-bg, #f0fdf4)',
           border: '1px solid var(--color-success-border, #86efac)',
-          borderRadius: '8px', fontSize: '13px', color: 'var(--color-text)', marginBottom: '20px'
+          borderRadius: '8px', fontSize: '13px', color: 'var(--color-success)', marginBottom: '20px'
         }}>
           Pratica <strong>{lastCreated.codice}</strong> creata con successo.
         </div>
