@@ -46,7 +46,7 @@ Raccolti dai TODO/residui di `PROGRESS.md`. Priorità e raggruppamento da concor
 | Cambio `menuSetId` su campo | `config/service.ts` | Gestire il cambio del menu collegato a un campo con valori già salvati | S | da fare |
 | Scan JSON rigoroso in disattivazione | S-FIX-guards | Controllo d'uso reale di opzione menu/campo dentro `customValues`/`transition_records.values` (oggi avviso non bloccante) | M | da fare |
 | Card «documenti mancanti» in Dashboard | S8.2/8.4 | Aggregato dei documenti mancanti (S8.5) | S | ✅ fatto |
-| Icona app/installer | release-prep | `resources/icon.ico`/`.icns` + scommentare in `electron-builder.yml` | S | da fare |
+| Icona app/installer | release-prep | Icona placeholder «LF» (`resources/icon.png` + `.icns`, auto-detect electron-builder) | S | ✅ fatto |
 
 ## Sprint 4+ — Post-MVP (epiche/funzioni previste) `BACKLOG`
 

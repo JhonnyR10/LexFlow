@@ -3,6 +3,12 @@ productName: LexFlow
 directories:
   buildResources: resources
   output: release/${version}
+
+# Icona app: sorgente in resources/ (buildResources). electron-builder rileva
+# automaticamente resources/icon.png (1024²) e resources/icon.icns; da questi
+# genera .icns per il dmg (macOS) e .ico per l'installer NSIS (Windows) al momento
+# del build, ciascuno sulla propria piattaforma. Per il logo definitivo basta
+# sostituire resources/icon.png e rigenerare l'icns (vedi docs/BUILD-WINDOWS.md §8).
 files:
   - out/**
 

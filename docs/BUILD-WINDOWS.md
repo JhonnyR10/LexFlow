@@ -119,7 +119,31 @@ Estensioni future (vedi `ROADMAP.md`): firma del codice, pubblicazione automatic
 
 ---
 
-## 8. Icona dell'app (futura)
+## 8. Icona dell'app
 
-Per ora si usa l'icona Electron di default. Per personalizzarla: aggiungere `resources/icon.ico` (Windows) e
-`resources/icon.icns` (macOS), poi scommentare `win.icon` / `mac.icon` in `electron-builder.yml`.
+L'app ha un'icona **placeholder** (monogramma «LF» bianco su navy). L'unica fonte è **`resources/icon.png`**
+(1024×1024); `resources/` è la `buildResources`, quindi electron-builder rileva l'icona **automaticamente** (nessun
+`win.icon`/`mac.icon` da impostare) e genera i formati derivati al momento del build: **`.icns`** per il dmg
+(macOS) e **`.ico`** per l'installer NSIS (Windows), ciascuno sulla propria piattaforma (il `.ico` di Windows lo
+produce la CI `build-win.yml`). In repo è committato anche `resources/icon.icns` (generato con `iconutil`) per il
+lato macOS esplicito.
+
+**Rigenerare il placeholder** (dopo una modifica allo script):
+
+```bash
+python3 resources/make-icon.py     # scrive resources/icon.png (solo stdlib, nessuna dipendenza)
+```
+
+**Sostituire con il logo definitivo:**
+
+1. Sostituisci `resources/icon.png` con il tuo logo **quadrato 1024×1024** (PNG con trasparenza).
+2. Rigenera l'`.icns` (macOS):
+   ```bash
+   cd resources && mkdir icon.iconset
+   for s in 16 32 128 256 512; do
+     sips -z $s $s icon.png --out icon.iconset/icon_${s}x${s}.png
+     sips -z $((s*2)) $((s*2)) icon.png --out icon.iconset/icon_${s}x${s}@2x.png
+   done
+   iconutil -c icns icon.iconset -o icon.icns && rm -rf icon.iconset
+   ```
+3. Ricostruisci l'installer; il `.ico` di Windows viene rigenerato dal nuovo `icon.png`.

@@ -86,6 +86,34 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-21 — Sprint 3 / Icona app + installer
+
+Terza voce dello **Sprint 3**. Storia di **packaging/asset**: nessun codice app, nessuna migrazione, nessun IPC.
+Dà a LexFlow un'icona (placeholder «LF» bianco su navy #1e3a5f) al posto di quella Electron di default.
+
+**Approccio:** unica sorgente **`resources/icon.png` 1024²**; `resources/` è la `buildResources`, quindi
+electron-builder 26 la rileva **automaticamente** e genera `.icns` (dmg macOS) e `.ico` (NSIS Windows) al build,
+ciascuno sulla propria piattaforma. Generazione dell'icona senza dipendenze esterne (niente ImageMagick/rsvg sul
+Mac): script **Python stdlib** (`zlib`, supersampling ×2 per l'anti-aliasing). `.icns` prodotto con `iconutil`.
+
+**File nuovi:**
+- `resources/make-icon.py` — generatore riproducibile del PNG (solo stdlib).
+- `resources/icon.png` — icona 1024² (sorgente unica).
+- `resources/icon.icns` — icona macOS (da `iconutil`).
+
+**File modificati:**
+- `electron-builder.yml` — commento che documenta la convenzione `resources/icon.*` (nessuna modifica
+  funzionale: l'auto-detect di `buildResources` era già attivo; le righe `win.icon`/`mac.icon` che il vecchio doc
+  citava non esistevano — divergenza sanata).
+- `docs/BUILD-WINDOWS.md` §8 — da «icona futura» a procedura reale: sorgente, rigenerazione, **come sostituire
+  con il logo definitivo** (istruzioni `sips`+`iconutil`).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓. **Verifica end-to-end packaging
+macOS:** `npx electron-builder --mac dir` → il bundle `LexFlow.app/Contents/Resources/icon.icns` è **identico**
+alla sorgente (1024²) e l'`Info.plist` lo referenzia (`CFBundleIconFile = icon.icns`) → auto-detect confermato.
+L'`.ico` di Windows viene generato dallo stesso `icon.png` sulla CI `build-win.yml` (non producibile su macOS). Il
+dev (`npm run desktop`) non mostra l'icona pacchettizzata. Artefatto `release/` rimosso (già in `.gitignore`).
+
 ### 2026-07-21 — Sprint 3 / S8.5: Card «Documenti mancanti» in Dashboard
 
 Seconda voce dello **Sprint 3**. Nuova sezione Dashboard che elenca le pratiche **attive non finali**
