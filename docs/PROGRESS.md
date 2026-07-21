@@ -86,6 +86,43 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-21 — Sprint 3 / Contesto PEC configurabile sul campo `pec`
+
+Sesta voce dello **Sprint 3**. Il `contesto` dei `PecRecipient` non è più solo **derivato dalla fase di
+destinazione**, ma **configurabile per campo** via `FieldDef.pecContext` (nullable = «Automatico» → fallback alla
+derivazione storica). Retrocompatibile: nessun campo `pec` nel seed, righe esistenti restano NULL. Chiude il TODO
+in `practices/service.ts:derivePecContesto`.
+
+**Nota:** oggi il `contesto` è consumato solo per isolare la PEC di **deposito** (`findPecDepositoAddresses`,
+`contesto='deposito'`); `scp`/`altro` sono metadato salvato per uso futuro (report), non mostrato. La storia
+migliora la correttezza del metadato salvato.
+
+**Migrazione:** `drizzle/0008_rare_mother_askani.sql` — `ALTER TABLE field_defs ADD pec_context text` (additiva,
+nullable, applicata a boot).
+
+**File modificati:**
+- `main/database/schema/fieldDefs.ts`: colonna `pecContext` (text, nullable).
+- `shared/ipc.ts`: `type PecContext` + `PEC_CONTEXTS`; `pecContext` in `FieldDefListItem`/`CreateFieldInput`/
+  `UpdateFieldInput`.
+- `main/modules/config/repository.ts`: select/map + `updateFieldFields` includono `pecContext` (insert via
+  `NewFieldDef`).
+- `main/modules/config/service.ts`: `resolvePecContext(type, pecContext)` (ammesso solo se `type='pec'`, valida
+  contro `PEC_CONTEXTS`) in `createField`/`updateField`.
+- `main/modules/config/controller.ts`: `pecContextEnum` nei zod create/update field.
+- `main/modules/practices/repository.ts`: `TransitionFieldRow.pecContext` + select in `findActiveTransitionFields`.
+- `main/modules/practices/service.ts`: in `executeTransition` inserimento PEC **per campo** con
+  `normalizePecContext(field.pecContext) ?? derivePecContesto(toPhase)` (prima: unico contesto per tutti i pec).
+- `src/features/config/fields/FieldFormModal.tsx`: selettore «Contesto PEC» (Automatico/Deposito/SCP/Altro) quando
+  `type='pec'`, zod + reset al cambio tipo; `FieldsSection.tsx` (pulsante PEC di convenienza) passa `pecContext: null`.
+- `docs/02-data-model.md` (FieldDef), `docs/03-workflow-engine.md` (§PEC contesto), `docs/00-backlog-mvp.md` (S1.5).
+
+**Confine:** PEC di deposito resta `deposito` fisso; i campi `pec` `general` non generano recipient (come oggi).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓ (migrazione
+applicata a boot; verifica GUI config confermata dall'utente: selettore «Contesto PEC» compare per i campi pec,
+persiste al salvataggio/riapertura, sparisce e si azzera cambiando tipo. Verifica runtime del contesto salvato non
+richiesta dall'utente).
+
 ### 2026-07-21 — Sprint 3 / Scan JSON rigoroso alla disattivazione (campo / opzione)
 
 Quinta voce dello **Sprint 3**. Chiude i TODO in `setFieldActive`/`setMenuOptionActive`: la nota di

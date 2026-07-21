@@ -521,12 +521,19 @@ function assertLiquidationGuard(practiceId: number, targetCategory: string | nul
   }
 }
 
-// Deriva il contesto della PEC dalla fase di destinazione (precisazione 1).
-// TODO (post-MVP): rendere il contesto configurabile direttamente sul campo `pec`.
+// Deriva il contesto della PEC dalla fase di destinazione. Fallback usato quando
+// il campo `pec` non ha un contesto configurato (`pecContext` null = «Automatico»).
 function derivePecContesto(toPhaseCategory: string | null): 'deposito' | 'scp' | 'altro' {
   if (toPhaseCategory === 'awaiting_liquidation') return 'scp'
   if (toPhaseCategory === 'deposited') return 'deposito'
   return 'altro'
+}
+
+// Contesto configurato sul campo `pec` (Sprint 3): valida il valore memorizzato;
+// null (o valore non riconosciuto) → nessun override, si userà la derivazione.
+function normalizePecContext(value: string | null): 'deposito' | 'scp' | 'altro' | null {
+  if (value === 'deposito' || value === 'scp' || value === 'altro') return value
+  return null
 }
 
 // Denormalizzazione importi (E6/S6.1): mappatura esplicita e minimale field-key →
@@ -664,13 +671,15 @@ export function executeTransition(input: ExecuteTransitionInput): ExecuteTransit
     })
 
     // PEC raccolte nei campi `pec` della transizione: salvate anche come
-    // PecRecipient, con contesto derivato dalla fase di destinazione (precisazione 1).
-    const pecAddresses = fields
-      .filter(f => f.type === 'pec')
-      .flatMap(f => extractPecAddresses(cleanValues[f.key]))
-    if (pecAddresses.length > 0) {
-      const contesto = derivePecContesto(transition.toPhaseCategory)
-      insertPecRecipientsForTransition(input.practiceId, transitionRecordId, pecAddresses, contesto)
+    // PecRecipient. Il contesto è **per campo**: `pecContext` configurato sul campo,
+    // altrimenti fallback alla derivazione dalla fase di destinazione (Sprint 3).
+    const derived = derivePecContesto(transition.toPhaseCategory)
+    for (const field of fields) {
+      if (field.type !== 'pec') continue
+      const addresses = extractPecAddresses(cleanValues[field.key])
+      if (addresses.length === 0) continue
+      const contesto = normalizePecContext(field.pecContext) ?? derived
+      insertPecRecipientsForTransition(input.practiceId, transitionRecordId, addresses, contesto)
     }
 
     response = { transitionRecordId, currentPhaseId: newCurrentPhaseId, phaseChanged }

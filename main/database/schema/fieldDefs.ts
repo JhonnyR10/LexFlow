@@ -18,6 +18,9 @@ export const fieldDefs = sqliteTable('field_defs', {
   order: integer('order').notNull(),
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
   menuSetId: integer('menu_set_id').references(() => menuSets.id),
+  // Contesto PEC configurabile (solo campi type='pec'): 'deposito'|'scp'|'altro'.
+  // null = «Automatico» → contesto derivato dalla fase di destinazione (fallback).
+  pecContext: text('pec_context'),
   // Visibilità condizionale: entrambi null o entrambi valorizzati
   conditionalOnFieldId: integer('conditional_on_field_id').references(() => fieldDefs.id),
   conditionalValue: text('conditional_value')

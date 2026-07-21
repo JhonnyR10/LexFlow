@@ -24,8 +24,11 @@ import type {
   ReorderFieldsInput,
   ListFieldsFilter,
   DeleteByIdInput,
-  DeleteResponse
+  DeleteResponse,
+  FieldType,
+  PecContext
 } from '../../../shared/ipc'
+import { PEC_CONTEXTS } from '../../../shared/ipc'
 import {
   findActivePhases,
   findAllPhases,
@@ -556,6 +559,19 @@ export function listFields(filter?: ListFieldsFilter): FieldDefListItem[] {
   return findFieldsByFilter(filter)
 }
 
+// Normalizza/valida il contesto PEC: consentito solo per i campi type='pec'
+// (altrimenti deve essere null); null = «Automatico» → derivazione dalla fase.
+function resolvePecContext(type: FieldType, pecContext: PecContext | null): PecContext | null {
+  if (type !== 'pec') {
+    if (pecContext != null)
+      throw new ValidationError('Il contesto PEC può essere impostato solo per i campi di tipo PEC')
+    return null
+  }
+  if (pecContext == null) return null
+  if (!PEC_CONTEXTS.includes(pecContext)) throw new ValidationError('Contesto PEC non valido')
+  return pecContext
+}
+
 export function createField(input: CreateFieldInput): FieldDefListItem {
   if (input.scope === 'transition') {
     if (input.transitionId == null)
@@ -607,6 +623,7 @@ export function createField(input: CreateFieldInput): FieldDefListItem {
     order: maxOrder + 1,
     isActive: true,
     menuSetId: input.menuSetId ?? null,
+    pecContext: resolvePecContext(input.type, input.pecContext ?? null),
     conditionalOnFieldId: input.conditionalOnFieldId ?? null,
     conditionalValue: input.conditionalValue ?? null
   })
@@ -678,6 +695,7 @@ export function updateField(input: UpdateFieldInput): FieldDefListItem {
     usableInFilter: input.usableInFilter,
     includeInExport: input.includeInExport,
     menuSetId: input.menuSetId ?? null,
+    pecContext: resolvePecContext(input.type, input.pecContext ?? null),
     conditionalOnFieldId: input.conditionalOnFieldId ?? null,
     conditionalValue: input.conditionalValue ?? null
   })

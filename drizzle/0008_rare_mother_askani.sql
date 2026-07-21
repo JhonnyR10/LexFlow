@@ -1,0 +1,1 @@
+ALTER TABLE `field_defs` ADD `pec_context` text;

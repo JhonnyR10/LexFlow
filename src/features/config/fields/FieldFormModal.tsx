@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { z } from 'zod'
-import { FIELD_TYPES } from '../../../../shared/ipc'
-import type { FieldDefListItem, FieldType, MenuSetListItem } from '../../../../shared/ipc'
+import { FIELD_TYPES, PEC_CONTEXTS } from '../../../../shared/ipc'
+import type { FieldDefListItem, FieldType, MenuSetListItem, PecContext } from '../../../../shared/ipc'
 import { useCreateField, useUpdateField } from './useFields'
 import { ipcErrorMessage } from '../../../utils/ipcError'
 
@@ -19,6 +19,13 @@ const FIELD_TYPE_LABELS: Record<FieldType, string> = {
 }
 
 const fieldTypeZod = z.enum(FIELD_TYPES as [FieldType, ...FieldType[]])
+const pecContextZod = z.enum(PEC_CONTEXTS as [PecContext, ...PecContext[]])
+
+const PEC_CONTEXT_LABELS: Record<PecContext, string> = {
+  deposito: 'Deposito',
+  scp: 'SCP',
+  altro: 'Altro'
+}
 
 const formSchema = z
   .object({
@@ -29,10 +36,18 @@ const formSchema = z
     usableInFilter: z.boolean(),
     includeInExport: z.boolean(),
     menuSetId: z.number().int().positive().nullable(),
+    pecContext: pecContextZod.nullable(),
     conditionalOnFieldId: z.number().int().positive().nullable(),
     conditionalValue: z.string().nullable()
   })
   .superRefine((data, ctx) => {
+    if (data.type !== 'pec' && data.pecContext != null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['pecContext'],
+        message: 'Il contesto PEC è consentito solo per i campi di tipo PEC'
+      })
+    }
     if (data.type === 'menu' && data.menuSetId == null) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -247,6 +262,7 @@ export function FieldFormModal({
   const [usableInFilter, setUsableInFilter] = useState(isEdit ? field.usableInFilter : false)
   const [includeInExport, setIncludeInExport] = useState(isEdit ? field.includeInExport : false)
   const [menuSetId, setMenuSetId] = useState<number | null>(isEdit ? field.menuSetId : null)
+  const [pecContext, setPecContext] = useState<PecContext | null>(isEdit ? field.pecContext : null)
 
   const [conditionalEnabled, setConditionalEnabled] = useState(
     isEdit ? field.conditionalOnFieldId != null : false
@@ -287,6 +303,7 @@ export function FieldFormModal({
   function handleTypeChange(newType: FieldType): void {
     setType(newType)
     if (newType !== 'menu') setMenuSetId(null)
+    if (newType !== 'pec') setPecContext(null)
   }
 
   function handleConditionalToggle(enabled: boolean): void {
@@ -317,6 +334,7 @@ export function FieldFormModal({
       usableInFilter,
       includeInExport,
       menuSetId,
+      pecContext: type === 'pec' ? pecContext : null,
       conditionalOnFieldId: effectiveConditionalOnFieldId,
       conditionalValue: effectiveConditionalValue
     })
@@ -399,6 +417,32 @@ export function FieldFormModal({
               </div>
             )}
           </div>
+
+          {/* Contesto PEC (solo se type='pec') */}
+          {type === 'pec' && (
+            <div style={fieldStyle}>
+              <label style={labelStyle} htmlFor="ff-pecContext">
+                Contesto PEC
+              </label>
+              <select
+                id="ff-pecContext"
+                style={selectStyle}
+                value={pecContext ?? ''}
+                onChange={(e) => setPecContext(e.target.value ? (e.target.value as PecContext) : null)}
+              >
+                <option value="">Automatico (dalla fase di destinazione)</option>
+                {PEC_CONTEXTS.map((c) => (
+                  <option key={c} value={c}>
+                    {PEC_CONTEXT_LABELS[c]}
+                  </option>
+                ))}
+              </select>
+              <div style={hintStyle}>
+                Classifica i destinatari PEC raccolti da questo campo. «Automatico» deriva il contesto
+                dalla fase di destinazione della transizione.
+              </div>
+            </div>
+          )}
 
           {/* Menu set (solo se type='menu') */}
           {type === 'menu' && (

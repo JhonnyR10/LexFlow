@@ -263,6 +263,7 @@ export interface TransitionFieldRow {
   type: string
   required: boolean
   menuSetId: number | null
+  pecContext: string | null
   conditionalOnFieldId: number | null
   conditionalValue: string | null
 }
@@ -278,6 +279,7 @@ export function findActiveTransitionFields(transitionId: number): TransitionFiel
       type:                 fieldDefs.type,
       required:             fieldDefs.required,
       menuSetId:            fieldDefs.menuSetId,
+      pecContext:           fieldDefs.pecContext,
       conditionalOnFieldId: fieldDefs.conditionalOnFieldId,
       conditionalValue:     fieldDefs.conditionalValue,
     })

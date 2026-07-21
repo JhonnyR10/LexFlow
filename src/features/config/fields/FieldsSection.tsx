@@ -528,6 +528,7 @@ export function FieldsSection(): React.JSX.Element {
         usableInFilter: false,
         includeInExport: false,
         menuSetId: null,
+        pecContext: null,
         conditionalOnFieldId: targetFieldId,
         conditionalValue: targetValue
       },

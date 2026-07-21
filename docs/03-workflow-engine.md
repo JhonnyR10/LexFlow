@@ -69,6 +69,8 @@ Alla creazione la pratica nasce in `depositata` con i dati di deposito; il motor
 
 La PEC non è un flag di fase né logica cablata. Si configura come **visibilità condizionale** di un campo (E1, S1.5): un campo di tipo `pec` (blocco multi-destinatario) viene mostrato solo quando un campo `menu` "modalità" della stessa transizione ha valore uguale all'opzione PEC (`conditionalOnFieldId` + `conditionalValue` sul campo `pec`). A runtime (E5) il motore valuta la condizione, mostra/nasconde il blocco e, se PEC, raccoglie gli indirizzi salvandoli come `PecRecipient`. Deposito e invio SCP usano lo stesso meccanismo su transizioni diverse.
 
+**Contesto del destinatario (Sprint 3).** Ogni `PecRecipient` porta un `contesto` (`deposito|scp|altro`). È **configurabile per campo** tramite `FieldDef.pecContext`: se valorizzato, i destinatari raccolti da quel campo `pec` prendono quel contesto; se `null` («Automatico») si ricade sulla **derivazione dalla fase di destinazione** della transizione (`awaiting_liquidation`→`scp`, `deposited`→`deposito`, altrimenti `altro`). Più campi `pec` nella stessa transizione possono avere contesti diversi (inserimento per-campo). La PEC di **deposito** (form Nuova pratica) resta contesto `deposito` fisso.
+
 ## Coerenza degli stati
 
 Le transizioni invalide non esistono nel grafo, quindi non producono pulsanti. Guard di business aggiuntivi nel service (es. non si raggiunge `liquidata` senza che risultino registrati decreto e invio a SCP). I guard stanno nel service, non nei componenti.

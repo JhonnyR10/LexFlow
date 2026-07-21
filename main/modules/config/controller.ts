@@ -319,6 +319,8 @@ export function registerConfigHandlers(): void {
     'pec'
   ] as const)
 
+  const pecContextEnum = z.enum(['deposito', 'scp', 'altro'] as const)
+
   const listFieldsFilterSchema = z
     .object({
       scope: z.enum(['general', 'transition']).optional(),
@@ -336,6 +338,7 @@ export function registerConfigHandlers(): void {
     usableInFilter: z.boolean(),
     includeInExport: z.boolean(),
     menuSetId: z.number().int().positive().nullable(),
+    pecContext: pecContextEnum.nullable(),
     conditionalOnFieldId: z.number().int().positive().nullable(),
     conditionalValue: z.string().nullable()
   })
@@ -349,6 +352,7 @@ export function registerConfigHandlers(): void {
     usableInFilter: z.boolean(),
     includeInExport: z.boolean(),
     menuSetId: z.number().int().positive().nullable(),
+    pecContext: pecContextEnum.nullable(),
     conditionalOnFieldId: z.number().int().positive().nullable(),
     conditionalValue: z.string().nullable()
   })

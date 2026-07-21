@@ -268,6 +268,11 @@ export const FIELD_TYPES: readonly FieldType[] = [
   'pec'
 ]
 
+// Contesto assegnato ai destinatari PEC (pec_recipients.contesto). Configurabile
+// sul campo `pec` (scope transizione); null = «Automatico» → derivato dalla fase.
+export type PecContext = 'deposito' | 'scp' | 'altro'
+export const PEC_CONTEXTS: readonly PecContext[] = ['deposito', 'scp', 'altro']
+
 export interface FieldDefListItem {
   id: number
   scope: 'general' | 'transition'
@@ -284,6 +289,7 @@ export interface FieldDefListItem {
   isActive: boolean
   menuSetId: number | null
   menuSetLabel: string | null
+  pecContext: PecContext | null
   conditionalOnFieldId: number | null
   conditionalValue: string | null
   conditionalOnFieldLabel: string | null
@@ -304,6 +310,7 @@ export interface CreateFieldInput {
   usableInFilter: boolean
   includeInExport: boolean
   menuSetId: number | null
+  pecContext: PecContext | null
   conditionalOnFieldId: number | null
   conditionalValue: string | null
 }
@@ -317,6 +324,7 @@ export interface UpdateFieldInput {
   usableInFilter: boolean
   includeInExport: boolean
   menuSetId: number | null
+  pecContext: PecContext | null
   conditionalOnFieldId: number | null
   conditionalValue: string | null
 }

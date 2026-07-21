@@ -8,6 +8,7 @@ import type {
   MenuOptionListItem,
   FieldDefListItem,
   FieldType,
+  PecContext,
   ListFieldsFilter
 } from '../../../shared/ipc'
 import type { NewPhase } from '../../database/schema/phases'
@@ -462,6 +463,7 @@ export function findFieldsByFilter(filter?: ListFieldsFilter): FieldDefListItem[
     isActive: f.isActive,
     menuSetId: f.menuSetId,
     menuSetLabel: f.menuSetId != null ? (msLabelById.get(f.menuSetId) ?? null) : null,
+    pecContext: (f.pecContext as PecContext | null) ?? null,
     conditionalOnFieldId: f.conditionalOnFieldId,
     conditionalValue: f.conditionalValue,
     conditionalOnFieldLabel:
@@ -519,6 +521,7 @@ export function updateFieldFields(
     usableInFilter: boolean
     includeInExport: boolean
     menuSetId: number | null
+    pecContext: PecContext | null
     conditionalOnFieldId: number | null
     conditionalValue: string | null
   }
