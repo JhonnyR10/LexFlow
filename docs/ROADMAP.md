@@ -44,7 +44,7 @@ Raccolti dai TODO/residui di `PROGRESS.md`. Priorità e raggruppamento da concor
 | Bonifica colori hardcoded | S11.1 | ~51 hex/colori residui (badge, banner, `#fff` su accent) → token dove sensato | S–M | da fare |
 | Contesto PEC configurabile | `practices/service.ts` | Rendere configurabile sul campo `pec` il contesto (oggi derivato dalla toPhase) | S–M | da fare |
 | Cambio `menuSetId` su campo | `config/service.ts` | Gestire il cambio del menu collegato a un campo con valori già salvati | S | ✅ fatto |
-| Scan JSON rigoroso in disattivazione | S-FIX-guards | Controllo d'uso reale di opzione menu/campo dentro `customValues`/`transition_records.values` (oggi avviso non bloccante) | M | da fare |
+| Scan JSON rigoroso in disattivazione | S-FIX-guards | Controllo d'uso reale di opzione menu/campo dentro `customValues`/`transition_records.values` (oggi avviso non bloccante) | M | ✅ fatto |
 | Card «documenti mancanti» in Dashboard | S8.2/8.4 | Aggregato dei documenti mancanti (S8.5) | S | ✅ fatto |
 | Icona app/installer | release-prep | Icona placeholder «LF» (`resources/icon.png` + `.icns`, auto-detect electron-builder) | S | ✅ fatto |
 

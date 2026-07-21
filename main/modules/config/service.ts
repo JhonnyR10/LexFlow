@@ -72,6 +72,9 @@ import {
   menuOptionValuesForSet,
   savedValuesForFieldKey,
   conditionalValuesDependingOn,
+  countSavedValuesForFieldKey,
+  countSavedValueForFieldKeyEquals,
+  findFieldsUsingMenuSet,
   countTransitionsUsingPhase,
   countAnyPracticesUsingPhase,
   countHistoryUsingPhase,
@@ -421,25 +424,59 @@ export function updateMenuOption(input: UpdateMenuOptionInput): MenuOptionListIt
   return toMenuOptionListItem(opt)
 }
 
-// Nota informativa mostrata alla disattivazione di un elemento il cui valore vive dentro
-// JSON (opzione menu, campo). La disattivazione è consentita e non corrompe i dati esistenti:
-// li nasconde solo dai nuovi form.
-const DEACTIVATION_JSON_NOTE =
-  'Disattivato. I valori già salvati nelle pratiche restano invariati; ' +
-  "l'elemento non comparirà nei nuovi inserimenti."
+// Note di disattivazione basate sull'uso reale (scan JSON rigoroso). La disattivazione
+// resta consentita e non corrompe i dati esistenti: li nasconde solo dai nuovi form.
+// Lo scan serve a informare con precisione (quante volte l'elemento è già usato).
+
+function fieldDeactivationNote(field: {
+  id: number
+  key: string
+  scope: string
+  transitionId: number | null
+}): string {
+  const used = countSavedValuesForFieldKey(field)
+  const controllers = countFieldsConditionalOn(field.id)
+  const ctrl =
+    controllers > 0
+      ? ` È controllore di ${controllers} camp${controllers === 1 ? 'o' : 'i'} a visibilità condizionale.`
+      : ''
+  const unit1 = field.scope === 'transition' ? 'registrazione di transizione' : 'pratica'
+  const unitN = field.scope === 'transition' ? 'registrazioni di transizione' : 'pratiche'
+  if (used > 0) {
+    return (
+      `Campo disattivato. Risulta valorizzato in ${used} ${used === 1 ? unit1 : unitN}: ` +
+      `i valori restano invariati e il campo non comparirà nei nuovi inserimenti.${ctrl}`
+    )
+  }
+  return `Campo disattivato. Non risulta valorizzato in alcuna pratica; non comparirà nei nuovi inserimenti.${ctrl}`
+}
+
+function optionDeactivationNote(option: { menuSetId: number; value: string }): string {
+  let used = 0
+  for (const f of findFieldsUsingMenuSet(option.menuSetId)) {
+    used += countSavedValueForFieldKeyEquals(f, option.value)
+  }
+  if (used > 0) {
+    return (
+      `Opzione disattivata. È già scelta in ${used} ${used === 1 ? 'valore salvato' : 'valori salvati'}: ` +
+      'restano invariati; non sarà più selezionabile nei nuovi inserimenti.'
+    )
+  }
+  return 'Opzione disattivata. Non risulta scelta in alcun dato salvato; non sarà più selezionabile nei nuovi inserimenti.'
+}
 
 export function setMenuOptionActive(
   input: SetMenuOptionActiveInput
 ): { success: true; warning?: string } {
   const existing = findMenuOptionById(input.id)
   if (!existing) throw new NotFoundError(`Opzione ${input.id} non trovata`)
-  // Avviso non bloccante (caso B): l'uso reale di un'opzione vive in customValues /
-  // transition_records.values (JSON). Per semplicità MVP la disattivazione è sempre consentita
-  // e si restituisce solo una nota informativa, senza scandire i JSON.
-  // TODO (opzionale, post-MVP): controllo rigoroso con scan di customValues e
-  // transition_records.values per segnalare l'uso effettivo dell'opzione.
+  // Disattivazione sempre consentita (reversibile, non corrompe i dati). Alla
+  // disattivazione la nota è basata sull'uso reale: scan di customValues /
+  // transition_records.values per contare le scelte già salvate di questa opzione.
   setMenuOptionIsActive(input.id, input.isActive)
-  return input.isActive ? { success: true } : { success: true, warning: DEACTIVATION_JSON_NOTE }
+  return input.isActive
+    ? { success: true }
+    : { success: true, warning: optionDeactivationNote(existing) }
 }
 
 export function reorderMenuOptions(input: ReorderMenuOptionsInput): { success: true } {
@@ -655,15 +692,15 @@ export function setFieldActive(
 ): { success: true; warning?: string } {
   const existing = findFieldById(input.id)
   if (!existing) throw new NotFoundError(`Campo ${input.id} non trovato`)
-  // Avviso non bloccante (caso B): il valore di un campo vive in customValues /
-  // transition_records.values (JSON). Per semplicità MVP la disattivazione è sempre consentita
-  // e si restituisce solo una nota informativa, senza scandire i JSON. Se il campo è usato come
-  // controllore da altri campi, la condizione resta intatta: E5 tratterà il controllore inattivo
-  // come "condizione non soddisfatta" a runtime.
-  // TODO (opzionale, post-MVP): controllo rigoroso con scan di customValues e
-  // transition_records.values per segnalare l'uso effettivo del campo.
+  // Disattivazione sempre consentita (reversibile, non corrompe i dati). Alla
+  // disattivazione la nota è basata sull'uso reale: scan di customValues /
+  // transition_records.values per contare le pratiche che valorizzano il campo, più
+  // gli eventuali campi che lo usano come controllore condizionale (restano intatti:
+  // E5 tratta il controllore inattivo come "condizione non soddisfatta" a runtime).
   setFieldIsActive(input.id, input.isActive)
-  return input.isActive ? { success: true } : { success: true, warning: DEACTIVATION_JSON_NOTE }
+  return input.isActive
+    ? { success: true }
+    : { success: true, warning: fieldDeactivationNote(existing) }
 }
 
 export function reorderFields(input: ReorderFieldsInput): { success: true } {

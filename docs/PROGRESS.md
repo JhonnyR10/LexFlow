@@ -86,6 +86,35 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-21 — Sprint 3 / Scan JSON rigoroso alla disattivazione (campo / opzione)
+
+Quinta voce dello **Sprint 3**. Chiude i TODO in `setFieldActive`/`setMenuOptionActive`: la nota di
+disattivazione passa da **generica** a **basata sull'uso reale**, scandendo i JSON dei valori salvati. La
+disattivazione **resta non bloccante** (è il meccanismo previsto per nascondere un elemento anche se in uso;
+reversibile, non corrompe i dati). **Backend-only, nessuna migrazione, nessun IPC, nessun frontend** (il renderer
+mostra già `res.warning` in modo generico), **nessun `HistoryEvent`**.
+
+**Note accurate:**
+- **Campo**: conteggio scope-aware delle pratiche (`custom_values`) / registrazioni di transizione
+  (`transition_records.values` ristretti al `transitionId`) che valorizzano la `key`, più il n° di campi che lo
+  usano come controllore condizionale. Usato → «…valorizzato in N pratiche/registrazioni…»; non usato → «Non
+  risulta valorizzato…».
+- **Opzione menu**: somma dei valori salvati uguali al `value` dell'opzione sui campi del suo menu set. Usata →
+  «È già scelta in N valori salvati…»; non usata → «Non risulta scelta in alcun dato salvato…».
+- Riattivazione: nessuna nota.
+
+**File modificati:**
+- `main/modules/config/repository.ts`: `countSavedValuesForFieldKey`, `countSavedValueForFieldKeyEquals` (helper
+  interno `countFieldValueRows` con `json_extract` + `count()`, path bindato), `findFieldsUsingMenuSet`.
+- `main/modules/config/service.ts`: `fieldDeactivationNote`/`optionDeactivationNote` (riusano
+  `countFieldsConditionalOn`); rimossa la costante generica `DEACTIVATION_JSON_NOTE`; wiring in
+  `setFieldActive`/`setMenuOptionActive`.
+- `docs/02-data-model.md` §2-quater, `docs/00-backlog-mvp.md` S1.4.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓ (verifica
+interattiva GUI confermata dall'utente: campo/opzione usati → conteggio reale nella nota; non usati → «non
+risulta usato»; controllore condizionale segnalato; riattivazione senza nota; disattivazione comunque eseguita).
+
 ### 2026-07-21 — Sprint 3 / Cambio menuSetId su campo con valori salvati (guard)
 
 Quarta voce dello **Sprint 3**. Chiude il TODO in `config/service.ts:updateField`: cambiare il menu collegato a

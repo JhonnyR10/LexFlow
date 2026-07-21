@@ -601,6 +601,68 @@ export function conditionalValuesDependingOn(fieldId: number): string[] {
   return [...values]
 }
 
+// Conta le righe (pratiche o transition_records, scope-aware) che hanno un valore
+// salvato sotto la `key` del campo. Con `equals` conta solo i valori uguali a quello
+// indicato (usato per l'uso reale di una singola opzione menu); senza `equals` conta
+// tutti i valori non vuoti (uso reale del campo). Fonte del conteggio per gli avvisi
+// di disattivazione (scan JSON rigoroso).
+function countFieldValueRows(
+  field: { key: string; scope: string; transitionId: number | null },
+  equals?: string
+): number {
+  const path = `$."${field.key.replace(/"/g, '""')}"`
+  if (field.scope === 'transition' && field.transitionId != null) {
+    const expr = sql`json_extract(${transitionRecords.values}, ${path})`
+    const valueCond = equals !== undefined
+      ? sql`${expr} = ${equals}`
+      : sql`${expr} IS NOT NULL AND ${expr} <> ''`
+    const row = getDb()
+      .select({ n: count() })
+      .from(transitionRecords)
+      .where(and(eq(transitionRecords.transitionId, field.transitionId), valueCond))
+      .get()
+    return row?.n ?? 0
+  }
+  const expr = sql`json_extract(${practices.customValues}, ${path})`
+  const valueCond = equals !== undefined
+    ? sql`${expr} = ${equals}`
+    : sql`${expr} IS NOT NULL AND ${expr} <> ''`
+  const row = getDb().select({ n: count() }).from(practices).where(valueCond).get()
+  return row?.n ?? 0
+}
+
+export function countSavedValuesForFieldKey(field: {
+  key: string
+  scope: string
+  transitionId: number | null
+}): number {
+  return countFieldValueRows(field)
+}
+
+export function countSavedValueForFieldKeyEquals(
+  field: { key: string; scope: string; transitionId: number | null },
+  value: string
+): number {
+  return countFieldValueRows(field, value)
+}
+
+// Campi (chiave/scope/transizione) che usano un dato menu set: servono a stimare
+// l'uso reale di una singola opzione, sommando i match del suo value sui loro valori.
+export function findFieldsUsingMenuSet(
+  menuSetId: number
+): { id: number; key: string; scope: string; transitionId: number | null }[] {
+  return getDb()
+    .select({
+      id: fieldDefs.id,
+      key: fieldDefs.key,
+      scope: fieldDefs.scope,
+      transitionId: fieldDefs.transitionId,
+    })
+    .from(fieldDefs)
+    .where(eq(fieldDefs.menuSetId, menuSetId))
+    .all()
+}
+
 export function setFieldIsActive(id: number, isActive: boolean): void {
   getDb().update(fieldDefs).set({ isActive }).where(eq(fieldDefs.id, id)).run()
 }
