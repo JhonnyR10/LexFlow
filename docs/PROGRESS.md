@@ -86,6 +86,35 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-21 — Sprint 3 / Cambio menuSetId su campo con valori salvati (guard)
+
+Quarta voce dello **Sprint 3**. Chiude il TODO in `config/service.ts:updateField`: cambiare il menu collegato a
+un campo menu non deve **orfanare silenziosamente** valori già salvati. Policy scelta: **blocca** (coerente con la
+filosofia guard di C-002). **Backend-only, nessuna migrazione, nessun IPC nuovo, nessun `HistoryEvent`.**
+
+**Comportamento:** al salvataggio di un campo, se il campo è già di tipo `menu` e il `menuSetId` cambia, calcolo
+gli **orfani** = valori che il **nuovo** menu non contiene (confronto sui `value` delle opzioni, attive o
+disattivate). Fonti degli orfani:
+- **valori salvati** sotto la `key` del campo — `practices.custom_values` per i campi `general` (tutte le
+  pratiche, anche cestinate), `transition_records.values` ristretti al `transitionId` per i `transition`;
+- **conditionalValue** dei campi dipendenti (`conditionalOnFieldId = questo campo`) — evita condizioni di
+  visibilità/PEC insoddisfacibili.
+
+Se resta almeno un orfano → `ConflictError` con conteggio (mostrato **inline nel `FieldFormModal`**, che già
+instrada gli errori IPC via `ipcErrorMessage`). Cambio verso un menu che contiene comunque quei valori, o su un
+campo senza valori salvati → **consentito**. Cambi di tipo (text→menu, menu→text) restano fuori perimetro.
+
+**File modificati:**
+- `main/modules/config/repository.ts`: `menuOptionValuesForSet(setId)` (Set dei value), `savedValuesForFieldKey(field)`
+  (scan scope-aware via `json_extract` con path bindato), `conditionalValuesDependingOn(fieldId)`. Solo lettura.
+- `main/modules/config/service.ts`: `assertMenuChangeDoesNotOrphan(field, newSetId)` + chiamata nel ramo `menu`
+  di `updateField` (sostituisce il TODO).
+- `docs/02-data-model.md` §2-ter (regola d'integrità), `docs/00-backlog-mvp.md` S1.3 (nota cambio menu).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓ (verifica
+interattiva GUI confermata dall'utente: A→B con valore `alfa` non presente → bloccato inline; aggiunto `alfa` a B →
+consentito; campo senza valori salvati → cambio libero; condizioni dipendenti coperte).
+
 ### 2026-07-21 — Sprint 3 / Icona app + installer
 
 Terza voce dello **Sprint 3**. Storia di **packaging/asset**: nessun codice app, nessuna migrazione, nessun IPC.

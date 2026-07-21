@@ -69,6 +69,9 @@ import {
   setFieldIsActive,
   reorderFieldsAtomic,
   findActiveMenuOptionByValue,
+  menuOptionValuesForSet,
+  savedValuesForFieldKey,
+  conditionalValuesDependingOn,
   countTransitionsUsingPhase,
   countAnyPracticesUsingPhase,
   countHistoryUsingPhase,
@@ -576,6 +579,30 @@ export function createField(input: CreateFieldInput): FieldDefListItem {
   return result
 }
 
+// Guard sul cambio di menuSetId di un campo menu: blocca se dei valori già
+// salvati (customValues/transition_records.values) o dei conditionalValue di campi
+// dipendenti non esistono tra le opzioni del nuovo menu (resterebbero incoerenti).
+// Cambiare verso un menu che contiene comunque quei valori è consentito.
+function assertMenuChangeDoesNotOrphan(
+  field: { id: number; key: string; scope: string; transitionId: number | null },
+  newMenuSetId: number
+): void {
+  const newValues = menuOptionValuesForSet(newMenuSetId)
+  const orphanSaved = savedValuesForFieldKey(field).filter((v) => !newValues.has(v))
+  const orphanConds = conditionalValuesDependingOn(field.id).filter((v) => !newValues.has(v))
+  if (orphanSaved.length === 0 && orphanConds.length === 0) return
+
+  const parts: string[] = []
+  if (orphanSaved.length > 0)
+    parts.push(`${orphanSaved.length} valore/i già salvato/i su pratiche`)
+  if (orphanConds.length > 0)
+    parts.push(`${orphanConds.length} condizione/i di visibilità di altri campi`)
+  throw new ConflictError(
+    `Impossibile cambiare il menu di questo campo: ${parts.join(' e ')} non esiste/ono ` +
+      'nel nuovo menu e resterebbe/ro incoerente/i. Crea un nuovo campo oppure disattiva questo.'
+  )
+}
+
 export function updateField(input: UpdateFieldInput): FieldDefListItem {
   const existing = findFieldById(input.id)
   if (!existing) throw new NotFoundError(`Campo ${input.id} non trovato`)
@@ -588,10 +615,11 @@ export function updateField(input: UpdateFieldInput): FieldDefListItem {
       throw new ValidationError('Per i campi di tipo menu è obbligatorio selezionare un menu set')
     const ms = findMenuSetById(input.menuSetId)
     if (!ms) throw new NotFoundError(`Menu set ${input.menuSetId} non trovato`)
-    // TODO: se si cambia il menuSetId di un campo menu usato come controllore di altri campi,
-    // le condizioni esistenti rimangono ma conditionalValue potrebbe non corrispondere più
-    // alle opzioni del nuovo menu. E5 tratterà il controllore inattivo/incompatibile come
-    // "condizione non soddisfatta" a runtime.
+    // Cambio del menu su un campo già di tipo menu: blocca se orfanerebbe valori
+    // salvati o condizioni dipendenti (vedi assertMenuChangeDoesNotOrphan).
+    if (existing.type === 'menu' && existing.menuSetId !== input.menuSetId) {
+      assertMenuChangeDoesNotOrphan(existing, input.menuSetId)
+    }
   } else {
     if (input.menuSetId != null)
       throw new ValidationError('Il menu set può essere impostato solo per campi di tipo menu')

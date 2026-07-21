@@ -543,6 +543,64 @@ export function findActiveMenuOptionByValue(
     .get()
 }
 
+// Tutti i value delle opzioni (attive e non) di un menu set. Serve al guard sul
+// cambio di menuSetId (config/service): un valore salvato è «orfano» solo se il
+// nuovo menu non lo contiene tra le sue opzioni (anche disattivate).
+export function menuOptionValuesForSet(menuSetId: number): Set<string> {
+  const rows = getDb()
+    .select({ value: menuOptions.value })
+    .from(menuOptions)
+    .where(eq(menuOptions.menuSetId, menuSetId))
+    .all()
+  return new Set(rows.map((r) => r.value))
+}
+
+// Valori distinti non vuoti salvati sotto la `key` di un campo, per rilevare gli
+// orfani al cambio di menu. Scope-aware: i campi generali vivono in
+// practices.custom_values (tutte le pratiche, anche cestinate); i campi di
+// transizione in transition_records.values ristretti al loro transitionId.
+export function savedValuesForFieldKey(field: {
+  key: string
+  scope: string
+  transitionId: number | null
+}): string[] {
+  const path = `$."${field.key.replace(/"/g, '""')}"`
+  let rows: { v: string | null }[]
+  if (field.scope === 'transition' && field.transitionId != null) {
+    rows = getDb()
+      .select({ v: sql<string | null>`json_extract(${transitionRecords.values}, ${path})` })
+      .from(transitionRecords)
+      .where(eq(transitionRecords.transitionId, field.transitionId))
+      .all()
+  } else {
+    rows = getDb()
+      .select({ v: sql<string | null>`json_extract(${practices.customValues}, ${path})` })
+      .from(practices)
+      .all()
+  }
+  const values = new Set<string>()
+  for (const r of rows) {
+    if (r.v != null && r.v !== '') values.add(r.v)
+  }
+  return [...values]
+}
+
+// conditionalValue distinti non vuoti dei campi che dipendono (come controllore)
+// dal campo indicato. Al cambio di menu del controllore, un conditionalValue non
+// più presente tra le opzioni renderebbe la condizione insoddisfacibile.
+export function conditionalValuesDependingOn(fieldId: number): string[] {
+  const rows = getDb()
+    .select({ cv: fieldDefs.conditionalValue })
+    .from(fieldDefs)
+    .where(eq(fieldDefs.conditionalOnFieldId, fieldId))
+    .all()
+  const values = new Set<string>()
+  for (const r of rows) {
+    if (r.cv != null && r.cv !== '') values.add(r.cv)
+  }
+  return [...values]
+}
+
 export function setFieldIsActive(id: number, isActive: boolean): void {
   getDb().update(fieldDefs).set({ isActive }).where(eq(fieldDefs.id, id)).run()
 }
