@@ -113,9 +113,12 @@ cestinate + delete); `main/preload.ts`.
 `AlertModal` (riuso Sprint 1).
 **Docs:** `02-data-model.md` §2/§2-bis, `00-backlog-mvp.md` (E1/E2), COLLAUDO (C-002→risolto), ROADMAP (Sprint 2→fatto).
 
-**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓. Verifica interattiva GUI
-(`npm run desktop`: blocco su entità in uso → popup; cascata set→opzioni e transizione→campi; eliminazione di
-elementi non usati; anagrafiche bloccate se pratiche anche cestinate) **da completare manualmente**.
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓
+(verifica interattiva GUI confermata dall'utente il 2026-07-21: blocco su entità in uso → **popup** `AlertModal`
+— fase iniziale, fase usata da transizioni, professionista collegato a pratica **anche cestinata**; cascata
+set→opzioni e transizione→campi con **conteggio figli** nel `ConfirmModal`; eliminazione di elementi non usati OK;
+elementi **standard** eliminati **riapparsi al riavvio** — seed idempotente ri-creato 13 fasi/40 transizioni/5 menu
+set). **Sprint 2 chiuso.**
 
 ### 2026-07-21 — Post-collaudo Sprint 1: fix rapidi (C-001, C-003, C-004) + organizzazione ROADMAP
 
