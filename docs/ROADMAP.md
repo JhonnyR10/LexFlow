@@ -34,19 +34,19 @@ Richiede:
 
 > Nota: chiude i «Delete fisica rinviata (TODO)» annotati su S1.1/S1.2/S1.3/S1.4 e i guard-delete di E2.
 
-## Sprint 3 — Rifiniture / residui MVP `DA PIANIFICARE`
+## Sprint 3 — Rifiniture / residui MVP `IN CORSO`
 
 Raccolti dai TODO/residui di `PROGRESS.md`. Priorità e raggruppamento da concordare.
 
-| Voce | Origine | Descrizione | Stima |
-|---|---|---|---|
-| Filtri/ricerca sulla timeline | S5.5 | Filtrare lo storico nel dettaglio pratica (oggi solo consultabile) | S |
-| Bonifica colori hardcoded | S11.1 | ~51 hex/colori residui (badge, banner, `#fff` su accent) → token dove sensato | S–M |
-| Contesto PEC configurabile | `practices/service.ts` | Rendere configurabile sul campo `pec` il contesto (oggi derivato dalla toPhase) | S–M |
-| Cambio `menuSetId` su campo | `config/service.ts` | Gestire il cambio del menu collegato a un campo con valori già salvati | S |
-| Scan JSON rigoroso in disattivazione | S-FIX-guards | Controllo d'uso reale di opzione menu/campo dentro `customValues`/`transition_records.values` (oggi avviso non bloccante) | M |
-| Card «documenti mancanti» in Dashboard | S8.2/8.4 | Aggregato dei documenti mancanti | S |
-| Icona app/installer | release-prep | `resources/icon.ico`/`.icns` + scommentare in `electron-builder.yml` | S |
+| Voce | Origine | Descrizione | Stima | Stato |
+|---|---|---|---|---|
+| Filtri/ricerca sulla timeline | S5.5 | Filtrare lo storico nel dettaglio pratica (oggi solo consultabile) | S | ✅ fatto |
+| Bonifica colori hardcoded | S11.1 | ~51 hex/colori residui (badge, banner, `#fff` su accent) → token dove sensato | S–M | da fare |
+| Contesto PEC configurabile | `practices/service.ts` | Rendere configurabile sul campo `pec` il contesto (oggi derivato dalla toPhase) | S–M | da fare |
+| Cambio `menuSetId` su campo | `config/service.ts` | Gestire il cambio del menu collegato a un campo con valori già salvati | S | da fare |
+| Scan JSON rigoroso in disattivazione | S-FIX-guards | Controllo d'uso reale di opzione menu/campo dentro `customValues`/`transition_records.values` (oggi avviso non bloccante) | M | da fare |
+| Card «documenti mancanti» in Dashboard | S8.2/8.4 | Aggregato dei documenti mancanti | S | da fare |
+| Icona app/installer | release-prep | `resources/icon.ico`/`.icns` + scommentare in `electron-builder.yml` | S | da fare |
 
 ## Sprint 4+ — Post-MVP (epiche/funzioni previste) `BACKLOG`
 

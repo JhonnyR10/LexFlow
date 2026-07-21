@@ -10,6 +10,14 @@ import { DocumentsSection } from '../features/documents/DocumentsSection'
 import { useFields } from '../features/config/fields/useFields'
 import { useMenuSets } from '../features/config/menus/useMenus'
 import { computeImportoDifferences } from '../features/practices/importoCalc'
+import {
+  availableTimelineCategories,
+  emptyTimelineFilter,
+  filterTimeline,
+  hasActiveTimelineFilter,
+  type TimelineCategoryKey,
+  type TimelineFilterState,
+} from '../features/practices/timelineFilters'
 import { daysSinceDeposit } from '../../shared/giorniDeposito'
 import type {
   PracticeDetail,
@@ -217,7 +225,16 @@ function CustomFieldsSection({ practice }: { practice: PracticeDetail }): React.
   )
 }
 
+const timelineControlStyle: React.CSSProperties = {
+  padding: '7px 10px', fontSize: '13px', borderRadius: '6px',
+  border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+  color: 'var(--color-text)',
+}
+
 function TimelineSection({ history }: { history: PracticeDetailHistoryItem[] }): React.JSX.Element {
+  const [filter, setFilter] = useState<TimelineFilterState>(emptyTimelineFilter)
+
+  // Nessun evento registrato: stato vuoto totale, senza barra filtri.
   if (history.length === 0) {
     return (
       <Section title="Storico">
@@ -228,44 +245,110 @@ function TimelineSection({ history }: { history: PracticeDetailHistoryItem[] }):
     )
   }
 
+  const categories = availableTimelineCategories(history)
+  const filtered = filterTimeline(history, filter)
+  const active = hasActiveTimelineFilter(filter)
+
   return (
     <Section title="Storico">
-      <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-        {history.map((e, i) => (
-          <li
-            key={e.id}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', marginBottom: '16px' }}>
+        <input
+          type="text"
+          value={filter.term}
+          onChange={(ev) => setFilter((f) => ({ ...f, term: ev.target.value }))}
+          placeholder="Cerca nello storico…"
+          aria-label="Cerca nello storico"
+          style={{ ...timelineControlStyle, flex: '1 1 200px', minWidth: '160px' }}
+        />
+        <select
+          value={filter.category ?? ''}
+          onChange={(ev) =>
+            setFilter((f) => ({ ...f, category: ev.target.value === '' ? null : (ev.target.value as TimelineCategoryKey) }))
+          }
+          aria-label="Filtra per tipo di evento"
+          style={timelineControlStyle}
+        >
+          <option value="">Tutti i tipi</option>
+          {categories.map((c) => (
+            <option key={c.key} value={c.key}>{c.label}</option>
+          ))}
+        </select>
+        <label style={{ fontSize: '12px', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          Da
+          <input
+            type="date"
+            value={filter.from ?? ''}
+            onChange={(ev) => setFilter((f) => ({ ...f, from: ev.target.value === '' ? null : ev.target.value }))}
+            aria-label="Da data"
+            style={timelineControlStyle}
+          />
+        </label>
+        <label style={{ fontSize: '12px', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          A
+          <input
+            type="date"
+            value={filter.to ?? ''}
+            onChange={(ev) => setFilter((f) => ({ ...f, to: ev.target.value === '' ? null : ev.target.value }))}
+            aria-label="A data"
+            style={timelineControlStyle}
+          />
+        </label>
+        {active && (
+          <button
+            type="button"
+            onClick={() => setFilter(emptyTimelineFilter)}
             style={{
-              display: 'flex', gap: '12px', paddingBottom: i === history.length - 1 ? 0 : '14px',
-              borderLeft: '2px solid var(--color-border)', marginLeft: '6px', paddingLeft: '16px',
-              position: 'relative',
+              ...timelineControlStyle, cursor: 'pointer', background: 'var(--color-bg-subtle)',
+              color: 'var(--color-text-secondary)',
             }}
           >
-            <span style={{
-              position: 'absolute', left: '-7px', top: '4px', width: '12px', height: '12px',
-              borderRadius: '50%', background: 'var(--color-accent)', border: '2px solid var(--color-surface)',
-            }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text)' }}>
-                {e.title}
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-                {formatDateTime(e.timestamp)}
-                {e.fromPhaseDisplayName && e.toPhaseDisplayName && (
-                  <span> · {e.fromPhaseDisplayName} → {e.toPhaseDisplayName}</span>
-                )}
-                {!e.fromPhaseDisplayName && e.toPhaseDisplayName && (
-                  <span> · {e.toPhaseDisplayName}</span>
-                )}
-              </div>
-              {e.note && (
-                <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
-                  {e.note}
+            Azzera
+          </button>
+        )}
+      </div>
+
+      {filtered.length === 0 ? (
+        <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>
+          Nessun evento corrisponde ai filtri.
+        </p>
+      ) : (
+        <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          {filtered.map((e, i) => (
+            <li
+              key={e.id}
+              style={{
+                display: 'flex', gap: '12px', paddingBottom: i === filtered.length - 1 ? 0 : '14px',
+                borderLeft: '2px solid var(--color-border)', marginLeft: '6px', paddingLeft: '16px',
+                position: 'relative',
+              }}
+            >
+              <span style={{
+                position: 'absolute', left: '-7px', top: '4px', width: '12px', height: '12px',
+                borderRadius: '50%', background: 'var(--color-accent)', border: '2px solid var(--color-surface)',
+              }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text)' }}>
+                  {e.title}
                 </div>
-              )}
-            </div>
-          </li>
-        ))}
-      </ol>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                  {formatDateTime(e.timestamp)}
+                  {e.fromPhaseDisplayName && e.toPhaseDisplayName && (
+                    <span> · {e.fromPhaseDisplayName} → {e.toPhaseDisplayName}</span>
+                  )}
+                  {!e.fromPhaseDisplayName && e.toPhaseDisplayName && (
+                    <span> · {e.toPhaseDisplayName}</span>
+                  )}
+                </div>
+                {e.note && (
+                  <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+                    {e.note}
+                  </div>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
     </Section>
   )
 }

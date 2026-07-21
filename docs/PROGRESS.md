@@ -32,7 +32,7 @@ Legenda stato: `TODO` · `IN CORSO` · `FATTO` · `BLOCCATO`
 | S5.2   | Pulsanti dinamici = transizioni                              | FATTO    | IPC `practices:listAvailableTransitions` (attive, non automatiche, dalla fase corrente; fase finale → nessuna azione). Componente `WorkflowActions` nel dettaglio: pulsanti generati dalla config, loading/empty/error. Form+salvataggio = S5.3.                                                                                              |
 | S5.3   | Form dinamico fase + salvataggio                             | FATTO    | Nuova tabella `transition_records` (migrazione 0005, incrementale). IPC `practices:executeTransition`: validazione campi lato main (required+condizionale+menu+pec), calcolo destinazione dentro transazione (self/sospensione/resume), TransitionRecord+HistoryEvent+PEC, version++. `TransitionFormModal` + `DynamicField`/`PecBlock` estratti in modulo condiviso. Guard liquidata = S5.4. |
 | S5.4   | Guard coerenza stati                                         | FATTO    | Backend-only, nessuna migrazione. Guard di liquidazione in `executeTransition` (dentro la transazione): destinazione `category='liquidated'` richiede categorie raggiunte `decree_received` + `awaiting_liquidation` (via HistoryEvent.toPhaseId). Ragiona per category canonica, non per key; difesa in profondità. |
-| S5.5   | Storico/timeline                                             | IN CORSO | Timeline consultabile **FATTA**: `TimelineSection` nel dettaglio pratica (`DettaglioPraticaPage.tsx`), storico `HistoryEvent` read-only ordinato. Filtri/ricerca sulla timeline = **residuo post-MVP** (non implementati).                                                                                                                                                                          |
+| S5.5   | Storico/timeline                                             | FATTO    | Timeline consultabile + **filtri/ricerca** (Sprint 3): `TimelineSection` con ricerca testuale (title+note+fasi, accent-insensitive), filtro per categoria evento (created→Creazione; auto_transition/phase_changed/event→Fase-transizione; updated→Modifica; document_*→Documenti; trashed/restored→Cestino — opzioni derivate dagli eventi presenti) e intervallo date da/a; stato vuoto-filtrato distinto. Logica pura in `timelineFilters.ts`. Renderer-only, nessuna migrazione, nessun IPC.                                                                                                                              |
 | S6.1   | Quattro importi                                              | FATTO    | concesso/fatturato/liquidato denormalizzati da `TransitionRecord.values` su 3 colonne pratica (cache derivata, non editabili a mano). Mappatura esplicita field-key→colonna (3 voci) in `executeTransition`. Seed di 3 campi `importo` su Registra decreto/invio a SCP/liquidazione. Migrazione incrementale 0006. Differenze calcolate = S6.2. |
 | S6.2   | Differenze calcolate                                         | FATTO    | **E6 (Importi) COMPLETATA.** Helper puro `importoCalc.ts` (richiesto−concesso, % riduzione con guard div/0, concesso−fatturato, fatturato−liquidato, concesso−liquidato; null se operando mancante). Sottosezione «Differenze» nel dettaglio; «Non calcolabile» per i null, nessun NaN. Renderer-only, nessuna migrazione. |
 | S7.1   | Documenti decreto+fattura                                    | FATTO    | **E7 (Documenti) COMPLETATA.** Nuovo modulo `documents` (4 canali IPC), tabella `documents` (migrazione 0007). Upload via file dialog nativo nel main; file in `<userData>/documenti/<codiceIstanza>/`, `filePath` relativo in DB; sostituzione per kind (decreto/fattura); apri via shell; HistoryEvent su add/replace/remove; guard cestino su upload/elimina. `DocumentsSection` nel dettaglio (sostituisce stub). |
@@ -84,6 +84,34 @@ Ogni riga: data — decisione — motivo.
 ## Log modifiche
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
+
+### 2026-07-21 — Sprint 3 / S5.5: Filtri e ricerca sulla timeline del dettaglio pratica
+
+Prima voce dello **Sprint 3** (residui MVP). Aggiunge **filtri/ricerca** allo storico del dettaglio pratica
+(prima solo consultabile), chiudendo l'unica storia MVP ancora `IN CORSO`. **Renderer-only**: nessuna migrazione,
+nessun IPC nuovo, nessun `HistoryEvent`, nessun cambio schema (si filtra `practice.history` già caricato).
+
+**Filtri (client-side, combinabili):**
+- **Ricerca testuale** case/accent-insensitive su `title` + `note` + nomi fase (riusa `normalizeForSearch` di
+  `practiceFilters.ts`).
+- **Categoria evento**: i 10 `type` grezzi raggruppati in categorie leggibili — `created`→Creazione;
+  `auto_transition`/`phase_changed`/`event`→Fase-transizione; `updated`→Modifica; `document_*`→Documenti;
+  `trashed`/`restored`→Cestino; fallback `altro`. Il menu mostra **solo le categorie presenti** nella pratica
+  (stesso pattern dei filtri elenco).
+- **Intervallo date** (da/a inclusivi) sulla porzione `YYYY-MM-DD` del timestamp.
+- **Azzera** (visibile solo con filtro attivo).
+
+**Stati:** vuoto totale invariato («Nessun evento registrato», senza barra); **vuoto filtrato** distinto
+(«Nessun evento corrisponde ai filtri»).
+
+**File nuovi:** `src/features/practices/timelineFilters.ts` (puro: `categoryForType`, `availableTimelineCategories`,
+`filterTimeline`, `hasActiveTimelineFilter`, `TIMELINE_CATEGORIES`; nessun `any`).
+**File modificati:** `src/pages/DettaglioPraticaPage.tsx` (`TimelineSection` con stato filtri `useState`, barra
+controlli, render filtrato, stato vuoto-filtrato). Colori solo via token CSS (regola 8).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓ (verifica
+interattiva GUI confermata dall'utente: ricerca testo, filtro per categoria — opzioni derivate, periodo da/a,
+combinati, azzera, vuoto-filtrato, nessuna regressione su pratica senza eventi e nei temi scuri).
 
 ### 2026-07-21 — Post-collaudo Sprint 2 / C-002: eliminazione fisica (config + anagrafiche)
 
