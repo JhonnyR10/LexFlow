@@ -16,7 +16,9 @@ import type {
   CreateFieldInput,
   UpdateFieldInput,
   SetFieldActiveInput,
-  ReorderFieldsInput
+  ReorderFieldsInput,
+  DeleteByIdInput,
+  DeleteResponse
 } from '../../../../shared/ipc'
 
 export const FIELDS_QUERY_KEY = ['config', 'fields'] as const
@@ -86,6 +88,16 @@ export function useReorderFields(): UseMutationResult<
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: ReorderFieldsInput) => configApi.reorderFields(input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: FIELDS_QUERY_KEY })
+    }
+  })
+}
+
+export function useDeleteField(): UseMutationResult<DeleteResponse, Error, DeleteByIdInput, unknown> {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: DeleteByIdInput) => configApi.deleteField(input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: FIELDS_QUERY_KEY })
     }

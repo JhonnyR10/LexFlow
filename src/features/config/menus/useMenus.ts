@@ -19,7 +19,9 @@ import type {
   CreateMenuOptionInput,
   UpdateMenuOptionInput,
   SetMenuOptionActiveInput,
-  ReorderMenuOptionsInput
+  ReorderMenuOptionsInput,
+  DeleteByIdInput,
+  DeleteResponse
 } from '../../../../shared/ipc'
 
 export const MENU_SETS_QUERY_KEY = ['config', 'menuSets'] as const
@@ -115,6 +117,26 @@ export function useReorderMenuOptions(): UseMutationResult<
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: ReorderMenuOptionsInput) => configApi.reorderMenuOptions(input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: MENU_SETS_QUERY_KEY })
+    }
+  })
+}
+
+export function useDeleteMenuSet(): UseMutationResult<DeleteResponse, Error, DeleteByIdInput, unknown> {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: DeleteByIdInput) => configApi.deleteMenuSet(input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: MENU_SETS_QUERY_KEY })
+    }
+  })
+}
+
+export function useDeleteMenuOption(): UseMutationResult<DeleteResponse, Error, DeleteByIdInput, unknown> {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: DeleteByIdInput) => configApi.deleteMenuOption(input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: MENU_SETS_QUERY_KEY })
     }

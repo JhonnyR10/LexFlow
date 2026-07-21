@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
 import type { FieldDefListItem, FieldType, ListFieldsFilter } from '../../../../shared/ipc'
-import { useFields, useCreateField, useSetFieldActive, useReorderFields } from './useFields'
+import { useFields, useCreateField, useSetFieldActive, useReorderFields, useDeleteField } from './useFields'
 import { useAllTransitions } from '../transitions/useTransitions'
 import { useMenuSets } from '../menus/useMenus'
 import { FieldFormModal } from './FieldFormModal'
 import { ipcErrorMessage } from '../../../utils/ipcError'
+import { AlertModal } from '../../../components/ui/AlertModal'
+import { ConfirmModal } from '../../../components/ui/ConfirmModal'
 
 const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   testo_breve: 'Testo breve',
@@ -221,6 +223,7 @@ interface FieldsTableProps {
   onMoveUp: (idx: number) => void
   onMoveDown: (idx: number) => void
   onToggleActive: (f: FieldDefListItem) => void
+  onDelete: (f: FieldDefListItem) => void
   isReordering: boolean
   isTogglingId: number | null
 }
@@ -233,6 +236,7 @@ function FieldsTable({
   onMoveUp,
   onMoveDown,
   onToggleActive,
+  onDelete,
   isReordering,
   isTogglingId
 }: FieldsTableProps): React.JSX.Element {
@@ -339,6 +343,13 @@ function FieldsTable({
               >
                 {f.isActive ? 'Disattiva' : 'Attiva'}
               </button>
+              <button
+                style={{ ...editBtnStyle, color: 'var(--color-destructive)' }}
+                onClick={() => onDelete(f)}
+                title="Elimina"
+              >
+                Elimina
+              </button>
             </td>
           </tr>
         ))}
@@ -354,9 +365,23 @@ export function FieldsSection(): React.JSX.Element {
   const [selectedTransitionId, setSelectedTransitionId] = useState<number | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [editField, setEditField] = useState<FieldDefListItem | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<FieldDefListItem | null>(null)
+  const [alertMessage, setAlertMessage] = useState<string | null>(null)
   const [inlineError, setInlineError] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<number | null>(null)
   const [pecNote, setPecNote] = useState<string | null>(null)
+  const deleteMutation = useDeleteField()
+
+  function handleConfirmDelete(): void {
+    if (!deleteTarget) return
+    deleteMutation.mutate(
+      { id: deleteTarget.id },
+      {
+        onSuccess: () => setDeleteTarget(null),
+        onError: (err) => { setDeleteTarget(null); setAlertMessage(ipcErrorMessage(err)) },
+      }
+    )
+  }
 
   const { data: transitions, isLoading: tLoading } = useAllTransitions()
   const { data: menuSets, isLoading: msLoading } = useMenuSets()
@@ -632,6 +657,7 @@ export function FieldsSection(): React.JSX.Element {
               onMoveUp={handleMoveUp}
               onMoveDown={handleMoveDown}
               onToggleActive={handleToggleActive}
+              onDelete={(f) => setDeleteTarget(f)}
               isReordering={reorderMutation.isPending}
               isTogglingId={togglingId}
             />
@@ -640,6 +666,22 @@ export function FieldsSection(): React.JSX.Element {
       )}
 
       {inlineError && <div style={inlineErrorStyle}>{inlineError}</div>}
+
+      {alertMessage && (
+        <AlertModal message={alertMessage} onClose={() => setAlertMessage(null)} />
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          title="Elimina campo"
+          message={<>Vuoi eliminare il campo «{deleteTarget.label}»? I valori già salvati nelle pratiche restano invariati. L&apos;operazione è irreversibile.</>}
+          confirmLabel={deleteMutation.isPending ? 'Eliminazione…' : 'Elimina'}
+          pending={deleteMutation.isPending}
+          destructive
+          onConfirm={handleConfirmDelete}
+          onClose={() => setDeleteTarget(null)}
+        />
+      )}
 
       {showModal && (
         <FieldFormModal

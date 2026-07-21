@@ -44,14 +44,21 @@ export const IPC_CHANNELS = {
   CONFIG_UPDATE_FIELD: 'config:updateField',
   CONFIG_SET_FIELD_ACTIVE: 'config:setFieldActive',
   CONFIG_REORDER_FIELDS: 'config:reorderFields',
+  CONFIG_DELETE_PHASE: 'config:deletePhase',
+  CONFIG_DELETE_TRANSITION: 'config:deleteTransition',
+  CONFIG_DELETE_FIELD: 'config:deleteField',
+  CONFIG_DELETE_MENU_SET: 'config:deleteMenuSet',
+  CONFIG_DELETE_MENU_OPTION: 'config:deleteMenuOption',
   ANAGRAFICHE_LIST_PROFESSIONISTI: 'anagrafiche:listProfessionisti',
   ANAGRAFICHE_CREATE_PROFESSIONISTA: 'anagrafiche:createProfessionista',
   ANAGRAFICHE_UPDATE_PROFESSIONISTA: 'anagrafiche:updateProfessionista',
   ANAGRAFICHE_SET_PROFESSIONISTA_ACTIVE: 'anagrafiche:setProfessionistaActive',
+  ANAGRAFICHE_DELETE_PROFESSIONISTA: 'anagrafiche:deleteProfessionista',
   ANAGRAFICHE_LIST_COLLABORATORI: 'anagrafiche:listCollaboratori',
   ANAGRAFICHE_CREATE_COLLABORATORE: 'anagrafiche:createCollaboratore',
   ANAGRAFICHE_UPDATE_COLLABORATORE: 'anagrafiche:updateCollaboratore',
   ANAGRAFICHE_SET_COLLABORATORE_ACTIVE: 'anagrafiche:setCollaboratoreActive',
+  ANAGRAFICHE_DELETE_COLLABORATORE: 'anagrafiche:deleteCollaboratore',
   PRACTICES_GENERATE_CODICE: 'practices:generateCodiceIstanza',
   PRACTICES_CREATE: 'practices:createPractice',
   PRACTICES_LIST: 'practices:listPractices',
@@ -799,6 +806,16 @@ export interface ExportCsvResponse {
   path?: string
 }
 
+// --- Eliminazione fisica config/anagrafiche (C-002) ---
+export interface DeleteByIdInput {
+  id: number
+}
+export interface DeleteResponse {
+  success: true
+  // Numero di figli rimossi in cascata (menu set→opzioni, transizione→campi).
+  deletedChildren?: number
+}
+
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
@@ -846,6 +863,11 @@ export interface LexFlowApi {
     updateField(input: UpdateFieldInput): Promise<ConfigUpdateFieldResponse>
     setFieldActive(input: SetFieldActiveInput): Promise<ConfigSetFieldActiveResponse>
     reorderFields(input: ReorderFieldsInput): Promise<ConfigReorderFieldsResponse>
+    deletePhase(input: DeleteByIdInput): Promise<DeleteResponse>
+    deleteTransition(input: DeleteByIdInput): Promise<DeleteResponse>
+    deleteField(input: DeleteByIdInput): Promise<DeleteResponse>
+    deleteMenuSet(input: DeleteByIdInput): Promise<DeleteResponse>
+    deleteMenuOption(input: DeleteByIdInput): Promise<DeleteResponse>
   }
   practices: {
     generateCodiceIstanza(input: GenerateCodiceIstanzaInput): Promise<GenerateCodiceIstanzaResponse>
@@ -876,9 +898,11 @@ export interface LexFlowApi {
     createProfessionista(input: CreateProfessionistaInput): Promise<AnagraficheCreateProfessionistaResponse>
     updateProfessionista(input: UpdateProfessionistaInput): Promise<AnagraficheUpdateProfessionistaResponse>
     setProfessionistaActive(input: SetProfessionistaActiveInput): Promise<AnagraficheSetProfessionistaActiveResponse>
+    deleteProfessionista(input: DeleteByIdInput): Promise<DeleteResponse>
     listCollaboratori(): Promise<AnagraficheListCollaboratoriResponse>
     createCollaboratore(input: CreateCollaboratoreInput): Promise<AnagraficheCreateCollaboratoreResponse>
     updateCollaboratore(input: UpdateCollaboratoreInput): Promise<AnagraficheUpdateCollaboratoreResponse>
     setCollaboratoreActive(input: SetCollaboratoreActiveInput): Promise<AnagraficheSetCollaboratoreActiveResponse>
+    deleteCollaboratore(input: DeleteByIdInput): Promise<DeleteResponse>
   }
 }

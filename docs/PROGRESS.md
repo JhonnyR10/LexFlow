@@ -85,6 +85,38 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-21 — Post-collaudo Sprint 2 / C-002: eliminazione fisica (config + anagrafiche)
+
+Consente di **eliminare** (non solo disattivare) fasi, transizioni, campi, menu (set/opzioni), professionisti e
+collaboratori, **solo quando non in uso**. Chiude i «delete fisica rinviata» di S1.1–S1.4. Nessuna migrazione,
+nessun `HistoryEvent` (config/anagrafiche, non pratica; tracciato via log/DB). `foreign_keys = ON` come backstop.
+
+**Regole «in uso» (blocco `ConflictError` con messaggio; cascata dove indicato):**
+- **Fase**: non iniziale e non referenziata da transizioni (from/to), pratiche (current/previous, **incl. cestinate**),
+  `history_events` o `transition_records`.
+- **Transizione**: mai eseguita (nessun `transition_record`) → **cascata** sui suoi `field_defs`.
+- **Campo**: nessun campo lo referenzia come `conditionalOnFieldId` (valori JSON salvati restano).
+- **Menu set**: non usato da alcun `field_defs.menuSetId` → **cascata** sulle sue `menu_options`.
+- **Opzione menu**: sempre eliminabile.
+- **Professionista/Collaboratore**: nessuna pratica (attiva **o cestinata**) lo referenzia.
+
+**Nota UX documentata:** gli elementi **standard** (seed) eliminati **riappaiono al riavvio** (seed idempotente);
+per nasconderli si usa la disattivazione.
+
+**File nuovi:** `src/components/ui/ConfirmModal.tsx` (conferma generica riusabile, tono distruttivo).
+**Backend:** `shared/ipc.ts` (7 canali `*_DELETE_*` + `DeleteByIdInput`/`DeleteResponse`);
+`main/modules/config/{repository,service,controller}.ts` (conteggi-riferimenti + delete/cascata in transazione,
+guard nei service); `main/modules/anagrafiche/{repository,service,controller}.ts` (`countAnyPractices…` incl.
+cestinate + delete); `main/preload.ts`.
+**Frontend:** `src/api/{config,anagrafiche}.ts` + i 6 `use*` (mutation delete con invalidazione); pulsante
+«Elimina» + `ConfirmModal` (con conteggio figli per la cascata) nelle 6 sezioni; blocco «in uso» mostrato via
+`AlertModal` (riuso Sprint 1).
+**Docs:** `02-data-model.md` §2/§2-bis, `00-backlog-mvp.md` (E1/E2), COLLAUDO (C-002→risolto), ROADMAP (Sprint 2→fatto).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓. Verifica interattiva GUI
+(`npm run desktop`: blocco su entità in uso → popup; cascata set→opzioni e transizione→campi; eliminazione di
+elementi non usati; anagrafiche bloccate se pratiche anche cestinate) **da completare manualmente**.
+
 ### 2026-07-21 — Post-collaudo Sprint 1: fix rapidi (C-001, C-003, C-004) + organizzazione ROADMAP
 
 Dopo il collaudo dell'MVP (tutti i casi OK in `TEST-PLAN-MVP.md`), registrate 4 osservazioni lievi in

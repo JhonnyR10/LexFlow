@@ -1,6 +1,6 @@
 import { eq, asc, and, ne, or, count, sql, isNull } from 'drizzle-orm'
 import { getDb } from '../../database/connection'
-import { phases, transitions, menuSets, menuOptions, fieldDefs, practices } from '../../database/schema'
+import { phases, transitions, menuSets, menuOptions, fieldDefs, practices, historyEvents, transitionRecords } from '../../database/schema'
 import type {
   PhaseListItem,
   TransitionListItem,
@@ -553,4 +553,120 @@ export function reorderFieldsAtomic(items: { id: number; order: number }[]): voi
       tx.update(fieldDefs).set({ order: item.order }).where(eq(fieldDefs.id, item.id)).run()
     }
   })
+}
+
+// ---------- Eliminazione fisica (C-002): conteggi-riferimenti + delete ----------
+
+// --- Fase ---
+export function countTransitionsUsingPhase(phaseId: number): number {
+  const [row] = getDb()
+    .select({ cnt: count() })
+    .from(transitions)
+    .where(or(eq(transitions.fromPhaseId, phaseId), eq(transitions.toPhaseId, phaseId)))
+    .all()
+  return row?.cnt ?? 0
+}
+
+// Include le pratiche cestinate (la FK vale anche per esse): current O previous.
+export function countAnyPracticesUsingPhase(phaseId: number): number {
+  const [row] = getDb()
+    .select({ cnt: count() })
+    .from(practices)
+    .where(or(eq(practices.currentPhaseId, phaseId), eq(practices.previousPhaseId, phaseId)))
+    .all()
+  return row?.cnt ?? 0
+}
+
+export function countHistoryUsingPhase(phaseId: number): number {
+  const [row] = getDb()
+    .select({ cnt: count() })
+    .from(historyEvents)
+    .where(or(eq(historyEvents.fromPhaseId, phaseId), eq(historyEvents.toPhaseId, phaseId)))
+    .all()
+  return row?.cnt ?? 0
+}
+
+export function countTransitionRecordsUsingPhase(phaseId: number): number {
+  const [row] = getDb()
+    .select({ cnt: count() })
+    .from(transitionRecords)
+    .where(or(eq(transitionRecords.fromPhaseId, phaseId), eq(transitionRecords.toPhaseId, phaseId)))
+    .all()
+  return row?.cnt ?? 0
+}
+
+export function deletePhaseRow(id: number): number {
+  return getDb().delete(phases).where(eq(phases.id, id)).run().changes
+}
+
+// --- Transizione ---
+export function countTransitionRecordsForTransition(transitionId: number): number {
+  const [row] = getDb()
+    .select({ cnt: count() })
+    .from(transitionRecords)
+    .where(eq(transitionRecords.transitionId, transitionId))
+    .all()
+  return row?.cnt ?? 0
+}
+
+export function countFieldsForTransition(transitionId: number): number {
+  const [row] = getDb()
+    .select({ cnt: count() })
+    .from(fieldDefs)
+    .where(eq(fieldDefs.transitionId, transitionId))
+    .all()
+  return row?.cnt ?? 0
+}
+
+// Elimina la transizione e, in cascata, i suoi campi (scope=transition). Una transazione.
+export function deleteTransitionCascade(id: number): void {
+  getDb().transaction((tx) => {
+    tx.delete(fieldDefs).where(eq(fieldDefs.transitionId, id)).run()
+    tx.delete(transitions).where(eq(transitions.id, id)).run()
+  })
+}
+
+// --- Campo ---
+export function countFieldsConditionalOn(fieldId: number): number {
+  const [row] = getDb()
+    .select({ cnt: count() })
+    .from(fieldDefs)
+    .where(eq(fieldDefs.conditionalOnFieldId, fieldId))
+    .all()
+  return row?.cnt ?? 0
+}
+
+export function deleteFieldRow(id: number): number {
+  return getDb().delete(fieldDefs).where(eq(fieldDefs.id, id)).run().changes
+}
+
+// --- Menu set / opzione ---
+export function countFieldsUsingMenuSet(menuSetId: number): number {
+  const [row] = getDb()
+    .select({ cnt: count() })
+    .from(fieldDefs)
+    .where(eq(fieldDefs.menuSetId, menuSetId))
+    .all()
+  return row?.cnt ?? 0
+}
+
+export function countOptionsForMenuSet(menuSetId: number): number {
+  const [row] = getDb()
+    .select({ cnt: count() })
+    .from(menuOptions)
+    .where(eq(menuOptions.menuSetId, menuSetId))
+    .all()
+  return row?.cnt ?? 0
+}
+
+// Elimina il menu set e, in cascata, le sue opzioni. Una transazione.
+export function deleteMenuSetCascade(id: number): void {
+  getDb().transaction((tx) => {
+    tx.delete(menuOptions).where(eq(menuOptions.menuSetId, id)).run()
+    tx.delete(menuSets).where(eq(menuSets.id, id)).run()
+  })
+}
+
+export function deleteMenuOptionRow(id: number): number {
+  return getDb().delete(menuOptions).where(eq(menuOptions.id, id)).run().changes
 }

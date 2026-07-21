@@ -134,3 +134,32 @@ export function countActivePracticesByCollaboratore(id: number): number {
     .all()
   return row?.cnt ?? 0
 }
+
+// ---------- Eliminazione fisica (C-002) ----------
+// Per la delete conta TUTTE le pratiche (anche cestinate): la FK vale anche per esse.
+
+export function countAnyPracticesByProfessionista(id: number): number {
+  const [row] = getDb()
+    .select({ cnt: count() })
+    .from(practices)
+    .where(eq(practices.professionistaId, id))
+    .all()
+  return row?.cnt ?? 0
+}
+
+export function countAnyPracticesByCollaboratore(id: number): number {
+  const [row] = getDb()
+    .select({ cnt: count() })
+    .from(practices)
+    .where(eq(practices.collaboratoreId, id))
+    .all()
+  return row?.cnt ?? 0
+}
+
+export function deleteProfessionistaRow(id: number): number {
+  return getDb().delete(professionisti).where(eq(professionisti.id, id)).run().changes
+}
+
+export function deleteCollaboratoreRow(id: number): number {
+  return getDb().delete(collaboratori).where(eq(collaboratori.id, id)).run().changes
+}

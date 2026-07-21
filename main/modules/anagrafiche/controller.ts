@@ -9,7 +9,8 @@ import type {
   AnagraficheListCollaboratoriResponse,
   AnagraficheCreateCollaboratoreResponse,
   AnagraficheUpdateCollaboratoreResponse,
-  AnagraficheSetCollaboratoreActiveResponse
+  AnagraficheSetCollaboratoreActiveResponse,
+  DeleteResponse
 } from '../../../shared/ipc'
 import {
   listProfessionisti,
@@ -19,7 +20,9 @@ import {
   listCollaboratori,
   createCollaboratore,
   updateCollaboratore,
-  setCollaboratoreActive
+  setCollaboratoreActive,
+  deleteProfessionista,
+  deleteCollaboratore
 } from './service'
 import { logger } from '../../utils/logger'
 
@@ -158,4 +161,16 @@ export function registerAnagraficheHandlers(): void {
       return setCollaboratoreActive(parsed)
     }
   )
+
+  // --- Eliminazione fisica (C-002) ---
+  const deleteByIdSchema = z.object({ id: z.number().int().positive() })
+
+  ipcMain.handle(IPC_CHANNELS.ANAGRAFICHE_DELETE_PROFESSIONISTA, (_, input: unknown): DeleteResponse => {
+    logger.debug('IPC', IPC_CHANNELS.ANAGRAFICHE_DELETE_PROFESSIONISTA)
+    return deleteProfessionista(parseOrThrow(deleteByIdSchema, input))
+  })
+  ipcMain.handle(IPC_CHANNELS.ANAGRAFICHE_DELETE_COLLABORATORE, (_, input: unknown): DeleteResponse => {
+    logger.debug('IPC', IPC_CHANNELS.ANAGRAFICHE_DELETE_COLLABORATORE)
+    return deleteCollaboratore(parseOrThrow(deleteByIdSchema, input))
+  })
 }

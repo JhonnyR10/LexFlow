@@ -6,7 +6,9 @@ import type {
   CollaboratoreListItem,
   CreateCollaboratoreInput,
   UpdateCollaboratoreInput,
-  SetCollaboratoreActiveInput
+  SetCollaboratoreActiveInput,
+  DeleteByIdInput,
+  DeleteResponse
 } from '../../../shared/ipc'
 import {
   findAllProfessionisti,
@@ -20,7 +22,11 @@ import {
   updateCollaboratoreFields,
   setCollaboratoreIsActive,
   countActivePracticesByProfessionista,
-  countActivePracticesByCollaboratore
+  countActivePracticesByCollaboratore,
+  countAnyPracticesByProfessionista,
+  countAnyPracticesByCollaboratore,
+  deleteProfessionistaRow,
+  deleteCollaboratoreRow
 } from './repository'
 import { ConflictError, NotFoundError, ValidationError } from '../../errors/AppError'
 
@@ -180,5 +186,28 @@ export function setCollaboratoreActive(
   }
 
   setCollaboratoreIsActive(input.id, input.isActive)
+  return { success: true }
+}
+
+// ---------- Eliminazione fisica (C-002) ----------
+// Consentita solo se non referenziato da ALCUNA pratica (attiva o cestinata).
+
+export function deleteProfessionista(input: DeleteByIdInput): DeleteResponse {
+  const existing = findProfessionistaById(input.id)
+  if (!existing) throw new NotFoundError(`Professionista ${input.id} non trovato`)
+  if (countAnyPracticesByProfessionista(input.id) > 0) {
+    throw new ConflictError('Professionista collegato a una o più pratiche (anche nel cestino): impossibile eliminarlo.')
+  }
+  deleteProfessionistaRow(input.id)
+  return { success: true }
+}
+
+export function deleteCollaboratore(input: DeleteByIdInput): DeleteResponse {
+  const existing = findCollaboratoreById(input.id)
+  if (!existing) throw new NotFoundError(`Collaboratore ${input.id} non trovato`)
+  if (countAnyPracticesByCollaboratore(input.id) > 0) {
+    throw new ConflictError('Collaboratore collegato a una o più pratiche (anche nel cestino): impossibile eliminarlo.')
+  }
+  deleteCollaboratoreRow(input.id)
   return { success: true }
 }

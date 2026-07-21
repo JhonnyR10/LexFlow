@@ -89,7 +89,12 @@ const api: LexFlowApi = {
     createField: (input) => ipcRenderer.invoke('config:createField', input),
     updateField: (input) => ipcRenderer.invoke('config:updateField', input),
     setFieldActive: (input) => ipcRenderer.invoke('config:setFieldActive', input),
-    reorderFields: (input) => ipcRenderer.invoke('config:reorderFields', input)
+    reorderFields: (input) => ipcRenderer.invoke('config:reorderFields', input),
+    deletePhase: (input) => ipcRenderer.invoke('config:deletePhase', input),
+    deleteTransition: (input) => ipcRenderer.invoke('config:deleteTransition', input),
+    deleteField: (input) => ipcRenderer.invoke('config:deleteField', input),
+    deleteMenuSet: (input) => ipcRenderer.invoke('config:deleteMenuSet', input),
+    deleteMenuOption: (input) => ipcRenderer.invoke('config:deleteMenuOption', input)
   },
   anagrafiche: {
     listProfessionisti: () =>
@@ -100,6 +105,8 @@ const api: LexFlowApi = {
       ipcRenderer.invoke('anagrafiche:updateProfessionista', input),
     setProfessionistaActive: (input) =>
       ipcRenderer.invoke('anagrafiche:setProfessionistaActive', input),
+    deleteProfessionista: (input) =>
+      ipcRenderer.invoke('anagrafiche:deleteProfessionista', input),
     listCollaboratori: () =>
       ipcRenderer.invoke('anagrafiche:listCollaboratori'),
     createCollaboratore: (input) =>
@@ -107,7 +114,9 @@ const api: LexFlowApi = {
     updateCollaboratore: (input) =>
       ipcRenderer.invoke('anagrafiche:updateCollaboratore', input),
     setCollaboratoreActive: (input) =>
-      ipcRenderer.invoke('anagrafiche:setCollaboratoreActive', input)
+      ipcRenderer.invoke('anagrafiche:setCollaboratoreActive', input),
+    deleteCollaboratore: (input) =>
+      ipcRenderer.invoke('anagrafiche:deleteCollaboratore', input)
   }
 }
 

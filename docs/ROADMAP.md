@@ -16,7 +16,7 @@ Le stime si affinano quando una voce diventa una storia con criteri d'accettazio
 | **C-003** Banner leggibili | COLLAUDO C-003 | Banner informativi (Cestino, «pratica creata») tema-aware: niente `--color-text` su sfondo semantico fisso | S | ✅ fatto |
 | **C-004** Errori IPC puliti | COLLAUDO C-004 | Instradare gli errori IPC in `ipcErrorMessage`; semplificare i testi `ValidationError` del restore | S | ✅ fatto |
 
-## Sprint 2 — Eliminazione fisica (C-002) `PROSSIMO`
+## Sprint 2 — Eliminazione fisica (C-002) `FATTO`
 
 **C-002** (COLLAUDO, media). Consentire l'**eliminazione fisica** di **fasi, transizioni, campi, menu (set e
 opzioni), professionisti, collaboratori** — **solo quando non in uso** (coerente con CLAUDE.md regola 7:

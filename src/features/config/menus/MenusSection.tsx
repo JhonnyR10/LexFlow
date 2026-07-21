@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import type { MenuSetListItem, MenuOptionListItem } from '../../../../shared/ipc'
-import { useMenuSets, useSetMenuOptionActive, useReorderMenuOptions } from './useMenus'
+import { useMenuSets, useSetMenuOptionActive, useReorderMenuOptions, useDeleteMenuSet, useDeleteMenuOption } from './useMenus'
 import { MenuSetFormModal } from './MenuSetFormModal'
 import { MenuOptionFormModal } from './MenuOptionFormModal'
 import { ipcErrorMessage } from '../../../utils/ipcError'
+import { AlertModal } from '../../../components/ui/AlertModal'
+import { ConfirmModal } from '../../../components/ui/ConfirmModal'
 
 // ---------- Styles ----------
 
@@ -234,16 +236,44 @@ export function MenusSection(): React.JSX.Element {
   const { data: menuSets, isLoading, error } = useMenuSets()
   const setActiveMutation = useSetMenuOptionActive()
   const reorderMutation = useReorderMenuOptions()
+  const deleteSetMutation = useDeleteMenuSet()
+  const deleteOptionMutation = useDeleteMenuOption()
 
   const [selectedSetId, setSelectedSetId] = useState<number | null>(null)
   const [createSetOpen, setCreateSetOpen] = useState(false)
   const [editSet, setEditSet] = useState<MenuSetListItem | null>(null)
   const [createOptionOpen, setCreateOptionOpen] = useState(false)
   const [editOption, setEditOption] = useState<MenuOptionListItem | null>(null)
+  const [deleteSetTarget, setDeleteSetTarget] = useState<MenuSetListItem | null>(null)
+  const [deleteOptionTarget, setDeleteOptionTarget] = useState<MenuOptionListItem | null>(null)
+  const [alertMessage, setAlertMessage] = useState<string | null>(null)
   const [inlineError, setInlineError] = useState<string | null>(null)
   const [inlineNote, setInlineNote] = useState<string | null>(null)
 
   const selectedSet = menuSets?.find((s) => s.id === selectedSetId) ?? null
+
+  function handleConfirmDeleteSet(): void {
+    if (!deleteSetTarget) return
+    const wasSelected = deleteSetTarget.id === selectedSetId
+    deleteSetMutation.mutate(
+      { id: deleteSetTarget.id },
+      {
+        onSuccess: () => { setDeleteSetTarget(null); if (wasSelected) setSelectedSetId(null) },
+        onError: (err) => { setDeleteSetTarget(null); setAlertMessage(ipcErrorMessage(err)) },
+      }
+    )
+  }
+
+  function handleConfirmDeleteOption(): void {
+    if (!deleteOptionTarget) return
+    deleteOptionMutation.mutate(
+      { id: deleteOptionTarget.id },
+      {
+        onSuccess: () => setDeleteOptionTarget(null),
+        onError: (err) => { setDeleteOptionTarget(null); setAlertMessage(ipcErrorMessage(err)) },
+      }
+    )
+  }
 
   function handleToggleOptionActive(opt: MenuOptionListItem): void {
     setInlineError(null)
@@ -326,18 +356,30 @@ export function MenusSection(): React.JSX.Element {
                       setInlineError(null)
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
                       <span style={setLabelStyle(isSelected)}>{s.label}</span>
-                      <button
-                        style={{ ...editBtnStyle, marginRight: 0, fontSize: '11px' }}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setEditSet(s)
-                        }}
-                        title="Rinomina"
-                      >
-                        Rinomina
-                      </button>
+                      <span style={{ display: 'flex', gap: '4px' }}>
+                        <button
+                          style={{ ...editBtnStyle, marginRight: 0, fontSize: '11px' }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditSet(s)
+                          }}
+                          title="Rinomina"
+                        >
+                          Rinomina
+                        </button>
+                        <button
+                          style={{ ...editBtnStyle, marginRight: 0, fontSize: '11px', color: 'var(--color-destructive)' }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDeleteSetTarget(s)
+                          }}
+                          title="Elimina menu"
+                        >
+                          Elimina
+                        </button>
+                      </span>
                     </div>
                     <div style={setMetaStyle}>
                       <span style={setKeyStyle}>{s.key}</span>
@@ -447,6 +489,13 @@ export function MenusSection(): React.JSX.Element {
                             >
                               {opt.isActive ? 'Disattiva' : 'Attiva'}
                             </button>
+                            <button
+                              style={{ ...editBtnStyle, color: 'var(--color-destructive)' }}
+                              onClick={() => setDeleteOptionTarget(opt)}
+                              title="Elimina opzione"
+                            >
+                              Elimina
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -460,6 +509,34 @@ export function MenusSection(): React.JSX.Element {
             {inlineNote && <div style={inlineNoteStyle}>{inlineNote}</div>}
           </div>
         </div>
+      )}
+
+      {alertMessage && (
+        <AlertModal message={alertMessage} onClose={() => setAlertMessage(null)} />
+      )}
+
+      {deleteSetTarget && (
+        <ConfirmModal
+          title="Elimina menu"
+          message={<>Vuoi eliminare il menu «{deleteSetTarget.label}» e tutte le sue {deleteSetTarget.options.length} opzioni? L&apos;operazione è irreversibile.</>}
+          confirmLabel={deleteSetMutation.isPending ? 'Eliminazione…' : 'Elimina'}
+          pending={deleteSetMutation.isPending}
+          destructive
+          onConfirm={handleConfirmDeleteSet}
+          onClose={() => setDeleteSetTarget(null)}
+        />
+      )}
+
+      {deleteOptionTarget && (
+        <ConfirmModal
+          title="Elimina opzione"
+          message={<>Vuoi eliminare l&apos;opzione «{deleteOptionTarget.label}»? L&apos;operazione è irreversibile.</>}
+          confirmLabel={deleteOptionMutation.isPending ? 'Eliminazione…' : 'Elimina'}
+          pending={deleteOptionMutation.isPending}
+          destructive
+          onConfirm={handleConfirmDeleteOption}
+          onClose={() => setDeleteOptionTarget(null)}
+        />
       )}
 
       {createSetOpen && (

@@ -15,7 +15,9 @@ import type {
   CreatePhaseInput,
   UpdatePhaseInput,
   SetPhaseActiveInput,
-  ReorderPhasesInput
+  ReorderPhasesInput,
+  DeleteByIdInput,
+  DeleteResponse
 } from '../../../../shared/ipc'
 
 const QUERY_KEY = ['config', 'phases', 'all'] as const
@@ -86,6 +88,16 @@ export function useReorderPhases(): UseMutationResult<
     mutationFn: (input: ReorderPhasesInput) => configApi.reorderPhases(input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: QUERY_KEY })
+    }
+  })
+}
+
+export function useDeletePhase(): UseMutationResult<DeleteResponse, Error, DeleteByIdInput, unknown> {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: DeleteByIdInput) => configApi.deletePhase(input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['config', 'phases'] })
     }
   })
 }

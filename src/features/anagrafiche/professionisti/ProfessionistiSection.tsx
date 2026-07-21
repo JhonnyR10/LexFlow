@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ProfessionistaListItem } from '../../../../shared/ipc'
-import { useAllProfessionisti, useSetProfessionistaActive } from './useProfessionisti'
+import { useAllProfessionisti, useSetProfessionistaActive, useDeleteProfessionista } from './useProfessionisti'
+import { ConfirmModal } from '../../../components/ui/ConfirmModal'
 import { ProfessionistaFormModal } from './ProfessionistaFormModal'
 import { ipcErrorMessage } from '../../../utils/ipcError'
 import { AlertModal } from '../../../components/ui/AlertModal'
@@ -80,10 +81,23 @@ function ContactsCell({ item }: { item: ProfessionistaListItem }): React.JSX.Ele
 export function ProfessionistiSection(): React.JSX.Element {
   const { data: professionisti, isLoading, error } = useAllProfessionisti()
   const setActiveMutation = useSetProfessionistaActive()
+  const deleteMutation = useDeleteProfessionista()
 
   const [createOpen,     setCreateOpen]     = useState(false)
   const [editItem,       setEditItem]       = useState<ProfessionistaListItem | null>(null)
+  const [deleteTarget,   setDeleteTarget]   = useState<ProfessionistaListItem | null>(null)
   const [alertMessage,   setAlertMessage]   = useState<string | null>(null)
+
+  function handleConfirmDelete(): void {
+    if (!deleteTarget) return
+    deleteMutation.mutate(
+      { id: deleteTarget.id },
+      {
+        onSuccess: () => setDeleteTarget(null),
+        onError: (err) => { setDeleteTarget(null); setAlertMessage(ipcErrorMessage(err)) },
+      }
+    )
+  }
 
   function handleToggleActive(item: ProfessionistaListItem): void {
     setAlertMessage(null)
@@ -170,6 +184,14 @@ export function ProfessionistiSection(): React.JSX.Element {
                   >
                     {item.isActive ? 'Disattiva' : 'Attiva'}
                   </button>
+                  <button
+                    style={{ ...editBtnStyle, color: 'var(--color-destructive)' }}
+                    onClick={() => setDeleteTarget(item)}
+                    disabled={deleteMutation.isPending}
+                    title="Elimina"
+                  >
+                    Elimina
+                  </button>
                 </td>
               </tr>
             ))}
@@ -179,6 +201,18 @@ export function ProfessionistiSection(): React.JSX.Element {
 
       {alertMessage && (
         <AlertModal message={alertMessage} onClose={() => setAlertMessage(null)} />
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          title="Elimina professionista"
+          message={<>Vuoi eliminare «{deleteTarget.denominazione}»? L&apos;operazione è irreversibile.</>}
+          confirmLabel={deleteMutation.isPending ? 'Eliminazione…' : 'Elimina'}
+          pending={deleteMutation.isPending}
+          destructive
+          onConfirm={handleConfirmDelete}
+          onClose={() => setDeleteTarget(null)}
+        />
       )}
 
       {(createOpen || editItem) && (

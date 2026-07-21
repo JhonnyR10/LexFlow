@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
 import type { TransitionListItem } from '../../../../shared/ipc'
-import { useAllTransitions, useSetTransitionActive, useReorderTransitions } from './useTransitions'
+import { useAllTransitions, useSetTransitionActive, useReorderTransitions, useDeleteTransition } from './useTransitions'
 import { useAllPhases } from '../phases/usePhases'
 import { TransitionFormModal } from './TransitionFormModal'
 import { ipcErrorMessage } from '../../../utils/ipcError'
+import { AlertModal } from '../../../components/ui/AlertModal'
+import { ConfirmModal } from '../../../components/ui/ConfirmModal'
 
 // ---------- Styles ----------
 
@@ -180,10 +182,24 @@ export function TransitionsSection(): React.JSX.Element {
   const { data: phases, isLoading: pLoading } = useAllPhases()
   const setActiveMutation = useSetTransitionActive()
   const reorderMutation = useReorderTransitions()
+  const deleteMutation = useDeleteTransition()
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editTransition, setEditTransition] = useState<TransitionListItem | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<TransitionListItem | null>(null)
+  const [alertMessage, setAlertMessage] = useState<string | null>(null)
   const [inlineError, setInlineError] = useState<string | null>(null)
+
+  function handleConfirmDelete(): void {
+    if (!deleteTarget) return
+    deleteMutation.mutate(
+      { id: deleteTarget.id },
+      {
+        onSuccess: () => setDeleteTarget(null),
+        onError: (err) => { setDeleteTarget(null); setAlertMessage(ipcErrorMessage(err)) },
+      }
+    )
+  }
 
   const isLoading = tLoading || pLoading
 
@@ -370,6 +386,14 @@ export function TransitionsSection(): React.JSX.Element {
                           >
                             {t.isActive ? 'Disattiva' : 'Attiva'}
                           </button>
+                          <button
+                            style={{ ...editBtnStyle, color: 'var(--color-destructive)' }}
+                            onClick={() => setDeleteTarget(t)}
+                            disabled={deleteMutation.isPending}
+                            title="Elimina"
+                          >
+                            Elimina
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -382,6 +406,22 @@ export function TransitionsSection(): React.JSX.Element {
       )}
 
       {inlineError && <div style={inlineErrorStyle}>{inlineError}</div>}
+
+      {alertMessage && (
+        <AlertModal message={alertMessage} onClose={() => setAlertMessage(null)} />
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          title="Elimina transizione"
+          message={<>Vuoi eliminare la transizione «{deleteTarget.buttonLabel || '—'}»? Verranno eliminati anche i campi collegati a questa transizione. L&apos;operazione è irreversibile.</>}
+          confirmLabel={deleteMutation.isPending ? 'Eliminazione…' : 'Elimina'}
+          pending={deleteMutation.isPending}
+          destructive
+          onConfirm={handleConfirmDelete}
+          onClose={() => setDeleteTarget(null)}
+        />
+      )}
 
       {(createOpen || editTransition) && phases && (
         <TransitionFormModal

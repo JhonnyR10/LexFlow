@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { CollaboratoreListItem } from '../../../../shared/ipc'
-import { useAllCollaboratori, useSetCollaboratoreActive } from './useCollaboratori'
+import { useAllCollaboratori, useSetCollaboratoreActive, useDeleteCollaboratore } from './useCollaboratori'
+import { ConfirmModal } from '../../../components/ui/ConfirmModal'
 import { CollaboratoreFormModal } from './CollaboratoreFormModal'
 import { ipcErrorMessage } from '../../../utils/ipcError'
 import { AlertModal } from '../../../components/ui/AlertModal'
@@ -64,10 +65,23 @@ function Badge({ children, bg, color }: { children: React.ReactNode; bg: string;
 export function CollaboratoriSection(): React.JSX.Element {
   const { data: collaboratori, isLoading, error } = useAllCollaboratori()
   const setActiveMutation = useSetCollaboratoreActive()
+  const deleteMutation = useDeleteCollaboratore()
 
   const [createOpen,  setCreateOpen]  = useState(false)
   const [editItem,    setEditItem]    = useState<CollaboratoreListItem | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<CollaboratoreListItem | null>(null)
   const [alertMessage, setAlertMessage] = useState<string | null>(null)
+
+  function handleConfirmDelete(): void {
+    if (!deleteTarget) return
+    deleteMutation.mutate(
+      { id: deleteTarget.id },
+      {
+        onSuccess: () => setDeleteTarget(null),
+        onError: (err) => { setDeleteTarget(null); setAlertMessage(ipcErrorMessage(err)) },
+      }
+    )
+  }
 
   function handleToggleActive(item: CollaboratoreListItem): void {
     setAlertMessage(null)
@@ -150,6 +164,14 @@ export function CollaboratoriSection(): React.JSX.Element {
                   >
                     {item.isActive ? 'Disattiva' : 'Attiva'}
                   </button>
+                  <button
+                    style={{ ...editBtnStyle, color: 'var(--color-destructive)' }}
+                    onClick={() => setDeleteTarget(item)}
+                    disabled={deleteMutation.isPending}
+                    title="Elimina"
+                  >
+                    Elimina
+                  </button>
                 </td>
               </tr>
             ))}
@@ -159,6 +181,18 @@ export function CollaboratoriSection(): React.JSX.Element {
 
       {alertMessage && (
         <AlertModal message={alertMessage} onClose={() => setAlertMessage(null)} />
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          title="Elimina collaboratore"
+          message={<>Vuoi eliminare «{deleteTarget.denominazione}»? L&apos;operazione è irreversibile.</>}
+          confirmLabel={deleteMutation.isPending ? 'Eliminazione…' : 'Elimina'}
+          pending={deleteMutation.isPending}
+          destructive
+          onConfirm={handleConfirmDelete}
+          onClose={() => setDeleteTarget(null)}
+        />
       )}
 
       {(createOpen || editItem) && (

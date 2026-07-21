@@ -15,7 +15,9 @@ import type {
   CreateTransitionInput,
   UpdateTransitionInput,
   SetTransitionActiveInput,
-  ReorderTransitionsInput
+  ReorderTransitionsInput,
+  DeleteByIdInput,
+  DeleteResponse
 } from '../../../../shared/ipc'
 
 export const TRANSITIONS_QUERY_KEY = ['config', 'transitions'] as const
@@ -83,6 +85,18 @@ export function useReorderTransitions(): UseMutationResult<
     mutationFn: (input: ReorderTransitionsInput) => configApi.reorderTransitions(input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: TRANSITIONS_QUERY_KEY })
+    }
+  })
+}
+
+export function useDeleteTransition(): UseMutationResult<DeleteResponse, Error, DeleteByIdInput, unknown> {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: DeleteByIdInput) => configApi.deleteTransition(input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: TRANSITIONS_QUERY_KEY })
+      // cascata: i campi della transizione sono stati eliminati
+      void qc.invalidateQueries({ queryKey: ['config', 'fields'] })
     }
   })
 }

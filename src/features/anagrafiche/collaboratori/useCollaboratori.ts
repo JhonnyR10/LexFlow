@@ -7,7 +7,9 @@ import type {
   AnagraficheSetCollaboratoreActiveResponse,
   CreateCollaboratoreInput,
   UpdateCollaboratoreInput,
-  SetCollaboratoreActiveInput
+  SetCollaboratoreActiveInput,
+  DeleteByIdInput,
+  DeleteResponse
 } from '../../../../shared/ipc'
 import { anagraficheApi } from '../../../api/anagrafiche'
 
@@ -59,6 +61,16 @@ export function useSetCollaboratoreActive(): UseMutationResult<
   return useMutation({
     mutationFn: (input: SetCollaboratoreActiveInput) =>
       anagraficheApi.setCollaboratoreActive(input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: QUERY_KEY })
+    }
+  })
+}
+
+export function useDeleteCollaboratore(): UseMutationResult<DeleteResponse, Error, DeleteByIdInput, unknown> {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: DeleteByIdInput) => anagraficheApi.deleteCollaboratore(input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: QUERY_KEY })
     }

@@ -76,11 +76,12 @@ Priorità MoSCoW. `MVP` = nel primo rilascio usabile end-to-end.
 - **S1.3** CRUD campi configurabili: `scope=general` (compaiono in Nuova pratica) e `scope=transition` (compaiono solo nel form di quella transizione). Tipi: `testo_breve, testo_lungo, numero, importo, data, menu, si_no, note, file, pec`. _AC:_ campo transizione non compare in Nuova pratica; campo generale sì.
 - **S1.4** CRUD menu a tendina (MenuSet/Option), riordino, soft delete. _AC:_ opzione usata non eliminabile, solo disattivabile.
 - **S1.5** Regola PEC condizionale (semplice/estesa). _AC:_ selezionando modalità=PEC compaiono i campi PEC multi-destinatario; altrimenti restano nascosti e non obbligatori.
+- **C-002 (post-collaudo) — Eliminazione fisica config.** Oltre alla disattivazione, fasi/transizioni/campi/menu (set e opzioni) sono **eliminabili quando non in uso** (regole per entità in `02-data-model.md` §2-bis): blocco con messaggio (popup) se referenziati; **cascata** menu set→opzioni e transizione→campi, in transazione. Chiude i «delete fisica rinviata» di S1.1–S1.4. _AC:_ eliminare un elemento non usato lo rimuove (cascata sui figli posseduti); un elemento in uso è bloccato; gli standard (seed) riappaiono al riavvio (per nasconderli, disattivare). Nessuna migrazione, nessun `HistoryEvent`.
 
 ### E2 — Anagrafiche `MVP` (Must)
 
-- **S2.1** CRUD Professionisti (collegamento per ID, denominazione nei menu). _AC:_ eliminazione bloccata se collegato a pratiche → disattivazione.
-- **S2.2** CRUD Collaboratori di giustizia. _AC:_ come sopra.
+- **S2.1** CRUD Professionisti (collegamento per ID, denominazione nei menu). _AC:_ eliminazione bloccata se collegato a pratiche → disattivazione. **C-002:** eliminazione fisica consentita **solo se non referenziato da alcuna pratica (attiva o cestinata)**.
+- **S2.2** CRUD Collaboratori di giustizia. _AC:_ come sopra (incl. eliminazione fisica C-002).
 
 ### E3 — Elenco e ricerca pratiche `MVP` (Must)
 

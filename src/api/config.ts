@@ -1,4 +1,6 @@
 import type {
+  DeleteByIdInput,
+  DeleteResponse,
   ConfigListPhasesResponse,
   ConfigListAllPhasesResponse,
   ConfigListTransitionsResponse,
@@ -87,5 +89,15 @@ export const configApi = {
   setFieldActive: (input: SetFieldActiveInput): Promise<ConfigSetFieldActiveResponse> =>
     window.api.config.setFieldActive(input),
   reorderFields: (input: ReorderFieldsInput): Promise<ConfigReorderFieldsResponse> =>
-    window.api.config.reorderFields(input)
+    window.api.config.reorderFields(input),
+  deletePhase: (input: DeleteByIdInput): Promise<DeleteResponse> =>
+    window.api.config.deletePhase(input),
+  deleteTransition: (input: DeleteByIdInput): Promise<DeleteResponse> =>
+    window.api.config.deleteTransition(input),
+  deleteField: (input: DeleteByIdInput): Promise<DeleteResponse> =>
+    window.api.config.deleteField(input),
+  deleteMenuSet: (input: DeleteByIdInput): Promise<DeleteResponse> =>
+    window.api.config.deleteMenuSet(input),
+  deleteMenuOption: (input: DeleteByIdInput): Promise<DeleteResponse> =>
+    window.api.config.deleteMenuOption(input)
 }

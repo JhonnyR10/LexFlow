@@ -7,7 +7,9 @@ import type {
   AnagraficheSetProfessionistaActiveResponse,
   CreateProfessionistaInput,
   UpdateProfessionistaInput,
-  SetProfessionistaActiveInput
+  SetProfessionistaActiveInput,
+  DeleteByIdInput,
+  DeleteResponse
 } from '../../../../shared/ipc'
 import { anagraficheApi } from '../../../api/anagrafiche'
 
@@ -59,6 +61,16 @@ export function useSetProfessionistaActive(): UseMutationResult<
   return useMutation({
     mutationFn: (input: SetProfessionistaActiveInput) =>
       anagraficheApi.setProfessionistaActive(input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: QUERY_KEY })
+    }
+  })
+}
+
+export function useDeleteProfessionista(): UseMutationResult<DeleteResponse, Error, DeleteByIdInput, unknown> {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: DeleteByIdInput) => anagraficheApi.deleteProfessionista(input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: QUERY_KEY })
     }

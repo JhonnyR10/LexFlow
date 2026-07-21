@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import type { PhaseListItem, PhaseCategory } from '../../../../shared/ipc'
-import { useAllPhases, useSetPhaseActive, useReorderPhases } from './usePhases'
+import { useAllPhases, useSetPhaseActive, useReorderPhases, useDeletePhase } from './usePhases'
 import { PhaseFormModal } from './PhaseFormModal'
 import { ipcErrorMessage } from '../../../utils/ipcError'
 import { AlertModal } from '../../../components/ui/AlertModal'
+import { ConfirmModal } from '../../../components/ui/ConfirmModal'
 
 const CATEGORY_LABELS: Record<PhaseCategory, string> = {
   deposited: 'Depositata',
@@ -173,10 +174,23 @@ export function PhasesSection(): React.JSX.Element {
   const { data: phases, isLoading, error } = useAllPhases()
   const setActiveMutation = useSetPhaseActive()
   const reorderMutation = useReorderPhases()
+  const deleteMutation = useDeletePhase()
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editPhase, setEditPhase] = useState<PhaseListItem | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<PhaseListItem | null>(null)
   const [alertMessage, setAlertMessage] = useState<string | null>(null)
+
+  function handleConfirmDelete(): void {
+    if (!deleteTarget) return
+    deleteMutation.mutate(
+      { id: deleteTarget.id },
+      {
+        onSuccess: () => setDeleteTarget(null),
+        onError: (err) => { setDeleteTarget(null); setAlertMessage(ipcErrorMessage(err)) },
+      }
+    )
+  }
 
   function handleMoveUp(idx: number): void {
     if (!phases || idx === 0) return
@@ -328,6 +342,14 @@ export function PhasesSection(): React.JSX.Element {
                   >
                     {phase.isActive ? 'Disattiva' : 'Attiva'}
                   </button>
+                  <button
+                    style={{ ...editBtnStyle, color: 'var(--color-destructive)', borderColor: 'var(--color-destructive)' }}
+                    onClick={() => setDeleteTarget(phase)}
+                    disabled={deleteMutation.isPending}
+                    title="Elimina"
+                  >
+                    Elimina
+                  </button>
                 </td>
               </tr>
             ))}
@@ -337,6 +359,18 @@ export function PhasesSection(): React.JSX.Element {
 
       {alertMessage && (
         <AlertModal message={alertMessage} onClose={() => setAlertMessage(null)} />
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          title="Elimina fase"
+          message={<>Vuoi eliminare la fase «{deleteTarget.displayName}»? L&apos;operazione è irreversibile.</>}
+          confirmLabel={deleteMutation.isPending ? 'Eliminazione…' : 'Elimina'}
+          pending={deleteMutation.isPending}
+          destructive
+          onConfirm={handleConfirmDelete}
+          onClose={() => setDeleteTarget(null)}
+        />
       )}
 
       {(createOpen || editPhase) && (

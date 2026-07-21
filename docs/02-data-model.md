@@ -126,7 +126,14 @@ Il contratto è la **chiave del campo** (uniche per contenitore/transizione nell
 ## Regole di integrità
 
 1. Pratica = entità unica, mai duplicata.
-2. Collaboratore/Professionista collegati per **ID**; non eliminabili se hanno pratiche (solo disattivabili); le pratiche esistenti continuano a mostrarli.
+2. Collaboratore/Professionista collegati per **ID**; **eliminabili solo se non referenziati da alcuna pratica** (attiva **o cestinata**, per non violare la FK) — altrimenti solo disattivabili (C-002); le pratiche esistenti continuano a mostrarli.
+2-bis. **Eliminazione fisica delle entità di configurazione e anagrafiche (C-002).** Consentita **solo quando non in uso** (altrimenti blocco con messaggio); con `foreign_keys = ON` come backstop. Regole per entità:
+   - **Fase**: eliminabile se non è quella iniziale e non referenziata da transizioni (from/to), pratiche (`currentPhaseId`/`previousPhaseId`, incl. cestinate), `history_events` o `transition_records`.
+   - **Transizione**: eliminabile se mai eseguita (nessun `transition_record`); **cascata** → elimina anche i suoi `field_defs` (`scope=transition`).
+   - **Campo**: eliminabile se nessun altro campo lo referenzia come `conditionalOnFieldId`. I valori già salvati (JSON in `customValues`/`transition_records.values`) **restano** (non FK, innocui).
+   - **Menu set**: eliminabile se non usato da alcun `field_defs.menuSetId`; **cascata** → elimina anche le sue `menu_options`.
+   - **Opzione menu**: sempre eliminabile (nessuna FK; i valori salvati restano).
+   Le cascate avvengono in **una transazione**. **Nessun `HistoryEvent`** (config/anagrafiche, non la pratica; tracciato via log). **Nota:** gli elementi **standard** (creati dal seed) eliminati **riappaiono al riavvio** (seed idempotente per chiave) → per nasconderli si usa la **disattivazione**.
 3. Cestino = `isTrashed`; le cestinate sono escluse da Dashboard, Report, filtri ordinari, alert, assistente; ripristino le riporta nei conteggi. Il soft delete (cestino) è il default e resta reversibile. La **cancellazione definitiva** (S10.3, solo su pratiche già cestinate) è una **hard delete** irreversibile: rimuove la riga `practices` e tutti i figli che la referenziano — `documents`, `pec_recipients`, `history_events`, `transition_records` — in un'unica transazione (con `foreign_keys = ON`, i figli prima della pratica), più la cartella documenti `<percorsoDati>/documenti/<codiceIstanza>/`; non lascia traccia in `history_events` (l'entità è distrutta). Il **reset archivio** (S11.4) è una hard delete **in blocco** di tutte le pratiche + figli + anagrafiche (`professionisti`/`collaboratori`) + svuotamento della cartella documenti, in un'unica transazione (ordine FK-safe), **preceduto da un backup automatico preventivo obbligatorio** (`pre-reset-<ts>.zip`); mantiene workflow e impostazioni app; nessun `HistoryEvent`.
 4. Importi mancanti → "Non presente"/"Non calcolabile"; mai `NaN`.
 5. Coerenza fasi gestita dal motore (vedi workflow-engine), non da stringhe sparse.

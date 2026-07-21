@@ -24,7 +24,8 @@ import type {
   ConfigCreateFieldResponse,
   ConfigUpdateFieldResponse,
   ConfigSetFieldActiveResponse,
-  ConfigReorderFieldsResponse
+  ConfigReorderFieldsResponse,
+  DeleteResponse
 } from '../../../shared/ipc'
 import {
   listActivePhases,
@@ -49,7 +50,12 @@ import {
   createField,
   updateField,
   setFieldActive,
-  reorderFields
+  reorderFields,
+  deletePhase,
+  deleteTransition,
+  deleteField,
+  deleteMenuSet,
+  deleteMenuOption
 } from './service'
 import { logger } from '../../utils/logger'
 
@@ -397,4 +403,28 @@ export function registerConfigHandlers(): void {
       return reorderFields(parsed)
     }
   )
+
+  // --- Eliminazione fisica (C-002) ---
+  const deleteByIdSchema = z.object({ id: z.number().int().positive() })
+
+  ipcMain.handle(IPC_CHANNELS.CONFIG_DELETE_PHASE, (_, input: unknown): DeleteResponse => {
+    logger.debug('IPC', IPC_CHANNELS.CONFIG_DELETE_PHASE)
+    return deletePhase(parseOrThrow(deleteByIdSchema, input))
+  })
+  ipcMain.handle(IPC_CHANNELS.CONFIG_DELETE_TRANSITION, (_, input: unknown): DeleteResponse => {
+    logger.debug('IPC', IPC_CHANNELS.CONFIG_DELETE_TRANSITION)
+    return deleteTransition(parseOrThrow(deleteByIdSchema, input))
+  })
+  ipcMain.handle(IPC_CHANNELS.CONFIG_DELETE_FIELD, (_, input: unknown): DeleteResponse => {
+    logger.debug('IPC', IPC_CHANNELS.CONFIG_DELETE_FIELD)
+    return deleteField(parseOrThrow(deleteByIdSchema, input))
+  })
+  ipcMain.handle(IPC_CHANNELS.CONFIG_DELETE_MENU_SET, (_, input: unknown): DeleteResponse => {
+    logger.debug('IPC', IPC_CHANNELS.CONFIG_DELETE_MENU_SET)
+    return deleteMenuSet(parseOrThrow(deleteByIdSchema, input))
+  })
+  ipcMain.handle(IPC_CHANNELS.CONFIG_DELETE_MENU_OPTION, (_, input: unknown): DeleteResponse => {
+    logger.debug('IPC', IPC_CHANNELS.CONFIG_DELETE_MENU_OPTION)
+    return deleteMenuOption(parseOrThrow(deleteByIdSchema, input))
+  })
 }

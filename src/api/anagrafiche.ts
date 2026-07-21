@@ -1,4 +1,6 @@
 import type {
+  DeleteByIdInput,
+  DeleteResponse,
   AnagraficheListProfessionistiResponse,
   AnagraficheCreateProfessionistaResponse,
   AnagraficheUpdateProfessionistaResponse,
@@ -50,5 +52,11 @@ export const anagraficheApi = {
   setCollaboratoreActive: (
     input: SetCollaboratoreActiveInput
   ): Promise<AnagraficheSetCollaboratoreActiveResponse> =>
-    window.api.anagrafiche.setCollaboratoreActive(input)
+    window.api.anagrafiche.setCollaboratoreActive(input),
+
+  deleteProfessionista: (input: DeleteByIdInput): Promise<DeleteResponse> =>
+    window.api.anagrafiche.deleteProfessionista(input),
+
+  deleteCollaboratore: (input: DeleteByIdInput): Promise<DeleteResponse> =>
+    window.api.anagrafiche.deleteCollaboratore(input)
 }

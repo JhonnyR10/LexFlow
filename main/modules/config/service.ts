@@ -22,7 +22,9 @@ import type {
   UpdateFieldInput,
   SetFieldActiveInput,
   ReorderFieldsInput,
-  ListFieldsFilter
+  ListFieldsFilter,
+  DeleteByIdInput,
+  DeleteResponse
 } from '../../../shared/ipc'
 import {
   findActivePhases,
@@ -66,7 +68,21 @@ import {
   updateFieldFields,
   setFieldIsActive,
   reorderFieldsAtomic,
-  findActiveMenuOptionByValue
+  findActiveMenuOptionByValue,
+  countTransitionsUsingPhase,
+  countAnyPracticesUsingPhase,
+  countHistoryUsingPhase,
+  countTransitionRecordsUsingPhase,
+  deletePhaseRow,
+  countTransitionRecordsForTransition,
+  countFieldsForTransition,
+  deleteTransitionCascade,
+  countFieldsConditionalOn,
+  deleteFieldRow,
+  countFieldsUsingMenuSet,
+  countOptionsForMenuSet,
+  deleteMenuSetCascade,
+  deleteMenuOptionRow
 } from './repository'
 import { ConflictError, NotFoundError, ValidationError } from '../../errors/AppError'
 
@@ -624,5 +640,68 @@ export function setFieldActive(
 
 export function reorderFields(input: ReorderFieldsInput): { success: true } {
   reorderFieldsAtomic(input)
+  return { success: true }
+}
+
+// ---------- Eliminazione fisica (C-002) ----------
+// Consentita solo se l'entità non è in uso (altrimenti ConflictError con messaggio).
+// Cascata per i figli posseduti (menu set→opzioni, transizione→campi), in transazione.
+// Nessun HistoryEvent (config, non pratica): tracciato via log dal controller/DB.
+
+export function deletePhase(input: DeleteByIdInput): DeleteResponse {
+  const phase = findPhaseById(input.id)
+  if (!phase) throw new NotFoundError(`Fase ${input.id} non trovata`)
+  if (phase.isInitial) {
+    throw new ConflictError('Non puoi eliminare la fase iniziale. Imposta prima un’altra fase come iniziale.')
+  }
+  if (countTransitionsUsingPhase(input.id) > 0) {
+    throw new ConflictError('Fase usata da una o più transizioni: eliminale o riassegnale prima.')
+  }
+  if (countAnyPracticesUsingPhase(input.id) > 0) {
+    throw new ConflictError('Fase usata da una o più pratiche (anche nel cestino): impossibile eliminarla.')
+  }
+  if (countHistoryUsingPhase(input.id) > 0 || countTransitionRecordsUsingPhase(input.id) > 0) {
+    throw new ConflictError('Fase presente nello storico di alcune pratiche: impossibile eliminarla.')
+  }
+  deletePhaseRow(input.id)
+  return { success: true }
+}
+
+export function deleteTransition(input: DeleteByIdInput): DeleteResponse {
+  const transition = findTransitionById(input.id)
+  if (!transition) throw new NotFoundError(`Transizione ${input.id} non trovata`)
+  if (countTransitionRecordsForTransition(input.id) > 0) {
+    throw new ConflictError('Transizione già eseguita da una o più pratiche: impossibile eliminarla.')
+  }
+  const deletedChildren = countFieldsForTransition(input.id)
+  deleteTransitionCascade(input.id)
+  return { success: true, deletedChildren }
+}
+
+export function deleteField(input: DeleteByIdInput): DeleteResponse {
+  const field = findFieldById(input.id)
+  if (!field) throw new NotFoundError(`Campo ${input.id} non trovato`)
+  if (countFieldsConditionalOn(input.id) > 0) {
+    throw new ConflictError('Campo usato come condizione da un altro campo: rimuovi prima la dipendenza.')
+  }
+  deleteFieldRow(input.id)
+  return { success: true }
+}
+
+export function deleteMenuSet(input: DeleteByIdInput): DeleteResponse {
+  const menuSet = findMenuSetById(input.id)
+  if (!menuSet) throw new NotFoundError(`Menu ${input.id} non trovato`)
+  if (countFieldsUsingMenuSet(input.id) > 0) {
+    throw new ConflictError('Menu usato da uno o più campi: scollegalo prima di eliminarlo.')
+  }
+  const deletedChildren = countOptionsForMenuSet(input.id)
+  deleteMenuSetCascade(input.id)
+  return { success: true, deletedChildren }
+}
+
+export function deleteMenuOption(input: DeleteByIdInput): DeleteResponse {
+  const option = findMenuOptionById(input.id)
+  if (!option) throw new NotFoundError(`Opzione ${input.id} non trovata`)
+  deleteMenuOptionRow(input.id)
   return { success: true }
 }
