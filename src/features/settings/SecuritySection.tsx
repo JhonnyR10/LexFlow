@@ -2,7 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { z } from 'zod'
 import {
   useChangePassword,
+  useDisableEncryption,
   useDisableLock,
+  useEnableEncryption,
   useSecurityConfig,
   useSetPassword,
 } from '../security/useSecurity'
@@ -113,6 +115,8 @@ export function SecuritySection(): React.JSX.Element {
   const setPassword = useSetPassword()
   const changePassword = useChangePassword()
   const disableLock = useDisableLock()
+  const enableEncryption = useEnableEncryption()
+  const disableEncryption = useDisableEncryption()
 
   const [pw, setPw] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -120,6 +124,7 @@ export function SecuritySection(): React.JSX.Element {
   const [newPw, setNewPw] = useState('')
   const [newConfirm, setNewConfirm] = useState('')
   const [disablePw, setDisablePw] = useState('')
+  const [encPw, setEncPw] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
 
   function resetFields(): void {
@@ -129,7 +134,28 @@ export function SecuritySection(): React.JSX.Element {
     setNewPw('')
     setNewConfirm('')
     setDisablePw('')
+    setEncPw('')
     setLocalError(null)
+  }
+
+  function handleEnableEncryption(e: FormEvent): void {
+    e.preventDefault()
+    setLocalError(null)
+    if (!encPw) {
+      setLocalError('Inserisci la password per attivare la cifratura.')
+      return
+    }
+    enableEncryption.mutate({ password: encPw }, { onSuccess: resetFields })
+  }
+
+  function handleDisableEncryption(e: FormEvent): void {
+    e.preventDefault()
+    setLocalError(null)
+    if (!encPw) {
+      setLocalError('Inserisci la password per disattivare la cifratura.')
+      return
+    }
+    disableEncryption.mutate({ password: encPw }, { onSuccess: resetFields })
   }
 
   function handleSet(e: FormEvent): void {
@@ -178,7 +204,9 @@ export function SecuritySection(): React.JSX.Element {
         {'Proteggi LexFlow con una password richiesta all’avvio. Nessun altro utente potrà aprire l’app senza conoscerla.'}
       </p>
       <p style={noteStyle}>
-        {'Nota: questa password blocca l’accesso all’app, ma non cifra ancora il file del database su disco. La cifratura a riposo arriverà in un aggiornamento successivo.'}
+        {data?.encrypted
+          ? 'Cifratura a riposo attiva: il database su disco è cifrato e apribile solo con questa password. Conservala: senza di essa i dati non sono recuperabili.'
+          : 'Questa password blocca l’accesso all’app. Per proteggere anche il file del database su disco, attiva la cifratura a riposo qui sotto.'}
       </p>
 
       {isLoading ? (
@@ -244,6 +272,59 @@ export function SecuritySection(): React.JSX.Element {
               <p style={successStyle}>Password rimossa: l’app non richiederà più lo sblocco.</p>
             )}
           </form>
+
+          {data.encrypted ? (
+            <form style={{ ...formStyle, marginTop: '24px' }} onSubmit={handleDisableEncryption}>
+              <p style={{ ...messageStyle, fontWeight: 600, color: 'var(--color-text)' }}>
+                Cifratura del database: attiva. Per disattivarla conferma la password:
+              </p>
+              <input
+                type="password"
+                style={inputStyle}
+                value={encPw}
+                onChange={(e) => setEncPw(e.target.value)}
+                placeholder="Password"
+                aria-label="Password per disattivare la cifratura"
+              />
+              <div style={buttonRowStyle}>
+                <button type="submit" style={dangerButtonStyle} disabled={disableEncryption.isPending}>
+                  {disableEncryption.isPending ? 'Disattivazione…' : 'Disattiva cifratura'}
+                </button>
+              </div>
+              {disableEncryption.data && (
+                <p style={successStyle}>
+                  Cifratura disattivata. Backup di sicurezza: {disableEncryption.data.safetyBackupPath}
+                </p>
+              )}
+            </form>
+          ) : (
+            <form style={{ ...formStyle, marginTop: '24px' }} onSubmit={handleEnableEncryption}>
+              <p style={{ ...messageStyle, fontWeight: 600, color: 'var(--color-text)' }}>
+                Cifratura del database a riposo: conferma la password per attivarla.
+              </p>
+              <p style={{ ...messageStyle, fontSize: '12px' }}>
+                {'Prima di cifrare viene creato automaticamente un backup di sicurezza. L’operazione può richiedere qualche istante.'}
+              </p>
+              <input
+                type="password"
+                style={inputStyle}
+                value={encPw}
+                onChange={(e) => setEncPw(e.target.value)}
+                placeholder="Password"
+                aria-label="Password per attivare la cifratura"
+              />
+              <div style={buttonRowStyle}>
+                <button type="submit" style={primaryButtonStyle} disabled={enableEncryption.isPending}>
+                  {enableEncryption.isPending ? 'Cifratura…' : 'Attiva cifratura'}
+                </button>
+              </div>
+              {enableEncryption.data && (
+                <p style={successStyle}>
+                  Database cifrato. Backup di sicurezza: {enableEncryption.data.safetyBackupPath}
+                </p>
+              )}
+            </form>
+          )}
         </>
       ) : (
         <form style={formStyle} onSubmit={handleSet}>
@@ -283,6 +364,14 @@ export function SecuritySection(): React.JSX.Element {
       )}
       {disableLock.isError && (
         <p style={{ ...errorStyle, marginTop: '10px' }}>{ipcErrorMessage(disableLock.error)}</p>
+      )}
+      {enableEncryption.isError && (
+        <p style={{ ...errorStyle, marginTop: '10px' }}>{ipcErrorMessage(enableEncryption.error)}</p>
+      )}
+      {disableEncryption.isError && (
+        <p style={{ ...errorStyle, marginTop: '10px' }}>
+          {ipcErrorMessage(disableEncryption.error)}
+        </p>
       )}
     </section>
   )

@@ -94,7 +94,9 @@ export const IPC_CHANNELS = {
   SECURITY_UNLOCK: 'security:unlock',
   SECURITY_SET_PASSWORD: 'security:setPassword',
   SECURITY_CHANGE_PASSWORD: 'security:changePassword',
-  SECURITY_DISABLE_LOCK: 'security:disableLock'
+  SECURITY_DISABLE_LOCK: 'security:disableLock',
+  SECURITY_ENABLE_ENCRYPTION: 'security:enableEncryption',
+  SECURITY_DISABLE_ENCRYPTION: 'security:disableEncryption'
 } as const
 
 export type AppGetVersionResponse = string
@@ -790,8 +792,10 @@ export interface SecurityStateResponse {
   locked: boolean
 }
 // Config mostrata nelle Impostazioni (sola lettura del marker, nessun DB).
+// `encrypted` (S14.2) è significativo solo con `lockEnabled=true`.
 export interface SecurityConfigResponse {
   lockEnabled: boolean
+  encrypted: boolean
 }
 export interface SecurityUnlockInput {
   password: string
@@ -814,6 +818,19 @@ export interface SecurityDisableLockInput {
 // Esito delle mutation su password/lock: nuovo stato del lock.
 export interface SecurityMutationResponse {
   lockEnabled: boolean
+}
+// Cifratura a riposo (S14.2): richiedono la re-immissione della password (la
+// chiave è derivata da essa; non è conservata in chiaro).
+export interface SecurityEnableEncryptionInput {
+  password: string
+}
+export interface SecurityDisableEncryptionInput {
+  password: string
+}
+export interface SecurityEncryptionResponse {
+  encrypted: boolean
+  // Percorso del backup di sicurezza creato prima dell'operazione.
+  safetyBackupPath: string
 }
 
 // --- Backup / ripristino (S11.3) ---
@@ -909,6 +926,8 @@ export interface LexFlowApi {
     setPassword(input: SecuritySetPasswordInput): Promise<SecurityMutationResponse>
     changePassword(input: SecurityChangePasswordInput): Promise<SecurityMutationResponse>
     disableLock(input: SecurityDisableLockInput): Promise<SecurityMutationResponse>
+    enableEncryption(input: SecurityEnableEncryptionInput): Promise<SecurityEncryptionResponse>
+    disableEncryption(input: SecurityDisableEncryptionInput): Promise<SecurityEncryptionResponse>
   }
   config: {
     listPhases(): Promise<ConfigListPhasesResponse>

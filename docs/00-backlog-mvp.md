@@ -167,7 +167,13 @@ Requisiti soddisfatti **storia-per-storia**; S13.* è stato un **audit di chiusu
   - **Nessuna password in chiaro**: si salva solo `salt` + un `verifier` derivato (PBKDF2, stdlib Node).
   - Con lock **disattivo** (default) l'avvio è identico a oggi: nessuna regressione.
   - _Confine:_ S14.1 **non cifra** il file DB (chi ha accesso al filesystem può ancora leggerlo con altri strumenti): la cifratura a riposo è **S14.2**, che riusa la stessa password come chiave. Nessun `HistoryEvent` (operazione di sistema, come tema/backup).
-- **S14.2** Cifratura a riposo del DB (SQLCipher via better-sqlite3-multiple-ciphers), abilitabile da impostazioni con migrazione del DB esistente. _(Should, v1.1)_. _Nota:_ il driver cifrabile è già adottato in E0 con cifratura spenta, quindi nessun cambio di driver. Riusa l'infrastruttura chiave e il cancello di boot di S14.1 (la password di sblocco deriva la chiave SQLCipher).
+- **S14.2** Cifratura a riposo del DB (via better-sqlite3-multiple-ciphers), abilitabile da impostazioni con migrazione del DB esistente. _(Should, v1.1)_. _Nota:_ il driver cifrabile è già adottato in E0 con cifratura spenta, quindi nessun cambio di driver. Riusa l'infrastruttura chiave e il cancello di boot di S14.1 (la password di sblocco deriva la chiave). _Criteri:_
+  - **Prerequisito password:** la cifratura è attivabile solo con lock attivo (serve una password da cui derivare la chiave). I controlli di cifratura compaiono solo dopo aver impostato una password.
+  - **Attiva cifratura** (Impostazioni): richiede la **re-immissione della password** (non è conservata in chiaro), esegue un **backup di sicurezza obbligatorio** (`pre-encrypt-<ts>.zip`), poi cifra il DB esistente in place (rekey della connessione viva) e segna `encrypted` nel marker. Se il backup fallisce, la cifratura **non** parte.
+  - **Boot cifrato:** all'avvio l'app è bloccata; lo sblocco deriva la **chiave** dalla password (PBKDF2, contesto `'key'`, distinto dal verifier) e apre il DB cifrato (pragma `key` prima di ogni altra operazione).
+  - **Cambio password:** se il DB è cifrato, cambiare password **ri-cifra** (rekey) il DB con la nuova chiave nella stessa operazione, così il DB resta apribile.
+  - **Disattiva cifratura:** re-immissione password + backup di sicurezza (`pre-decrypt-<ts>.zip`) + rekey a testo in chiaro + marker `encrypted=false`. La **rimozione password** è bloccata finché la cifratura è attiva (prima disattivare la cifratura).
+  - **Backup/ripristino:** l'archivio contiene il file DB **così com'è** (cifrato se la cifratura è attiva). Il ripristino è coerente **con la stessa password** (il marker in `userData` non è nell'archivio): documentato come vincolo. Nessuna migrazione DB, nessun `HistoryEvent` (operazione di sistema).
 
 ### E15 — Scadenzario / termini (post-MVP)
 

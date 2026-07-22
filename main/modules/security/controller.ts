@@ -3,13 +3,16 @@ import { z } from 'zod'
 import { IPC_CHANNELS } from '../../../shared/ipc'
 import type {
   SecurityConfigResponse,
+  SecurityEncryptionResponse,
   SecurityMutationResponse,
   SecurityStateResponse,
   SecurityUnlockResponse
 } from '../../../shared/ipc'
 import {
   changeLockPassword,
+  disableEncryption,
   disableLockPassword,
+  enableEncryption,
   getSecurityConfig,
   getSecurityState,
   setLockPassword,
@@ -35,6 +38,7 @@ const changePasswordSchema = z.object({
   newPassword: passwordSchema
 })
 const disableLockSchema = z.object({ currentPassword: passwordSchema })
+const encryptionSchema = z.object({ password: passwordSchema })
 
 export function registerSecurityHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.SECURITY_GET_STATE, (): SecurityStateResponse => {
@@ -73,6 +77,22 @@ export function registerSecurityHandlers(): void {
     (_event, input: unknown): SecurityMutationResponse => {
       logger.debug('IPC', IPC_CHANNELS.SECURITY_DISABLE_LOCK)
       return disableLockPassword(parseOrThrow(disableLockSchema, input))
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.SECURITY_ENABLE_ENCRYPTION,
+    (_event, input: unknown): SecurityEncryptionResponse => {
+      logger.debug('IPC', IPC_CHANNELS.SECURITY_ENABLE_ENCRYPTION)
+      return enableEncryption(parseOrThrow(encryptionSchema, input))
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.SECURITY_DISABLE_ENCRYPTION,
+    (_event, input: unknown): SecurityEncryptionResponse => {
+      logger.debug('IPC', IPC_CHANNELS.SECURITY_DISABLE_ENCRYPTION)
+      return disableEncryption(parseOrThrow(encryptionSchema, input))
     }
   )
 }

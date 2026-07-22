@@ -7,9 +7,9 @@ import { runSeed } from './seed'
 //   - main/app.ts, ramo boot con lock disattivo (comportamento MVP invariato);
 //   - modules/security/service.ts, handler `security:unlock` (apertura differita
 //     dopo la verifica della password).
-export function openAndInitDatabase(): void {
+export function openAndInitDatabase(keyHex?: string): void {
   if (isDbOpen()) return
-  initDatabase()
+  initDatabase(keyHex)
   runMigrations()
   runSeed()
 }

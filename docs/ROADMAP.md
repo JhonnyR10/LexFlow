@@ -54,7 +54,7 @@ Priorità indicativa; da concordare dopo gli sprint 1–3.
 
 | Epica / storia | Descrizione | Stima | Note |
 |---|---|---|---|
-| **E14** Protezione dati | Lock con password (**S14.1 ✅ fatto** 2026-07-22) + **cifratura DB a riposo** (S14.2, SQLCipher via better-sqlite3-multiple-ciphers) | L | Driver già cifrabile (cifratura spenta): nessun cambio di driver. Dati sensibili (collaboratori di giustizia). S14.1 ha già l'infrastruttura chiave + boot condizionale che S14.2 riusa. |
+| ~~**E14** Protezione dati~~ **✅ FATTA** (2026-07-22) | Lock con password (S14.1) + **cifratura DB a riposo** (S14.2, better-sqlite3-multiple-ciphers) | L | Fatta. Chiave derivata dalla password (PBKDF2), rekey della connessione viva con backup di sicurezza, boot cifrato via unlock. Vincolo: ripristino backup coerente con la stessa password. |
 | **S11.2b** Spostamento percorso dati | Cambio effettivo del percorso dati (swap a freddo + riavvio) | M | Infrastruttura puntatore già pronta (S11.2). |
 | **S9.2** Report aggregati | Riepiloghi per stato/collaboratore/professionista/importi/documenti | M | Should. Pagina Report già predisposta (informativa). |
 | **S9.3** Export Excel | Export `.xlsx` oltre al CSV | M | Could. |

@@ -9,7 +9,10 @@ import { securityApi } from '../../api/security'
 import type {
   SecurityChangePasswordInput,
   SecurityConfigResponse,
+  SecurityDisableEncryptionInput,
   SecurityDisableLockInput,
+  SecurityEnableEncryptionInput,
+  SecurityEncryptionResponse,
   SecurityMutationResponse,
   SecuritySetPasswordInput,
   SecurityStateResponse,
@@ -84,6 +87,36 @@ export function useDisableLock(): UseMutationResult<
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: SecurityDisableLockInput) => securityApi.disableLock(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['security'] })
+    },
+  })
+}
+
+export function useEnableEncryption(): UseMutationResult<
+  SecurityEncryptionResponse,
+  Error,
+  SecurityEnableEncryptionInput,
+  unknown
+> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: SecurityEnableEncryptionInput) => securityApi.enableEncryption(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['security'] })
+    },
+  })
+}
+
+export function useDisableEncryption(): UseMutationResult<
+  SecurityEncryptionResponse,
+  Error,
+  SecurityDisableEncryptionInput,
+  unknown
+> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: SecurityDisableEncryptionInput) => securityApi.disableEncryption(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['security'] })
     },

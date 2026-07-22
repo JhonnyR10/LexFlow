@@ -38,7 +38,9 @@ const kdfSchema = z.object({
 const markerSchema = z.object({
   lockEnabled: z.boolean(),
   kdf: kdfSchema.optional(),
-  verifier: z.string().optional()
+  verifier: z.string().optional(),
+  // Cifratura a riposo (S14.2). Significativo solo con lockEnabled=true.
+  encrypted: z.boolean().optional()
 })
 
 export type SecurityMarker = z.infer<typeof markerSchema>
@@ -72,23 +74,63 @@ export function readSecurityMarker(): SecurityMarker {
   }
 }
 
-function writeSecurityMarker(marker: SecurityMarker): void {
+// Esportata: la usano i flussi di S14.2 che devono scrivere il marker in modo
+// coordinato con il rekey del DB (cambio password su DB cifrato).
+export function persistMarker(marker: SecurityMarker): void {
   writeFileSync(markerPath(), JSON.stringify(marker, null, 2), 'utf-8')
 }
 
-// Deriva un valore dalla password. `context` separa i domini d'uso (S14.1 usa
-// solo 'verify'; S14.2 userà 'key'): salt effettivo = `<salt>|<context>`.
+// Deriva un valore dalla password. `context` separa i domini d'uso ('verify'
+// per il controllo password, 'key' per la chiave di cifratura): salt effettivo
+// = `<salt>|<context>`, così il verifier non rivela mai la chiave.
 function derive(password: string, saltHex: string, context: string): Buffer {
   const salt = Buffer.concat([Buffer.from(saltHex, 'hex'), Buffer.from(`|${context}`, 'utf-8')])
   return pbkdf2Sync(password, salt, KDF_ITERATIONS, KDF_KEYLEN, KDF_DIGEST)
 }
 
-function computeVerifier(password: string, saltHex: string): string {
+export function computeVerifier(password: string, saltHex: string): string {
   return derive(password, saltHex, 'verify').toString('hex')
+}
+
+// Chiave di cifratura a riposo (S14.2): 32 byte in esadecimale.
+export function computeKeyHex(password: string, saltHex: string): string {
+  return derive(password, saltHex, 'key').toString('hex')
+}
+
+export function generateSalt(): string {
+  return randomBytes(SALT_BYTES).toString('hex')
 }
 
 export function isLockEnabled(): boolean {
   return readSecurityMarker().lockEnabled
+}
+
+// Cifratura attiva: significativo solo con lock attivo e marker completo.
+export function isEncrypted(): boolean {
+  const m = readSecurityMarker()
+  return m.lockEnabled && m.encrypted === true
+}
+
+// Salt corrente (per derivare verifier/chiave con la stessa password).
+export function currentSalt(): string | null {
+  return readSecurityMarker().kdf?.salt ?? null
+}
+
+// Chiave di cifratura per la password data, con il salt corrente. Null se il
+// marker non ha un salt (lock non impostato).
+export function deriveCurrentKeyHex(password: string): string | null {
+  const salt = currentSalt()
+  return salt ? computeKeyHex(password, salt) : null
+}
+
+// Aggiorna solo il flag `encrypted` mantenendo lock/salt/verifier. Usato quando
+// si attiva/disattiva la cifratura senza cambiare la password.
+export function setEncryptedFlag(encrypted: boolean): void {
+  const m = readSecurityMarker()
+  if (!m.lockEnabled || !m.kdf || !m.verifier) {
+    throw new Error('Impossibile impostare la cifratura senza una password attiva.')
+  }
+  persistMarker({ ...m, encrypted })
 }
 
 // Stato usato dal cancello di boot: true = l'app deve chiedere lo sblocco.
@@ -113,15 +155,25 @@ export function assertPasswordPolicy(password: string): void {
   }
 }
 
-// Imposta (o reimposta) la password e attiva il lock. Genera un nuovo salt.
-export function setPassword(password: string): void {
-  assertPasswordPolicy(password)
-  const salt = randomBytes(SALT_BYTES).toString('hex')
-  writeSecurityMarker({
+// Costruisce un marker con lock attivo per (password, salt). `encrypted` va
+// passato esplicitamente dal chiamante: nel cambio password su DB cifrato deve
+// restare true e il rekey del DB va coordinato con questa scrittura.
+export function buildLockMarker(password: string, salt: string, encrypted: boolean): SecurityMarker {
+  return {
     lockEnabled: true,
     kdf: { salt, iterations: KDF_ITERATIONS, keylen: KDF_KEYLEN, digest: KDF_DIGEST },
-    verifier: computeVerifier(password, salt)
-  })
+    verifier: computeVerifier(password, salt),
+    encrypted
+  }
+}
+
+// Imposta (o reimposta) la password e attiva il lock, con cifratura spenta.
+// Genera un nuovo salt. Da usare solo quando il DB NON è cifrato (l'attivazione
+// iniziale del lock): il cambio password su DB cifrato passa da un flusso che
+// coordina il rekey (vedi security/service.ts).
+export function setPassword(password: string): void {
+  assertPasswordPolicy(password)
+  persistMarker(buildLockMarker(password, generateSalt(), false))
   logger.info('SECURITY_LOCK_ENABLED', 'password impostata')
 }
 
@@ -132,7 +184,7 @@ export function disableLock(): void {
   } catch (err) {
     logger.error('SECURITY_MARKER_REMOVE_ERROR', err instanceof Error ? err.message : String(err))
     // Fallback: sovrascrive con marker inerte così il boot non chiede sblocco.
-    writeSecurityMarker(DISABLED)
+    persistMarker(DISABLED)
   }
   logger.info('SECURITY_LOCK_DISABLED', 'password rimossa')
 }

@@ -17,21 +17,38 @@ export function getDbFilePath(): string {
   return join(getDataPath(), 'lexflow.db')
 }
 
-export function initDatabase(): BetterSQLite3Database<DbSchema> {
+export function initDatabase(keyHex?: string): BetterSQLite3Database<DbSchema> {
   const dbPath = getDbFilePath()
-  logger.info('DB_OPEN', dbPath)
+  logger.info('DB_OPEN', keyHex ? `${dbPath} (cifrato)` : dbPath)
 
   const sqlite = new Database(dbPath)
+
+  // Cifratura a riposo (S14.2): con better-sqlite3-multiple-ciphers la chiave va
+  // impostata come raw key PRIMA di ogni altra operazione. `keyHex` è una chiave
+  // a 32 byte in esadecimale, derivata dalla password (PBKDF2 contesto 'key').
+  if (keyHex) sqlite.pragma(`key="x'${keyHex}'"`)
+
   sqlite.pragma('journal_mode = WAL')
   sqlite.pragma('foreign_keys = ON')
 
   // better-sqlite3-multiple-ciphers è un drop-in di better-sqlite3 con API identica.
   // Il cast è necessario perché drizzle-orm tipizza il parametro su better-sqlite3 direttamente.
-  // In futuro, per abilitare la cifratura: sqlite.pragma("key = '<chiave>'") prima di questa riga,
-  // leggendo la chiave da AppSettings.security.encryptionEnabled.
   sqliteHandle = sqlite as unknown as BetterSqlite3.Database
   db = drizzle(sqliteHandle, { schema })
   return db
+}
+
+// Ri-cifra il DB sulla connessione viva (S14.2). `keyHex` = attiva/cambia la
+// cifratura con quella chiave; `null` = rimuove la cifratura (torna in chiaro).
+// Il rekey riscrive tutte le pagine: si svuota prima il WAL e si passa a
+// journal DELETE per sicurezza, poi si ripristina WAL.
+export function applyRekey(keyHex: string | null): void {
+  if (!sqliteHandle) throw new Error('Database non inizializzato.')
+  sqliteHandle.pragma('wal_checkpoint(TRUNCATE)')
+  sqliteHandle.pragma('journal_mode = DELETE')
+  if (keyHex) sqliteHandle.pragma(`rekey="x'${keyHex}'"`)
+  else sqliteHandle.pragma("rekey=''")
+  sqliteHandle.pragma('journal_mode = WAL')
 }
 
 // Svuota il WAL nel file DB principale, così una copia del solo `lexflow.db`

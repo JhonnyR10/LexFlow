@@ -30,7 +30,9 @@ const api: LexFlowApi = {
     unlock: (input) => ipcRenderer.invoke('security:unlock', input),
     setPassword: (input) => ipcRenderer.invoke('security:setPassword', input),
     changePassword: (input) => ipcRenderer.invoke('security:changePassword', input),
-    disableLock: (input) => ipcRenderer.invoke('security:disableLock', input)
+    disableLock: (input) => ipcRenderer.invoke('security:disableLock', input),
+    enableEncryption: (input) => ipcRenderer.invoke('security:enableEncryption', input),
+    disableEncryption: (input) => ipcRenderer.invoke('security:disableEncryption', input)
   },
   practices: {
     generateCodiceIstanza: (input) =>

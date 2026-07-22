@@ -1,7 +1,10 @@
 import type {
   SecurityChangePasswordInput,
   SecurityConfigResponse,
+  SecurityDisableEncryptionInput,
   SecurityDisableLockInput,
+  SecurityEnableEncryptionInput,
+  SecurityEncryptionResponse,
   SecurityMutationResponse,
   SecuritySetPasswordInput,
   SecurityStateResponse,
@@ -20,4 +23,10 @@ export const securityApi = {
     window.api.security.changePassword(input),
   disableLock: (input: SecurityDisableLockInput): Promise<SecurityMutationResponse> =>
     window.api.security.disableLock(input),
+  enableEncryption: (
+    input: SecurityEnableEncryptionInput
+  ): Promise<SecurityEncryptionResponse> => window.api.security.enableEncryption(input),
+  disableEncryption: (
+    input: SecurityDisableEncryptionInput
+  ): Promise<SecurityEncryptionResponse> => window.api.security.disableEncryption(input),
 }

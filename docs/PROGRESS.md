@@ -86,6 +86,54 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-22 — Sprint 4 / S14.2: Cifratura a riposo del DB — **E14 COMPLETA**
+
+Chiude **E14 Protezione dati** riusando l'infrastruttura di S14.1. Il file `lexflow.db` può ora
+essere **cifrato a riposo** (better-sqlite3-multiple-ciphers, raw key derivata dalla password). **Nessuna
+migrazione** (stato in `security.json`), **nessun `HistoryEvent`** (operazione di sistema), **nessuna
+dipendenza nuova** (driver già cifrabile da E0).
+
+**Design (sopra S14.1):**
+- **Chiave** = `PBKDF2(password, salt, 'key')` (32 byte), passata al driver come raw key
+  `PRAGMA key = "x'<hex>'"` **prima** di ogni altra pragma. Separazione di dominio dal verifier
+  (contesto `'verify'` vs `'key'`): il verifier non rivela la chiave.
+- **Attiva/disattiva** sulla **connessione viva** (`connection.ts:applyRekey`): checkpoint WAL →
+  `journal_mode=DELETE` → `PRAGMA rekey` (a chiave / a `''` per decifrare) → WAL. Precedute da un
+  **backup di sicurezza obbligatorio** (`pre-encrypt-<ts>.zip` / `pre-decrypt-<ts>.zip`); se fallisce,
+  l'operazione non parte. Richiedono la **re-immissione della password** (non è conservata in chiaro).
+- **Boot cifrato:** `security:unlock` deriva la chiave dalla password e apre il DB cifrato
+  (`openAndInitDatabase(keyHex)`). Il cancello di boot è quello di S14.1.
+- **Cambio password su DB cifrato:** rekey alla nuova chiave nella stessa operazione (rekey **prima**
+  della scrittura del marker, per non lasciare un marker che non apre il DB).
+- **Guard:** cifratura attivabile solo con lock attivo; **rimozione password bloccata** se cifrato
+  (prima disattivare la cifratura → `ConflictError`).
+- **Backup/ripristino:** l'archivio contiene il DB così com'è (cifrato se attivo); poiché il marker
+  vive fuori dall'archivio, il ripristino è coerente solo con la **stessa password** (vincolo documentato).
+
+**File modificati:**
+- `main/database/connection.ts`: `initDatabase(keyHex?)` (pragma key), `applyRekey(keyHex|null)`.
+- `main/database/bootstrapDb.ts`: `openAndInitDatabase(keyHex?)`.
+- `main/config/securityMarker.ts`: campo `encrypted`; `isEncrypted`, `computeKeyHex`,
+  `deriveCurrentKeyHex`, `currentSalt`, `generateSalt`, `computeVerifier`, `buildLockMarker`,
+  `setEncryptedFlag`, `persistMarker` (esposte per il flusso coordinato con il rekey).
+- `main/modules/security/service.ts`: `unlock` con chiave; `enableEncryption`/`disableEncryption`
+  (backup di sicurezza + rekey); `changeLockPassword` con rekey se cifrato; `disableLockPassword`
+  bloccata se cifrato.
+- `main/modules/security/controller.ts`, `main/preload.ts`, `shared/ipc.ts`: 2 canali
+  `security:enableEncryption`/`disableEncryption` + tipi; `SecurityConfigResponse.encrypted`.
+- `src/api/security.ts`, `src/features/security/useSecurity.ts`: client + hook cifratura.
+- `src/features/settings/SecuritySection.tsx`: controlli attiva/disattiva cifratura (solo con lock
+  attivo), nota dinamica, esito con percorso backup di sicurezza.
+- `docs/00-backlog-mvp.md` (AC S14.2), `docs/01-architecture.md`, `docs/02-data-model.md`.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · boot default (senza
+cifratura) senza regressioni ✓. **Round-trip cifratura validato sull'ABI Electron reale**
+(`ELECTRON_RUN_AS_NODE`): chiaro→rekey→riapri con chiave OK, apertura senza chiave / con chiave
+sbagliata rifiutata, decrypt→riapri in chiaro OK — conferma la sintassi pragma `key`/`rekey` e la
+sequenza WAL→DELETE→WAL usate in `connection.ts`. **Verifica GUI interattiva del flusso completo
+(attiva cifratura → riavvio → sblocco apre il DB cifrato → cambio password → disattiva) da completare
+con l'utente.**
+
 ### 2026-07-22 — Sprint 4 / S14.1: Lock dell'app con password all'avvio — **apre E14**
 
 Prima storia post-MVP (Sprint 4, **E14 Protezione dati**). Introduce un **cancello password
