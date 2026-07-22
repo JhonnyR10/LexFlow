@@ -67,3 +67,25 @@ export function resolveDataPath(): string {
 export function getDataPath(): string {
   return cachedDataPath ?? resolveDataPath()
 }
+
+// Lettura del puntatore SENZA cache né side effect (a differenza di
+// resolveDataPath, che cacha). La usa lo spostamento a freddo (S11.2b) per
+// leggere il vecchio percorso prima che venga risolto/cachato altrove.
+export function readStoredDataPath(): string {
+  const defaultPath = app.getPath('userData')
+  try {
+    if (!existsSync(pointerPath())) return defaultPath
+    const parsed = pointerSchema.safeParse(JSON.parse(readFileSync(pointerPath(), 'utf-8')))
+    return parsed.success ? parsed.data.dataPath : defaultPath
+  } catch {
+    return defaultPath
+  }
+}
+
+// Scrive il puntatore su un nuovo percorso e aggiorna la cache runtime (così un
+// eventuale getDataPath successivo nello stesso processo è coerente). Usata dallo
+// spostamento a freddo (S11.2b) dopo aver copiato i dati.
+export function writeStoredDataPath(newDataPath: string): void {
+  writePointer(newDataPath)
+  cachedDataPath = newDataPath
+}

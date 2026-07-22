@@ -1,6 +1,9 @@
-import { shell } from 'electron'
+import { app, dialog, shell, type BrowserWindow } from 'electron'
+import { accessSync, constants, existsSync } from 'fs'
+import { isAbsolute, join, relative, resolve } from 'path'
 import type {
   AlertConfig,
+  SettingsChangeDataPathResponse,
   SettingsGetAlertConfigResponse,
   SettingsGetResponse,
   SettingsOpenDataFolderResponse,
@@ -12,6 +15,8 @@ import type {
 import { DEFAULT_THEME, isThemeKey, type ThemeKey } from '../../../shared/themes'
 import { NotFoundError, ValidationError } from '../../errors/AppError'
 import { getDataPath } from '../../config/dataPath'
+import { writePendingMove } from '../../config/dataPathMove'
+import { checkpointDb } from '../../database/connection'
 import { logger } from '../../utils/logger'
 import { getAlertConfig, getAppSettingsRow, updateAlertConfig, updateThemeRow } from './repository'
 
@@ -70,6 +75,52 @@ function assertAlertConfig(cfg: AlertConfig): void {
       'Le soglie devono essere crescenti: giallo < arancione < rosso.'
     )
   }
+}
+
+// True se `child` è contenuto in `parent` (o coincide): evita copie ricorsive.
+function isInsideOrEqual(child: string, parent: string): boolean {
+  const rel = relative(parent, child)
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))
+}
+
+// Spostamento del percorso dati (S11.2b): sceglie la cartella, valida, programma
+// il move (marker) e riavvia. Lo swap effettivo avviene a freddo al boot.
+export async function changeDataPath(
+  win: BrowserWindow | null
+): Promise<SettingsChangeDataPathResponse> {
+  const picked = win
+    ? await dialog.showOpenDialog(win, { properties: ['openDirectory', 'createDirectory'] })
+    : await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
+  if (picked.canceled || picked.filePaths.length === 0) {
+    return { canceled: true }
+  }
+
+  const target = resolve(picked.filePaths[0])
+  const current = resolve(getDataPath())
+
+  if (target === current) {
+    throw new ValidationError('La cartella scelta è già il percorso dati corrente.')
+  }
+  if (isInsideOrEqual(target, current) || isInsideOrEqual(current, target)) {
+    throw new ValidationError('Scegli una cartella non contenuta nel percorso dati corrente (né viceversa).')
+  }
+  try {
+    accessSync(target, constants.W_OK)
+  } catch {
+    throw new ValidationError('La cartella scelta non è scrivibile.')
+  }
+  if (existsSync(join(target, 'lexflow.db'))) {
+    throw new ValidationError('La cartella scelta contiene già un archivio LexFlow.')
+  }
+
+  // Consolida il WAL nel file DB così la copia a freddo è consistente.
+  checkpointDb()
+  writePendingMove(target)
+  logger.info('DATA_PATH_MOVE_SCHEDULED', `${current} → ${target}`)
+
+  app.relaunch()
+  app.exit(0)
+  return { canceled: false, willRestart: true }
 }
 
 // Apre la cartella dati nel file manager di sistema (S11.2). `shell.openPath`

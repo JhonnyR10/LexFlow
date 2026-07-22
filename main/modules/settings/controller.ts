@@ -1,7 +1,8 @@
-import { ipcMain } from 'electron'
+import { ipcMain, BrowserWindow } from 'electron'
 import { z } from 'zod'
 import { IPC_CHANNELS } from '../../../shared/ipc'
 import type {
+  SettingsChangeDataPathResponse,
   SettingsGetAlertConfigResponse,
   SettingsGetResponse,
   SettingsOpenDataFolderResponse,
@@ -9,7 +10,7 @@ import type {
   SettingsUpdateThemeResponse,
 } from '../../../shared/ipc'
 import { THEME_KEYS } from '../../../shared/themes'
-import { getAppSettings, openDataFolder, readAlertConfig, saveAlertConfig, updateTheme } from './service'
+import { changeDataPath, getAppSettings, openDataFolder, readAlertConfig, saveAlertConfig, updateTheme } from './service'
 import { logger } from '../../utils/logger'
 
 function parseOrThrow<T>(schema: z.ZodType<T>, input: unknown): T {
@@ -71,6 +72,14 @@ export function registerSettingsHandlers(): void {
     (_event, input: unknown): SettingsUpdateAlertConfigResponse => {
       logger.debug('IPC', IPC_CHANNELS.SETTINGS_UPDATE_ALERT_CONFIG)
       return saveAlertConfig(parseOrThrow(alertConfigSchema, input))
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.SETTINGS_CHANGE_DATA_PATH,
+    (event): Promise<SettingsChangeDataPathResponse> => {
+      logger.debug('IPC', IPC_CHANNELS.SETTINGS_CHANGE_DATA_PATH)
+      return changeDataPath(BrowserWindow.fromWebContents(event.sender))
     }
   )
 }

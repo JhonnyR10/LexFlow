@@ -8,6 +8,7 @@ import { runOnCloseBackup, startAutoBackupScheduler } from './modules/backup/sch
 import { isDbOpen } from './database/connection'
 import { openAndInitDatabase } from './database/bootstrapDb'
 import { getBootSecurityState } from './config/securityMarker'
+import { applyPendingMove } from './config/dataPathMove'
 import { logger } from './utils/logger'
 
 let mainWindow: BrowserWindow | null = null
@@ -48,6 +49,9 @@ app.whenReady().then(async () => {
   logger.info('APP_START', `v${app.getVersion()}`)
 
   try {
+    // Spostamento del percorso dati (S11.2b): a freddo, PRIMA di risolvere/cachare
+    // il percorso in validateStartupConfig. Aggiorna il puntatore config.json.
+    applyPendingMove()
     await validateStartupConfig()
     // Se è in sospeso un ripristino, fai lo swap a freddo PRIMA di aprire il DB (S11.3).
     applyPendingRestore()

@@ -84,6 +84,7 @@ export const IPC_CHANNELS = {
   SETTINGS_OPEN_DATA_FOLDER: 'settings:openDataFolder',
   SETTINGS_GET_ALERT_CONFIG: 'settings:getAlertConfig',
   SETTINGS_UPDATE_ALERT_CONFIG: 'settings:updateAlertConfig',
+  SETTINGS_CHANGE_DATA_PATH: 'settings:changeDataPath',
   BACKUP_EXPORT: 'backup:export',
   BACKUP_RESTORE: 'backup:restore',
   BACKUP_GET_CONFIG: 'backup:getConfig',
@@ -859,6 +860,13 @@ export type SettingsGetAlertConfigResponse = AlertConfig
 export type UpdateAlertConfigInput = AlertConfig
 export type SettingsUpdateAlertConfigResponse = AlertConfig
 
+// Spostamento percorso dati (S11.2b). `willRestart=true` quando lo spostamento è
+// stato programmato e l'app si sta riavviando (lo swap avviene a freddo al boot).
+export interface SettingsChangeDataPathResponse {
+  canceled: boolean
+  willRestart?: boolean
+}
+
 // --- Sicurezza / lock all'avvio (S14.1) ---
 // Stato usato dal cancello di boot del renderer: `locked=true` → mostra la
 // schermata di sblocco. Lo stato vive nel marker esterno `security.json`
@@ -982,6 +990,7 @@ export interface LexFlowApi {
     openDataFolder(): Promise<SettingsOpenDataFolderResponse>
     getAlertConfig(): Promise<SettingsGetAlertConfigResponse>
     updateAlertConfig(input: UpdateAlertConfigInput): Promise<SettingsUpdateAlertConfigResponse>
+    changeDataPath(): Promise<SettingsChangeDataPathResponse>
   }
   backup: {
     export(): Promise<BackupExportResponse>

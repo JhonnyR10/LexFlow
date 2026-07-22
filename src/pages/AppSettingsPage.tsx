@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { DEFAULT_THEME, THEMES, type ThemeKey } from '../../shared/themes'
 import {
   useAppSettings,
+  useChangeDataPath,
   useOpenDataFolder,
   useUpdateTheme,
 } from '../features/settings/useSettings'
@@ -198,6 +199,7 @@ export function AppSettingsPage(): React.JSX.Element {
   const { data, isLoading, isError, error } = useAppSettings()
   const updateTheme = useUpdateTheme()
   const openDataFolder = useOpenDataFolder()
+  const changeDataPath = useChangeDataPath()
   const exportBackup = useExportBackup()
   const restoreBackup = useRestoreBackup()
   const resetArchive = useResetArchive()
@@ -282,7 +284,7 @@ export function AppSettingsPage(): React.JSX.Element {
       <section style={dataSectionStyle}>
         <h2 style={sectionTitleStyle}>Percorso dati</h2>
         <p style={sectionHintStyle}>
-          {'Cartella in cui LexFlow conserva il database e i documenti. Per spostare i dati su un altro PC usa Backup e ripristino.'}
+          {'Cartella in cui LexFlow conserva il database e i documenti. Puoi spostarla in un’altra cartella: i dati vengono trasferiti e l’app si riavvia.'}
         </p>
 
         {isLoading ? (
@@ -306,8 +308,21 @@ export function AppSettingsPage(): React.JSX.Element {
               >
                 Apri cartella
               </button>
+              <button
+                type="button"
+                style={actionButtonStyle}
+                onClick={() => changeDataPath.mutate()}
+                disabled={changeDataPath.isPending}
+              >
+                {changeDataPath.isPending ? 'Spostamento…' : 'Cambia cartella…'}
+              </button>
               {copied && <span style={copiedFeedbackStyle}>Copiato negli appunti</span>}
             </div>
+            {changeDataPath.isError && (
+              <p style={{ ...errorStyle, marginTop: '12px' }}>
+                Impossibile spostare i dati: {ipcErrorMessage(changeDataPath.error)}
+              </p>
+            )}
             {openDataFolder.isError && (
               <p style={{ ...errorStyle, marginTop: '12px' }}>
                 Impossibile aprire la cartella: {ipcErrorMessage(openDataFolder.error)}

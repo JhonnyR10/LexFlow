@@ -55,7 +55,7 @@ Priorità indicativa; da concordare dopo gli sprint 1–3.
 | Epica / storia | Descrizione | Stima | Note |
 |---|---|---|---|
 | ~~**E14** Protezione dati~~ **✅ FATTA** (2026-07-22) | Lock con password (S14.1) + **cifratura DB a riposo** (S14.2, better-sqlite3-multiple-ciphers) | L | Fatta. Chiave derivata dalla password (PBKDF2), rekey della connessione viva con backup di sicurezza, boot cifrato via unlock. Vincolo: ripristino backup coerente con la stessa password. |
-| **S11.2b** Spostamento percorso dati | Cambio effettivo del percorso dati (swap a freddo + riavvio) | M | Infrastruttura puntatore già pronta (S11.2). |
+| ~~**S11.2b** Spostamento percorso dati~~ **✅ FATTA** (2026-07-22) | Cambio effettivo del percorso dati (swap a freddo + riavvio) | M | Fatta. `applyPendingMove()` a freddo prima di validateStartupConfig; sposta DB+documenti, ripunta config.json, lascia i bootstrap file in userData. |
 | ~~**S9.2** Report aggregati~~ **✅ FATTA** (2026-07-22) | Riepiloghi per stato/collaboratore/professionista/importi/documenti | M | Fatta. Modulo `report` (IPC `report:summary`, aggregazione SQL backend); pagina Report riscritta. |
 | **S9.3** Export Excel | Export `.xlsx` oltre al CSV | M | Could. |
 | ~~**S11.5** Card Alert configurabili~~ **✅ FATTA** (2026-07-22) | Attiva/disattiva + soglie configurabili | S–M | Fatta. Sezione «Avvisi Dashboard»; gli alert S8.2 leggono `app_settings.alertsEnabled`/`alertThresholds`. Semantica fallback verso il basso. |

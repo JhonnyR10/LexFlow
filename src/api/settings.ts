@@ -1,4 +1,5 @@
 import type {
+  SettingsChangeDataPathResponse,
   SettingsGetAlertConfigResponse,
   SettingsGetResponse,
   SettingsOpenDataFolderResponse,
@@ -19,4 +20,6 @@ export const settingsApi = {
   updateAlertConfig: (
     input: UpdateAlertConfigInput
   ): Promise<SettingsUpdateAlertConfigResponse> => window.api.settings.updateAlertConfig(input),
+  changeDataPath: (): Promise<SettingsChangeDataPathResponse> =>
+    window.api.settings.changeDataPath(),
 }

@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-query'
 import { settingsApi } from '../../api/settings'
 import type {
+  SettingsChangeDataPathResponse,
   SettingsGetAlertConfigResponse,
   SettingsGetResponse,
   SettingsOpenDataFolderResponse,
@@ -48,6 +49,17 @@ export function useOpenDataFolder(): UseMutationResult<
 > {
   return useMutation({
     mutationFn: () => settingsApi.openDataFolder(),
+  })
+}
+
+export function useChangeDataPath(): UseMutationResult<
+  SettingsChangeDataPathResponse,
+  Error,
+  void,
+  unknown
+> {
+  return useMutation({
+    mutationFn: () => settingsApi.changeDataPath(),
   })
 }
 

@@ -86,6 +86,46 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-22 — Sprint 4 / S11.2b: Spostamento effettivo del percorso dati
+
+Storia media. La sezione «Percorso dati» ora ha «Cambia cartella…»: sceglie una nuova cartella,
+**sposta** DB + documenti e **riavvia**. Riusa il puntatore di bootstrap (S11.2) e il pattern «a freddo
+al boot + relaunch» del ripristino (S11.3). **Nessuna migrazione, nessun `HistoryEvent`.**
+
+**Ordine di boot (vincolante):** `applyPendingMove()` gira **prima** di `validateStartupConfig()` (che
+risolve/cacha il percorso). Legge/scrive il puntatore `config.json` direttamente (senza `getDataPath`)
+per non cachare il vecchio valore.
+
+**Flusso:** live → dialog `openDirectory`, validazioni (target ≠ corrente; non annidato in nessuna
+direzione; scrivibile; senza `lexflow.db` preesistente), `checkpointDb()`, marker `pending-move.json`,
+`app.relaunch()`. A freddo al boot → copia `lexflow.db`(+`-wal`/`-shm`) e `documenti/` vecchio→nuovo,
+verifica, **repoint** del puntatore, **rimozione** dei soli file dati dal vecchio (mai
+`config.json`/`security.json`, ancorati a `userData`), marker consumato. Robusto: errore → log + marker
+rimosso (niente boot-loop), vecchio percorso resta autorevole se il repoint non è avvenuto.
+
+**Interazione E14:** il DB è copiato così com'è (cifrato resta cifrato); `security.json` resta in
+`userData` → lo sblocco continua a funzionare.
+
+**File nuovi:** `main/config/dataPathMove.ts` (`writePendingMove`, `applyPendingMove`, marker).
+**File modificati:**
+- `main/config/dataPath.ts`: `readStoredDataPath()`/`writeStoredDataPath()` (puntatore senza cache).
+- `main/app.ts`: `applyPendingMove()` prima di `validateStartupConfig`.
+- `shared/ipc.ts`: canale `SETTINGS_CHANGE_DATA_PATH` + `SettingsChangeDataPathResponse`.
+- `main/modules/settings/service.ts`: `changeDataPath(win)` (dialog + validazioni + checkpoint +
+  marker + relaunch; helper `isInsideOrEqual`).
+- `main/modules/settings/controller.ts`: handler (window da `event.sender`).
+- `main/preload.ts`, `src/api/settings.ts`, `src/features/settings/useSettings.ts`: wiring +
+  `useChangeDataPath`.
+- `src/pages/AppSettingsPage.tsx`: pulsante «Cambia cartella…» + hint aggiornato + errore inline.
+- `docs/00-backlog-mvp.md` (S11.2b), `docs/01-architecture.md`, `docs/06-ui-ux.md`.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · smoke-test boot ✓ (senza
+marker → no-op, `STARTUP_CONFIG_OK`). **`applyPendingMove` validato sull'ABI Electron reale** (harness,
+11 asserzioni, caso critico old==userData): DB+documenti copiati nel target, puntatore ripuntato, vecchi
+dati rimossi, **`security.json`/`config.json` NON toccati**, marker consumato, idempotente. **Verifica
+GUI del giro completo (scelta cartella → riavvio → dati nel nuovo percorso, Info app aggiornata) da
+completare con l'utente.**
+
 ### 2026-07-22 — Sprint 4 / S11.5: Card Alert configurabili
 
 Storia media (Should). Nuova sezione **«Avvisi Dashboard»** in *Impostazioni app*: per ciascun livello
