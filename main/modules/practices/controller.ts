@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { ipcMain, BrowserWindow } from 'electron'
 import { z } from 'zod'
 import { IPC_CHANNELS } from '../../../shared/ipc'
 import type {
@@ -13,7 +13,9 @@ import type {
   RestoreFromTrashResponse,
   PermanentDeleteResponse,
   PracticesListTrashedResponse,
+  ExportPracticePdfResponse,
 } from '../../../shared/ipc'
+import { exportPracticePdf } from './pdf'
 import {
   generateCodiceIstanza,
   createPractice,
@@ -50,6 +52,10 @@ const getPracticeSchema = z.object({
 })
 
 const listAvailableTransitionsSchema = z.object({
+  practiceId: z.number().int().positive()
+})
+
+const exportPdfSchema = z.object({
   practiceId: z.number().int().positive()
 })
 
@@ -202,6 +208,15 @@ export function registerPracticesHandlers(): void {
     (): PracticesListTrashedResponse => {
       logger.debug('IPC', IPC_CHANNELS.PRACTICES_LIST_TRASHED)
       return listTrashedPractices()
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.PRACTICES_EXPORT_PDF,
+    (event, input: unknown): Promise<ExportPracticePdfResponse> => {
+      logger.debug('IPC', IPC_CHANNELS.PRACTICES_EXPORT_PDF)
+      const parsed = parseOrThrow(exportPdfSchema, input)
+      return exportPracticePdf(BrowserWindow.fromWebContents(event.sender), parsed)
     }
   )
 }

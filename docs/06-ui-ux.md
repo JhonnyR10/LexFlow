@@ -17,6 +17,8 @@ Interfaccia semplice, minimalista, professionale, usabile da chi non ha competen
 
 **Report (S9.2):** riepiloghi aggregati delle pratiche **attive** (cestino escluso) — totali importi, conteggi per stato/fase, per collaboratore e per professionista (con bucket «Non assegnato»), copertura documenti (decreto/fattura). Sola lettura; mantiene il rimando all'export CSV in «Pratiche». L'export Excel e i selettori di periodo sono post-MVP.
 
+**Export PDF scheda pratica (E16):** nel dettaglio pratica un pulsante «Esporta PDF» genera un dossier stampabile della singola pratica (dati generali, soggetti, importi + differenze, campi personalizzati, fase, documenti, storico) e lo salva via dialog. Il PDF ha colori da documento (non segue il tema dell'app).
+
 **Percorso dati — spostamento (S11.2b):** la sezione «Percorso dati» ha, oltre a Copia/Apri cartella, un pulsante «Cambia cartella…» che sceglie una nuova cartella, sposta DB e documenti e **riavvia l'app**. Il vecchio archivio viene rimosso dopo lo spostamento (dati sensibili). Con cifratura attiva (E14) lo sblocco continua a funzionare.
 
 **Avvisi Dashboard configurabili (S11.5):** in *Impostazioni app*, sezione «Avvisi Dashboard» con, per ciascun livello (giallo/arancione/rosso), un toggle di attivazione e la soglia in giorni (default 30/60/90). Regola di severità: l'alert di una pratica compare al **livello più alto tra quelli abilitati** la cui soglia (giorni dalla data deposito) è superata; disabilitare un livello non nasconde una pratica più vecchia, la mostra al livello inferiore abilitato. I colori dei tre livelli restano semantici fissi (regola 8), indipendenti dal tema. Le soglie devono essere strettamente crescenti.

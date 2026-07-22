@@ -19,6 +19,8 @@ import type {
   PermanentDeleteInput,
   PermanentDeleteResponse,
   PracticesListTrashedResponse,
+  ExportPracticePdfInput,
+  ExportPracticePdfResponse,
 } from '../../shared/ipc'
 
 export const practicesApi = {
@@ -64,4 +66,7 @@ export const practicesApi = {
 
   listTrashed: (): Promise<PracticesListTrashedResponse> =>
     window.api.practices.listTrashed(),
+
+  exportPdf: (input: ExportPracticePdfInput): Promise<ExportPracticePdfResponse> =>
+    window.api.practices.exportPdf(input),
 }

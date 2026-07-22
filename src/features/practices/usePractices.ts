@@ -23,7 +23,20 @@ import type {
   PermanentDeleteInput,
   PermanentDeleteResponse,
   PracticesListTrashedResponse,
+  ExportPracticePdfInput,
+  ExportPracticePdfResponse,
 } from '../../../shared/ipc'
+
+export function useExportPracticePdf(): UseMutationResult<
+  ExportPracticePdfResponse,
+  Error,
+  ExportPracticePdfInput,
+  unknown
+> {
+  return useMutation({
+    mutationFn: (input: ExportPracticePdfInput) => practicesApi.exportPdf(input),
+  })
+}
 
 export function useActivePractices(): UseQueryResult<PracticesListResponse, Error> {
   return useQuery({

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { usePracticeDetail, useMoveToTrash, useRestoreFromTrash } from '../features/practices/usePractices'
+import { usePracticeDetail, useMoveToTrash, useRestoreFromTrash, useExportPracticePdf } from '../features/practices/usePractices'
 import { WorkflowActions } from '../features/practices/WorkflowActions'
 import { ModificaPraticaModal } from '../features/practices/ModificaPraticaModal'
 import { MoveToTrashModal } from '../features/practices/MoveToTrashModal'
@@ -374,6 +374,7 @@ export function DettaglioPraticaPage(): React.JSX.Element {
   const navigate = useNavigate()
   const moveToTrash = useMoveToTrash()
   const restore = useRestoreFromTrash()
+  const exportPdf = useExportPracticePdf()
   const [editing, setEditing] = useState(false)
   const [trashing, setTrashing] = useState(false)
   const [trashError, setTrashError] = useState<string | null>(null)
@@ -472,6 +473,18 @@ export function DettaglioPraticaPage(): React.JSX.Element {
           <div style={{ flexShrink: 0, display: 'flex', gap: '10px' }}>
             <button
               type="button"
+              onClick={() => numericId != null && exportPdf.mutate({ practiceId: numericId })}
+              disabled={exportPdf.isPending}
+              style={{
+                padding: '8px 18px', background: 'var(--color-bg)', color: 'var(--color-text)',
+                border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '13px',
+                fontWeight: 500, cursor: 'pointer',
+              }}
+            >
+              {exportPdf.isPending ? 'Esportazione…' : 'Esporta PDF'}
+            </button>
+            <button
+              type="button"
               onClick={() => setEditing(true)}
               style={{
                 padding: '8px 18px', background: 'var(--color-bg)', color: 'var(--color-text)',
@@ -495,6 +508,17 @@ export function DettaglioPraticaPage(): React.JSX.Element {
           </div>
         )}
       </div>
+
+      {exportPdf.data?.canceled === false && exportPdf.data.path && (
+        <div style={{ marginBottom: '16px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+          PDF salvato: {exportPdf.data.path}
+        </div>
+      )}
+      {exportPdf.isError && (
+        <div style={{ marginBottom: '16px', fontSize: '13px', color: 'var(--color-error)' }}>
+          Impossibile esportare il PDF: {ipcErrorMessage(exportPdf.error)}
+        </div>
+      )}
 
       {practice.isTrashed && (
         <div style={{

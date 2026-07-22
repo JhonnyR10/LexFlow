@@ -195,7 +195,7 @@ Requisiti soddisfatti **storia-per-storia**; S13.* è stato un **audit di chiusu
 
 ### E16 — Export PDF scheda pratica (post-MVP)
 
-- **S16.1** Generazione PDF della scheda di una singola pratica (dati, importi, storico, documenti elencati), stampabile/archiviabile. _(Could)_.
+- **S16.1** Generazione PDF della scheda di una singola pratica (dati, importi, storico, documenti elencati), stampabile/archiviabile. _(Could, FATTO)_. Dal dettaglio pratica un pulsante «Esporta PDF» genera il dossier e lo salva via dialog. Implementazione **dependency-free**: HTML composto nel main dai dati del dettaglio (`getPracticeDetail` + documenti + label campi generali), reso in PDF da una **BrowserWindow offscreen** via `webContents.printToPDF`. Colori da documento (il PDF è un file, non l'UI: non theme-aware). _AC:_ il PDF contiene intestazione, dati generali (con giorni dalla data deposito), soggetti, i 4 importi + differenze (null → «Non presente/Non calcolabile», nessun `NaN`), campi personalizzati con label, fase corrente, documenti elencati, storico; annullare il dialog non crea file; export di una sola pratica (no batch). Nessuna migrazione, nessun `HistoryEvent`.
 
 ---
 

@@ -71,6 +71,7 @@ export const IPC_CHANNELS = {
   PRACTICES_RESTORE: 'practices:restore',
   PRACTICES_PERMANENT_DELETE: 'practices:permanentDelete',
   PRACTICES_LIST_TRASHED: 'practices:listTrashed',
+  PRACTICES_EXPORT_PDF: 'practices:exportPdf',
   DOCUMENTS_LIST: 'documents:listByPractice',
   DOCUMENTS_UPLOAD: 'documents:upload',
   DOCUMENTS_DELETE: 'documents:delete',
@@ -600,6 +601,15 @@ export interface PracticeDetail {
 
 export type GetPracticeResponse = PracticeDetail
 
+// Export PDF scheda pratica (E16). `canceled=true` se l'utente annulla il dialog.
+export interface ExportPracticePdfInput {
+  practiceId: number
+}
+export interface ExportPracticePdfResponse {
+  canceled: boolean
+  path?: string
+}
+
 // --- Sposta nel cestino (soft delete) — S10.1 ---
 // Cestina N pratiche con un motivo condiviso. Usato sia dal dettaglio (un id)
 // sia dalla toolbar di selezione dell'elenco (più id). Idempotente: le pratiche
@@ -1061,6 +1071,7 @@ export interface LexFlowApi {
     restore(input: RestoreFromTrashInput): Promise<RestoreFromTrashResponse>
     permanentDelete(input: PermanentDeleteInput): Promise<PermanentDeleteResponse>
     listTrashed(): Promise<PracticesListTrashedResponse>
+    exportPdf(input: ExportPracticePdfInput): Promise<ExportPracticePdfResponse>
   }
   documents: {
     listByPractice(input: ListDocumentsInput): Promise<ListDocumentsResponse>

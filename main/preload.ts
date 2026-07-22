@@ -63,7 +63,9 @@ const api: LexFlowApi = {
     permanentDelete: (input) =>
       ipcRenderer.invoke('practices:permanentDelete', input),
     listTrashed: () =>
-      ipcRenderer.invoke('practices:listTrashed')
+      ipcRenderer.invoke('practices:listTrashed'),
+    exportPdf: (input) =>
+      ipcRenderer.invoke('practices:exportPdf', input)
   },
   documents: {
     listByPractice: (input) =>

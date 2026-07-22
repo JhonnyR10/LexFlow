@@ -86,6 +86,38 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-22 — Sprint 4 / E16 (S16.1): Export PDF della scheda pratica
+
+Storia media (Could). Dal dettaglio pratica «Esporta PDF» genera un dossier stampabile della singola
+pratica. **Dependency-free**: HTML composto nel main dai dati del dettaglio, reso in PDF da una
+**BrowserWindow offscreen** via `webContents.printToPDF`. **Nessuna dipendenza, nessuna migrazione,
+nessun `HistoryEvent`.**
+
+**Contenuti PDF:** intestazione (codice, nome, fase, data generazione), dati generali (+ giorni dalla
+data deposito), soggetti, 4 importi + differenze (null → «Non presente/Non calcolabile»), campi
+personalizzati con label risolte, workflow (fase corrente/precedente), documenti elencati, storico.
+Colori da documento (non theme-aware: è un file, non l'UI).
+
+**File nuovi:** `main/modules/practices/pdfTemplate.ts` (`buildPracticeHtml` puro), `main/modules/
+practices/pdf.ts` (`exportPracticePdf`: detail + documenti + label campi → HTML → temp file → offscreen
+window → `printToPDF` → dialog di salvataggio).
+**File modificati:**
+- `shared/ipc.ts`: canale `PRACTICES_EXPORT_PDF` + `ExportPracticePdfInput`/`ExportPracticePdfResponse`
+  + `LexFlowApi.practices.exportPdf`.
+- `main/modules/practices/controller.ts`: handler (window da `event.sender`, zod).
+- `main/preload.ts`, `src/api/practices.ts`, `src/features/practices/usePractices.ts`: wiring +
+  `useExportPracticePdf`.
+- `src/pages/DettaglioPraticaPage.tsx`: pulsante «Esporta PDF» nell'intestazione + feedback
+  percorso/errore.
+- `docs/00-backlog-mvp.md` (S16.1 AC), `docs/01-architecture.md` (PDF via printToPDF), `docs/06-ui-ux.md`.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · smoke-test boot ✓.
+**Template + printToPDF validati end-to-end sull'Electron reale** (harness, finestra offscreen): PDF
+`%PDF` valido (2 pagine, ~78KB); HTML con codice/nome, label campi risolte, «Non calcolabile» per
+differenze con operando mancante, importi it-IT, escaping caratteri speciali, nessun `NaN`/`undefined`,
+documenti elencati. PDF di esempio (dati fittizi) mostrato all'utente. **Verifica GUI del giro reale
+(pulsante → dialog → PDF salvato/apribile su una pratica vera) da completare con l'utente.**
+
 ### 2026-07-22 — Sprint 4 / S11.2b: Spostamento effettivo del percorso dati
 
 Storia media. La sezione «Percorso dati» ora ha «Cambia cartella…»: sceglie una nuova cartella,
