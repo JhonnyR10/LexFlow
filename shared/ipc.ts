@@ -84,6 +84,7 @@ export const IPC_CHANNELS = {
   DASHBOARD_ALERTS: 'dashboard:alerts',
   DASHBOARD_AGING: 'dashboard:aging',
   DASHBOARD_MISSING_DOCUMENTS: 'dashboard:missingDocuments',
+  DASHBOARD_SCADENZE_ALERTS: 'dashboard:scadenzeAlerts',
   SETTINGS_GET: 'settings:get',
   SETTINGS_UPDATE_THEME: 'settings:updateTheme',
   SETTINGS_OPEN_DATA_FOLDER: 'settings:openDataFolder',
@@ -832,6 +833,21 @@ export interface DashboardMissingDocItem {
 }
 export type DashboardMissingDocumentsResponse = DashboardMissingDocItem[]
 
+// Alert scadenze (S15.2): una riga per scadenza pendente di pratica attiva.
+// `severity`: 'red' = scaduta (dataScadenza < oggi), 'orange' = imminente (entro
+// 7 giorni). `daysUntil` = giorni da oggi alla scadenza (negativo se scaduta).
+export interface DashboardScadenzaAlert {
+  scadenzaId: number
+  practiceId: number
+  codiceIstanza: string
+  nomeIstanza: string
+  descrizione: string
+  dataScadenza: string
+  daysUntil: number
+  severity: 'red' | 'orange'
+}
+export type DashboardScadenzeAlertsResponse = DashboardScadenzaAlert[]
+
 // --- Report aggregati (S9.2) ---
 // Fotografia aggregata delle pratiche ATTIVE (cestino escluso). Aggregazione
 // nel backend (modulo report); il renderer si limita a mostrare. Importi con
@@ -1126,6 +1142,7 @@ export interface LexFlowApi {
     alerts(): Promise<DashboardAlertsResponse>
     aging(): Promise<DashboardAgingResponse>
     missingDocuments(): Promise<DashboardMissingDocumentsResponse>
+    scadenzeAlerts(): Promise<DashboardScadenzeAlertsResponse>
   }
   anagrafiche: {
     listProfessionisti(): Promise<AnagraficheListProfessionistiResponse>

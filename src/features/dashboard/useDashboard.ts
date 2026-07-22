@@ -5,6 +5,7 @@ import type {
   DashboardAlertsResponse,
   DashboardMissingDocumentsResponse,
   DashboardPhaseCountsResponse,
+  DashboardScadenzeAlertsResponse,
 } from '../../../shared/ipc'
 
 export function useDashboardPhaseCounts(): UseQueryResult<DashboardPhaseCountsResponse, Error> {
@@ -32,5 +33,12 @@ export function useDashboardMissingDocuments(): UseQueryResult<DashboardMissingD
   return useQuery({
     queryKey: ['dashboard', 'missingDocs'],
     queryFn: () => dashboardApi.missingDocuments(),
+  })
+}
+
+export function useDashboardScadenzeAlerts(): UseQueryResult<DashboardScadenzeAlertsResponse, Error> {
+  return useQuery({
+    queryKey: ['dashboard', 'scadenzeAlerts'],
+    queryFn: () => dashboardApi.scadenzeAlerts(),
   })
 }

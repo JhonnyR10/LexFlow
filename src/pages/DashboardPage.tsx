@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { AgingSection } from '../features/dashboard/AgingSection'
 import { AlertsSection } from '../features/dashboard/AlertsSection'
+import { ScadenzeAlertsSection } from '../features/dashboard/ScadenzeAlertsSection'
 import { MissingDocumentsSection } from '../features/dashboard/MissingDocumentsSection'
 import { PhaseCountCards } from '../features/dashboard/PhaseCountCards'
 import { useDashboardPhaseCounts } from '../features/dashboard/useDashboard'
@@ -87,6 +88,7 @@ export function DashboardPage(): React.JSX.Element {
       ) : (
         <>
           <AlertsSection />
+          <ScadenzeAlertsSection />
           <MissingDocumentsSection />
           <AgingSection />
           <h2 style={sectionTitleStyle}>Pratiche per fase</h2>

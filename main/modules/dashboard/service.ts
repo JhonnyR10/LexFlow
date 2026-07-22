@@ -7,6 +7,8 @@ import type {
   DashboardMissingDocItem,
   DashboardMissingDocumentsResponse,
   DashboardPhaseCountsResponse,
+  DashboardScadenzaAlert,
+  DashboardScadenzeAlertsResponse,
   DocumentKind,
 } from '../../../shared/ipc'
 import type { AlertConfig } from '../../../shared/ipc'
@@ -15,6 +17,7 @@ import { getAlertConfig } from '../settings/repository'
 import {
   findActiveOpenPracticesWithDeposit,
   findActiveOpenPracticesWithDocFlags,
+  findActivePendingScadenze,
   findActivePhaseCounts,
   type OpenPracticeDocFlagsRow,
   type OpenPracticeRow,
@@ -160,4 +163,43 @@ export function getDashboardMissingDocuments(): DashboardMissingDocumentsRespons
         b.missing.length - a.missing.length ||
         a.codiceIstanza.localeCompare(b.codiceIstanza, 'it')
     )
+}
+
+// Finestra di imminenza fissa (S15.2): una scadenza è "imminente" se cade entro
+// questi giorni da oggi. Le scadute (data passata) sono sempre in alert.
+const IMMINENCE_DAYS = 7
+
+// Giorni interi da oggi (mezzanotte locale) alla data `YYYY-MM-DD`. Negativo se
+// passata. Round: entrambe le date sono a mezzanotte, quindi multiplo esatto.
+function daysUntilDate(dateIso: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateIso)
+  if (!m) return null
+  const target = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  if (Number.isNaN(target.getTime())) return null
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000)
+}
+
+// Alert scadenze (S15.2): scadute (rosso) e imminenti entro IMMINENCE_DAYS
+// (arancione); oltre, escluse. Ordinate per giorni crescenti: scadute (più
+// negative) prima, poi imminenti più vicine.
+export function getDashboardScadenzeAlerts(): DashboardScadenzeAlertsResponse {
+  return findActivePendingScadenze()
+    .map((row): DashboardScadenzaAlert | null => {
+      const daysUntil = daysUntilDate(row.dataScadenza)
+      if (daysUntil === null || daysUntil > IMMINENCE_DAYS) return null
+      return {
+        scadenzaId:    row.scadenzaId,
+        practiceId:    row.practiceId,
+        codiceIstanza: row.codiceIstanza,
+        nomeIstanza:   row.nomeIstanza,
+        descrizione:   row.descrizione,
+        dataScadenza:  row.dataScadenza,
+        daysUntil,
+        severity:      daysUntil < 0 ? 'red' : 'orange',
+      }
+    })
+    .filter((a): a is DashboardScadenzaAlert => a !== null)
+    .sort((a, b) => a.daysUntil - b.daysUntil)
 }

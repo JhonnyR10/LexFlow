@@ -86,6 +86,34 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-22 — Sprint 4 / S15.2: Alert scadenze in Dashboard — **E15 COMPLETA**
+
+Chiude **E15**. Nuova sezione «Scadenze» in Dashboard, distinta dagli alert giorni-da-deposito (S8.2).
+**Nessuna migrazione, nessun `HistoryEvent`** (aggregato read-only).
+
+**Regola:** una riga per **scadenza pendente** (non completata) di pratica **attiva** (cestino escluso).
+**Scaduta** (data < oggi) → severità rossa; **imminente** (entro **7 giorni** fissi) → arancione; oltre
+7g esclusa. Colori semantici fissi (regola 8). Ordinamento per giorni crescenti: scadute prima (più
+scadute in cima), poi imminenti più vicine. `daysUntil` calcolato a mezzanotte locale.
+
+**File nuovi:** `src/features/dashboard/ScadenzeAlertsSection.tsx`.
+**File modificati:**
+- `shared/ipc.ts`: canale `DASHBOARD_SCADENZE_ALERTS` + `DashboardScadenzaAlert` + response + API.
+- `main/modules/dashboard/repository.ts`: `findActivePendingScadenze()` (join scadenze+practices, non
+  completate, non cestinate).
+- `main/modules/dashboard/service.ts`: `getDashboardScadenzeAlerts()` (`daysUntilDate`, finestra
+  `IMMINENCE_DAYS=7`, severità, ordine).
+- `main/modules/dashboard/controller.ts`, `main/preload.ts`, `src/api/dashboard.ts`,
+  `src/features/dashboard/useDashboard.ts`: wiring + `useDashboardScadenzeAlerts`.
+- `src/pages/DashboardPage.tsx`: monta la sezione dopo «Avvisi».
+- `src/features/scadenze/useScadenze.ts`: invalidazione `['dashboard']` sulle mutation (aggiorna gli alert).
+- `docs/00-backlog-mvp.md` (S15.2), `docs/06-ui-ux.md`.
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · smoke-test boot ✓.
+**Logica validata sull'ABI Electron reale** (harness, 7 asserzioni, copia DB dev): scaduta(-3)→rosso,
+imminente(+2)/bordo(+7)→arancione, lontana(+10) e completata escluse, ordine per giorni crescenti,
+daysUntil corretti. **Verifica GUI da completare con l'utente.**
+
 ### 2026-07-22 — Sprint 4 / S15.1: Scadenzario (entità termine + CRUD) — **apre E15**
 
 Primo step di **E15 Scadenzario**. Nuova entità **Scadenza** (termine) legata alla pratica, con CRUD dal

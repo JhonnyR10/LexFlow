@@ -1,6 +1,6 @@
 import { and, count, eq, sql } from 'drizzle-orm'
 import { getDb } from '../../database/connection'
-import { practices, phases, documents } from '../../database/schema'
+import { practices, phases, documents, scadenze } from '../../database/schema'
 
 export interface PhaseCountRow {
   phaseId: number
@@ -100,4 +100,32 @@ export function findActiveOpenPracticesWithDocFlags(): OpenPracticeDocFlagsRow[]
     hasDecreto:              r.hasDecreto > 0,
     hasFattura:              r.hasFattura > 0,
   }))
+}
+
+export interface PendingScadenzaRow {
+  scadenzaId: number
+  practiceId: number
+  codiceIstanza: string
+  nomeIstanza: string
+  descrizione: string
+  dataScadenza: string
+}
+
+// Scadenze pendenti (non completate) di pratiche attive (non cestinate), per gli
+// alert scadenze (S15.2). Il filtro scadute/imminenti e l'ordinamento vivono nel
+// service. Qui solo lettura.
+export function findActivePendingScadenze(): PendingScadenzaRow[] {
+  return getDb()
+    .select({
+      scadenzaId:    scadenze.id,
+      practiceId:    practices.id,
+      codiceIstanza: practices.codiceIstanza,
+      nomeIstanza:   practices.nomeIstanza,
+      descrizione:   scadenze.descrizione,
+      dataScadenza:  scadenze.dataScadenza,
+    })
+    .from(scadenze)
+    .innerJoin(practices, eq(scadenze.practiceId, practices.id))
+    .where(and(eq(scadenze.completata, false), eq(practices.isTrashed, false)))
+    .all()
 }

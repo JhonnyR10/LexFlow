@@ -5,12 +5,14 @@ import type {
   DashboardAlertsResponse,
   DashboardMissingDocumentsResponse,
   DashboardPhaseCountsResponse,
+  DashboardScadenzeAlertsResponse,
 } from '../../../shared/ipc'
 import {
   getDashboardAging,
   getDashboardAlerts,
   getDashboardMissingDocuments,
   getDashboardPhaseCounts,
+  getDashboardScadenzeAlerts,
 } from './service'
 import { logger } from '../../utils/logger'
 
@@ -44,6 +46,14 @@ export function registerDashboardHandlers(): void {
     (): DashboardMissingDocumentsResponse => {
       logger.debug('IPC', IPC_CHANNELS.DASHBOARD_MISSING_DOCUMENTS)
       return getDashboardMissingDocuments()
+    }
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.DASHBOARD_SCADENZE_ALERTS,
+    (): DashboardScadenzeAlertsResponse => {
+      logger.debug('IPC', IPC_CHANNELS.DASHBOARD_SCADENZE_ALERTS)
+      return getDashboardScadenzeAlerts()
     }
   )
 }

@@ -3,6 +3,7 @@ import type {
   DashboardAlertsResponse,
   DashboardMissingDocumentsResponse,
   DashboardPhaseCountsResponse,
+  DashboardScadenzeAlertsResponse,
 } from '../../shared/ipc'
 
 export const dashboardApi = {
@@ -14,4 +15,6 @@ export const dashboardApi = {
     window.api.dashboard.aging(),
   missingDocuments: (): Promise<DashboardMissingDocumentsResponse> =>
     window.api.dashboard.missingDocuments(),
+  scadenzeAlerts: (): Promise<DashboardScadenzeAlertsResponse> =>
+    window.api.dashboard.scadenzeAlerts(),
 }

@@ -30,6 +30,8 @@ function useScadenzaMutationInvalidation(practiceId: number): () => void {
   return () => {
     queryClient.invalidateQueries({ queryKey: ['scadenze', practiceId] })
     queryClient.invalidateQueries({ queryKey: ['practice', practiceId] })
+    // Gli alert scadenze in Dashboard (S15.2) dipendono da queste modifiche.
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] })
   }
 }
 
