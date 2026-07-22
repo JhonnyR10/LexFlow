@@ -59,7 +59,7 @@ Priorità indicativa; da concordare dopo gli sprint 1–3.
 | **S9.2** Report aggregati | Riepiloghi per stato/collaboratore/professionista/importi/documenti | M | Should. Pagina Report già predisposta (informativa). |
 | **S9.3** Export Excel | Export `.xlsx` oltre al CSV | M | Could. |
 | **S11.5** Card Alert configurabili | Attiva/disattiva + soglie configurabili | S–M | Should. Config già in `app_settings`. |
-| **S11.6** Info app | Versione/stato sistema/percorsi in Impostazioni | S | Should. Riusa `app:getVersion`. |
+| ~~**S11.6** Info app~~ **✅ FATTA** (2026-07-22) | Versione/stato sistema/percorsi in Impostazioni | S | Fatta. Sezione «Info app»: versione, runtime, sistema, percorsi, stato sicurezza, conteggi archivio (IPC `app:getInfo`). |
 | **E15** Scadenzario/termini | Entità scadenza per pratica + alert dedicati | L | Could. |
 | **E16** Export PDF scheda | PDF della scheda di una singola pratica | M | Could. |
 | **E12** Assistente locale | Assistente rule-based su dati attivi; API opzionale spenta | L | v1.1+. |

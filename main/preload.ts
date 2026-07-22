@@ -3,7 +3,8 @@ import type { LexFlowApi } from '../shared/ipc'
 
 const api: LexFlowApi = {
   app: {
-    getVersion: (): Promise<string> => ipcRenderer.invoke('app:getVersion')
+    getVersion: (): Promise<string> => ipcRenderer.invoke('app:getVersion'),
+    getInfo: () => ipcRenderer.invoke('app:getInfo')
   },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),

@@ -86,6 +86,30 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-22 — Sprint 4 / S11.6: Info app / stato sistema / versione
+
+Storia piccola (Should). Nuova sezione **«Info app»** in *Impostazioni app*: versione, runtime,
+sistema, percorsi, stato sicurezza, conteggi archivio. **Sola lettura**, un solo nuovo IPC read-only,
+**nessuna migrazione**, **nessun `HistoryEvent`**.
+
+**Contenuti:** versione app; runtime Electron/Chromium/Node/V8 (`process.versions`); sistema
+piattaforma+arch; percorsi dati e backup; sicurezza lock/cifratura (**riuso** `security:getConfig`, E14);
+pratiche attive e nel cestino (**riuso** hook `useActivePractices`/`useTrashedPractices` — nessun IPC
+dedicato ai conteggi).
+
+**File nuovi:** `src/features/settings/useAppInfo.ts`, `src/features/settings/InfoSection.tsx`.
+**File modificati:**
+- `shared/ipc.ts`: canale `APP_GET_INFO`, tipo `AppInfoResponse`, `LexFlowApi.app.getInfo`.
+- `main/modules/app/controller.ts`: handler `app:getInfo` (system API + `getDataPath`/`getBackupPath`;
+  handler «di sistema» come `getVersion`. `getBackupPath` legge `app_settings` → ok perché la sezione
+  è raggiungibile solo ad app sbloccata).
+- `main/preload.ts`, `src/api/app.ts`: wiring `getInfo`.
+- `src/pages/AppSettingsPage.tsx`: monta `<InfoSection/>` come ultima sezione.
+- `docs/00-backlog-mvp.md` (AC S11.6), `docs/06-ui-ux.md` (elenco sezioni Impostazioni app).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · smoke-test boot ✓.
+**Verifica GUI (sezione Info app: valori corretti, temi scuri) da completare con l'utente.**
+
 ### 2026-07-22 — Sprint 4 / S14.2: Cifratura a riposo del DB — **E14 COMPLETA**
 
 Chiude **E14 Protezione dati** riusando l'infrastruttura di S14.1. Il file `lexflow.db` può ora

@@ -21,6 +21,7 @@ export type PhaseCategory = (typeof PHASE_CATEGORIES)[number]
 
 export const IPC_CHANNELS = {
   APP_GET_VERSION: 'app:getVersion',
+  APP_GET_INFO: 'app:getInfo',
   CONFIG_LIST_PHASES: 'config:listPhases',
   CONFIG_LIST_ALL_PHASES: 'config:listAllPhases',
   CONFIG_LIST_TRANSITIONS: 'config:listTransitions',
@@ -100,6 +101,20 @@ export const IPC_CHANNELS = {
 } as const
 
 export type AppGetVersionResponse = string
+
+// Info app / stato sistema (S11.6). Sola lettura, composto nel main da
+// app.getVersion()/process.versions/process.platform + percorsi dati e backup.
+export interface AppInfoResponse {
+  appVersion: string
+  electron: string
+  chrome: string
+  node: string
+  v8: string
+  platform: string
+  arch: string
+  dataPath: string
+  backupPath: string
+}
 
 export interface PhaseListItem {
   id: number
@@ -899,6 +914,7 @@ export interface DeleteResponse {
 export interface LexFlowApi {
   app: {
     getVersion(): Promise<AppGetVersionResponse>
+    getInfo(): Promise<AppInfoResponse>
   }
   settings: {
     get(): Promise<SettingsGetResponse>

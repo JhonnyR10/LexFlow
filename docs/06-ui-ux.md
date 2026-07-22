@@ -13,6 +13,8 @@ Interfaccia semplice, minimalista, professionale, usabile da chi non ha competen
 
 (Le anagrafiche Professionisti e Collaboratori vivono come card dentro Impostazioni istanze.)
 
+**Impostazioni app — sezioni:** Tema · Percorso dati · Password di avvio + cifratura (E14) · Backup e ripristino · Backup automatico · Reset archivio · **Info app** (versione, runtime, sistema, percorsi, stato sicurezza, conteggi archivio — sola lettura, S11.6).
+
 ## Temi
 
 L'utente sceglie il tema in Impostazioni app (es. chiaro, scuro, pastello, deep dark, grigio senape). Il tema cambia sfondo, card, bordi, testo, accenti, sidebar, input e pulsanti.

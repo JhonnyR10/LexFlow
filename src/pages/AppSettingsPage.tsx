@@ -9,6 +9,7 @@ import { useExportBackup, useRestoreBackup } from '../features/settings/useBacku
 import { RestoreBackupModal } from '../features/settings/RestoreBackupModal'
 import { AutoBackupSection } from '../features/settings/AutoBackupSection'
 import { SecuritySection } from '../features/settings/SecuritySection'
+import { InfoSection } from '../features/settings/InfoSection'
 import { useResetArchive } from '../features/settings/useReset'
 import { ResetArchiveModal } from '../features/settings/ResetArchiveModal'
 import { ipcErrorMessage } from '../utils/ipcError'
@@ -397,6 +398,8 @@ export function AppSettingsPage(): React.JSX.Element {
           </p>
         )}
       </section>
+
+      <InfoSection />
 
       {restoreOpen && (
         <RestoreBackupModal
