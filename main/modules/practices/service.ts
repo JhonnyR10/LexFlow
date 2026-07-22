@@ -56,6 +56,7 @@ import {
   deletePecRecipientsByPractice,
   deleteHistoryEventsByPractice,
   deleteTransitionRecordsByPractice,
+  deleteScadenzeByPractice,
   deletePracticeRow,
   type TransitionFieldRow,
   type ImportiUpdate,
@@ -803,6 +804,7 @@ export function permanentDelete(input: PermanentDeleteInput): PermanentDeleteRes
       deletePecRecipientsByPractice(id)
       deleteHistoryEventsByPractice(id)
       deleteTransitionRecordsByPractice(id)
+      deleteScadenzeByPractice(id)
       const changed = deletePracticeRow(id)
       if (changed === 0) continue  // corsa improbabile in mono-utente: nessuna riga rimossa
 

@@ -67,6 +67,12 @@ const api: LexFlowApi = {
     exportPdf: (input) =>
       ipcRenderer.invoke('practices:exportPdf', input)
   },
+  scadenze: {
+    listByPractice: (input) => ipcRenderer.invoke('scadenze:listByPractice', input),
+    create: (input) => ipcRenderer.invoke('scadenze:create', input),
+    update: (input) => ipcRenderer.invoke('scadenze:update', input),
+    delete: (input) => ipcRenderer.invoke('scadenze:delete', input)
+  },
   documents: {
     listByPractice: (input) =>
       ipcRenderer.invoke('documents:listByPractice', input),

@@ -6,6 +6,7 @@ import {
   pecRecipients,
   practices,
   professionisti,
+  scadenze,
   transitionRecords,
 } from '../../database/schema'
 
@@ -26,6 +27,7 @@ export function resetArchive(): ResetCounts {
     db.delete(pecRecipients).run()
     db.delete(historyEvents).run()
     db.delete(transitionRecords).run()
+    db.delete(scadenze).run()
     const practicesDeleted = db.delete(practices).run().changes
     const professionistiDeleted = db.delete(professionisti).run().changes
     const collaboratoriDeleted = db.delete(collaboratori).run().changes

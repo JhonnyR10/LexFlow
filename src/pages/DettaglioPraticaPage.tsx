@@ -7,6 +7,7 @@ import { MoveToTrashModal } from '../features/practices/MoveToTrashModal'
 import { RestoreFromTrashModal } from '../features/practices/RestoreFromTrashModal'
 import { ipcErrorMessage } from '../utils/ipcError'
 import { DocumentsSection } from '../features/documents/DocumentsSection'
+import { ScadenzeSection } from '../features/scadenze/ScadenzeSection'
 import { useFields } from '../features/config/fields/useFields'
 import { useMenuSets } from '../features/config/menus/useMenus'
 import { computeImportoDifferences } from '../features/practices/importoCalc'
@@ -659,6 +660,8 @@ export function DettaglioPraticaPage(): React.JSX.Element {
 
       {/* Documenti */}
       <DocumentsSection practiceId={practice.id} isTrashed={practice.isTrashed} />
+
+      <ScadenzeSection practiceId={practice.id} isTrashed={practice.isTrashed} />
     </div>
   )
 }

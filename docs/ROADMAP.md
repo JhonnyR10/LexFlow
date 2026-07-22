@@ -60,7 +60,7 @@ Priorità indicativa; da concordare dopo gli sprint 1–3.
 | **S9.3** Export Excel | Export `.xlsx` oltre al CSV | M | Could. |
 | ~~**S11.5** Card Alert configurabili~~ **✅ FATTA** (2026-07-22) | Attiva/disattiva + soglie configurabili | S–M | Fatta. Sezione «Avvisi Dashboard»; gli alert S8.2 leggono `app_settings.alertsEnabled`/`alertThresholds`. Semantica fallback verso il basso. |
 | ~~**S11.6** Info app~~ **✅ FATTA** (2026-07-22) | Versione/stato sistema/percorsi in Impostazioni | S | Fatta. Sezione «Info app»: versione, runtime, sistema, percorsi, stato sicurezza, conteggi archivio (IPC `app:getInfo`). |
-| **E15** Scadenzario/termini | Entità scadenza per pratica + alert dedicati | L | Could. |
+| **E15** Scadenzario/termini | Entità scadenza per pratica (**S15.1 ✅ fatto** 2026-07-22, migrazione 0009) + **alert dedicati** (S15.2) | L | S15.1 fatta: tabella `scadenze` + CRUD nel dettaglio. Restano gli alert Dashboard (imminenti/scadute) = S15.2. |
 | ~~**E16** Export PDF scheda~~ **✅ FATTA** (2026-07-22) | PDF della scheda di una singola pratica | M | Fatta. Dependency-free via `printToPDF` in finestra offscreen; pulsante «Esporta PDF» nel dettaglio. |
 | **E12** Assistente locale | Assistente rule-based su dati attivi; API opzionale spenta | L | v1.1+. |
 | Numeri procedimento multipli | Più numeri di procedimento per pratica | M | Post-MVP. |

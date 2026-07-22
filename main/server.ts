@@ -10,6 +10,7 @@ import { registerResetHandlers } from './modules/reset/controller'
 import { registerExportHandlers } from './modules/export/controller'
 import { registerReportHandlers } from './modules/report/controller'
 import { registerSecurityHandlers } from './modules/security/controller'
+import { registerScadenzeHandlers } from './modules/scadenze/controller'
 
 export function bootstrap(): void {
   registerAppHandlers()
@@ -24,4 +25,5 @@ export function bootstrap(): void {
   registerExportHandlers()
   registerReportHandlers()
   registerSecurityHandlers()
+  registerScadenzeHandlers()
 }

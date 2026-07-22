@@ -11,6 +11,7 @@ import {
   pecRecipients,
   transitionRecords,
   documents,
+  scadenze,
   professionisti,
   collaboratori,
 } from '../../database/schema'
@@ -656,6 +657,10 @@ export function deleteHistoryEventsByPractice(practiceId: number): void {
 
 export function deleteTransitionRecordsByPractice(practiceId: number): void {
   getDb().delete(transitionRecords).where(eq(transitionRecords.practiceId, practiceId)).run()
+}
+
+export function deleteScadenzeByPractice(practiceId: number): void {
+  getDb().delete(scadenze).where(eq(scadenze.practiceId, practiceId)).run()
 }
 
 // Cancella la riga pratica solo se cestinata (guard idempotente, come

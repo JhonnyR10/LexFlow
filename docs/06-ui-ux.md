@@ -17,6 +17,8 @@ Interfaccia semplice, minimalista, professionale, usabile da chi non ha competen
 
 **Report (S9.2):** riepiloghi aggregati delle pratiche **attive** (cestino escluso) — totali importi, conteggi per stato/fase, per collaboratore e per professionista (con bucket «Non assegnato»), copertura documenti (decreto/fattura). Sola lettura; mantiene il rimando all'export CSV in «Pratiche». L'export Excel e i selettori di periodo sono post-MVP.
 
+**Scadenze / termini (S15.1):** nel dettaglio pratica una sezione «Scadenze» elenca i termini (data + descrizione + stato), con aggiunta, completamento (checkbox) ed eliminazione. Le scadenze **scadute** (data passata, non completate) sono evidenziate con colore semantico fisso. Disabilitata se la pratica è nel cestino. Gli alert scadenze in Dashboard sono S15.2.
+
 **Export PDF scheda pratica (E16):** nel dettaglio pratica un pulsante «Esporta PDF» genera un dossier stampabile della singola pratica (dati generali, soggetti, importi + differenze, campi personalizzati, fase, documenti, storico) e lo salva via dialog. Il PDF ha colori da documento (non segue il tema dell'app).
 
 **Percorso dati — spostamento (S11.2b):** la sezione «Percorso dati» ha, oltre a Copia/Apri cartella, un pulsante «Cambia cartella…» che sceglie una nuova cartella, sposta DB e documenti e **riavvia l'app**. Il vecchio archivio viene rimosso dopo lo spostamento (dati sensibili). Con cifratura attiva (E14) lo sblocco continua a funzionare.

@@ -86,6 +86,39 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-22 — Sprint 4 / S15.1: Scadenzario (entità termine + CRUD) — **apre E15**
+
+Primo step di **E15 Scadenzario**. Nuova entità **Scadenza** (termine) legata alla pratica, con CRUD dal
+dettaglio. **Migrazione 0009** (nuova tabella `scadenze`). Gli alert scadenze in Dashboard sono **S15.2**
+(prossima).
+
+**Modello:** `scadenze` (id, practiceId FK, descrizione, dataScadenza `YYYY-MM-DD`, completata,
+completataAt, createdAt). **Figlia di `practices`** → inclusa nelle cascate di hard delete (S10.3) e
+reset (S11.4) — aggiornate.
+
+**Regole:** guard cestino (no mutazioni su pratica cestinata → `ConflictError`); `HistoryEvent` su
+aggiunta/completamento/eliminazione (`scadenza_added`/`_completed`/`_removed`), raggruppati nella
+categoria «Scadenze» del filtro storico (S5.5); validazione (descrizione non vuota, data valida) zod
+renderer+main; scadute (data passata, non completate) evidenziate con colore semantico fisso (regola 8).
+
+**File nuovi:** `main/database/schema/scadenze.ts`, `drizzle/0009_neat_martin_li.sql`,
+`main/modules/scadenze/{repository,service,controller}.ts`, `src/api/scadenze.ts`,
+`src/features/scadenze/useScadenze.ts`, `src/features/scadenze/ScadenzeSection.tsx`.
+**File modificati:**
+- `shared/ipc.ts`: 4 canali `scadenze:*` + tipi + `LexFlowApi.scadenze`.
+- `main/database/schema/index.ts`, `main/server.ts`, `main/preload.ts`: wiring.
+- `main/modules/practices/{repository,service}.ts`: `deleteScadenzeByPractice` nella cascata hard delete.
+- `main/modules/reset/repository.ts`: `scadenze` nella cascata reset.
+- `src/pages/DettaglioPraticaPage.tsx`: monta `<ScadenzeSection/>` (dopo Documenti).
+- `src/features/practices/timelineFilters.ts`: categoria «Scadenze» per i tipi `scadenza_*`.
+- `docs/02-data-model.md` (entità Scadenza + cascate), `docs/00-backlog-mvp.md` (S15.1), `docs/06-ui-ux.md`.
+
+**Verifiche:** `npm run db:generate` (0009) · `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build`
+✓ · smoke-test boot ✓ (migrazione 0009 applicata, tabella `scadenze` creata). **CRUD + HistoryEvent +
+guard validati sull'ABI Electron reale** (harness, 14 asserzioni, copia del DB dev): create/list/update
+(con/senza completamento)/delete via il service reale, eventi scritti, guard cestino `ConflictError`,
+validazione descrizione/data. **Verifica GUI del giro completo da completare con l'utente.**
+
 ### 2026-07-22 — Sprint 4 / E16 (S16.1): Export PDF della scheda pratica
 
 Storia media (Could). Dal dettaglio pratica «Esporta PDF» genera un dossier stampabile della singola

@@ -14,6 +14,7 @@ export type TimelineCategoryKey =
   | 'workflow'
   | 'modifica'
   | 'documenti'
+  | 'scadenze'
   | 'cestino'
   | 'altro'
 
@@ -28,6 +29,7 @@ export const TIMELINE_CATEGORIES: readonly TimelineCategory[] = [
   { key: 'workflow', label: 'Fase/transizione' },
   { key: 'modifica', label: 'Modifica' },
   { key: 'documenti', label: 'Documenti' },
+  { key: 'scadenze', label: 'Scadenze' },
   { key: 'cestino', label: 'Cestino' },
   { key: 'altro', label: 'Altro' },
 ]
@@ -48,6 +50,10 @@ export function categoryForType(type: string): TimelineCategoryKey {
     case 'document_replaced':
     case 'document_removed':
       return 'documenti'
+    case 'scadenza_added':
+    case 'scadenza_completed':
+    case 'scadenza_removed':
+      return 'scadenze'
     case 'trashed':
     case 'restored':
       return 'cestino'

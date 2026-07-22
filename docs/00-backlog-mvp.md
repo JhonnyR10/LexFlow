@@ -190,7 +190,7 @@ Requisiti soddisfatti **storia-per-storia**; S13.* è stato un **audit di chiusu
 
 ### E15 — Scadenzario / termini (post-MVP)
 
-- **S15.1** Entità scadenza/termine per pratica (es. termine risposta integrazione) con data e descrizione. _(Could)_.
+- **S15.1** Entità scadenza/termine per pratica (es. termine risposta integrazione) con data e descrizione. _(Could, FATTO)_. Nuova tabella `scadenze` (migrazione 0009). CRUD dal dettaglio pratica (aggiungi/modifica/completa/elimina); modulo `scadenze` (IPC `scadenze:*`). _AC:_ una pratica può avere più scadenze (descrizione + data); si segna «completata»; le scadute (data passata e non completate) sono evidenziate con colore semantico fisso; guard cestino (no aggiunta/modifica su pratica cestinata); ogni aggiunta/completamento/eliminazione scrive un `HistoryEvent` (categoria «Scadenze» nel filtro storico); `scadenze` incluse nelle cascate hard delete (S10.3) e reset (S11.4); loading/empty/error; validazione (descrizione non vuota, data valida) su renderer e main.
 - **S15.2** Alert dedicati per scadenze imminenti/superate in Dashboard, distinti dagli alert giorni-da-deposito. _(Could)_.
 
 ### E16 — Export PDF scheda pratica (post-MVP)

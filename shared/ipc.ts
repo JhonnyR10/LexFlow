@@ -72,6 +72,10 @@ export const IPC_CHANNELS = {
   PRACTICES_PERMANENT_DELETE: 'practices:permanentDelete',
   PRACTICES_LIST_TRASHED: 'practices:listTrashed',
   PRACTICES_EXPORT_PDF: 'practices:exportPdf',
+  SCADENZE_LIST: 'scadenze:listByPractice',
+  SCADENZE_CREATE: 'scadenze:create',
+  SCADENZE_UPDATE: 'scadenze:update',
+  SCADENZE_DELETE: 'scadenze:delete',
   DOCUMENTS_LIST: 'documents:listByPractice',
   DOCUMENTS_UPLOAD: 'documents:upload',
   DOCUMENTS_DELETE: 'documents:delete',
@@ -610,6 +614,38 @@ export interface ExportPracticePdfResponse {
   path?: string
 }
 
+// --- Scadenze / termini (E15/S15.1) ---
+export interface ScadenzaItem {
+  id: number
+  practiceId: number
+  descrizione: string
+  dataScadenza: string // YYYY-MM-DD
+  completata: boolean
+  completataAt: string | null
+  createdAt: string
+}
+export interface ListScadenzeInput {
+  practiceId: number
+}
+export type ListScadenzeResponse = ScadenzaItem[]
+export interface CreateScadenzaInput {
+  practiceId: number
+  descrizione: string
+  dataScadenza: string
+}
+export interface UpdateScadenzaInput {
+  id: number
+  descrizione: string
+  dataScadenza: string
+  completata: boolean
+}
+export interface DeleteScadenzaInput {
+  id: number
+}
+export interface DeleteScadenzaResponse {
+  deleted: boolean
+}
+
 // --- Sposta nel cestino (soft delete) — S10.1 ---
 // Cestina N pratiche con un motivo condiviso. Usato sia dal dettaglio (un id)
 // sia dalla toolbar di selezione dell'elenco (più id). Idempotente: le pratiche
@@ -1072,6 +1108,12 @@ export interface LexFlowApi {
     permanentDelete(input: PermanentDeleteInput): Promise<PermanentDeleteResponse>
     listTrashed(): Promise<PracticesListTrashedResponse>
     exportPdf(input: ExportPracticePdfInput): Promise<ExportPracticePdfResponse>
+  }
+  scadenze: {
+    listByPractice(input: ListScadenzeInput): Promise<ListScadenzeResponse>
+    create(input: CreateScadenzaInput): Promise<ScadenzaItem>
+    update(input: UpdateScadenzaInput): Promise<ScadenzaItem>
+    delete(input: DeleteScadenzaInput): Promise<DeleteScadenzaResponse>
   }
   documents: {
     listByPractice(input: ListDocumentsInput): Promise<ListDocumentsResponse>
