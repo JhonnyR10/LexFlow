@@ -9,6 +9,7 @@ import { registerBackupHandlers } from './modules/backup/controller'
 import { registerResetHandlers } from './modules/reset/controller'
 import { registerExportHandlers } from './modules/export/controller'
 import { registerReportHandlers } from './modules/report/controller'
+import { registerAssistantHandlers } from './modules/assistant/controller'
 import { registerSecurityHandlers } from './modules/security/controller'
 import { registerScadenzeHandlers } from './modules/scadenze/controller'
 
@@ -24,6 +25,7 @@ export function bootstrap(): void {
   registerResetHandlers()
   registerExportHandlers()
   registerReportHandlers()
+  registerAssistantHandlers()
   registerSecurityHandlers()
   registerScadenzeHandlers()
 }

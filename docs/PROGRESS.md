@@ -86,6 +86,48 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-22 — Sprint 4 / S12.1: Assistente locale rule-based — **apre E12**
+
+Prima storia di **E12 Assistente**. Nuova pagina «Assistente» nella sidebar: campo domanda in
+linguaggio naturale, risposte **deterministiche** sui **dati attivi** (cestino escluso). L'assistente
+**non inventa**. **Dependency-free, nessuna migrazione, nessun `HistoryEvent`** (sola lettura).
+
+**Architettura:** nuovo modulo `assistant` con **service orchestratore senza repository** — riusa i
+service esistenti (`dashboard/service`, `report/service`), nessuna query nuova (regola 2 rispettata:
+l'accesso DB resta nei repository dei moduli riusati). Eccezione motivata alla tripartizione
+controller/service/repository, documentata in `01-architecture.md`. Un solo IPC read-only
+`assistant:ask` (zod: query stringa ≤500).
+
+**Riconoscimento intenti** (parser puro, IT accent/case-insensitive, dal più specifico al più
+generico): `scadenze` (S15.2) · `missing_docs` (S8.5) · `stuck` (alert S8.2 / anzianità S8.4 se
+«più vecchie») · `totals` (report S9.2) · `phase_counts` (S8.1, totale o singola fase se nominata) ·
+`help` (nessun match → risposta onesta con domande d'esempio, mai numeri inventati). Le risposte con
+elenco pratiche linkano al dettaglio (`/pratiche/:id`).
+
+**UI:** pagina in stile chat con cronologia di **sessione** (non persistita), chip di suggerimento
+(stato vuoto e risposta `help`), stati loading/empty/error. `useMutation` (la domanda è un input
+imperativo, non stato di cache). Confine: modalità API (S12.2) e pulsante flottante (S12.3) restano
+post-MVP → l'assistente vive come pagina dedicata.
+
+**File nuovi:** `main/modules/assistant/{service,controller}.ts`, `src/api/assistant.ts`,
+`src/features/assistant/useAssistant.ts`, `src/pages/AssistantPage.tsx`.
+**File modificati:**
+- `shared/ipc.ts`: canale `ASSISTANT_ASK` + tipi (`AssistantIntent`/`AssistantAnswerItem`/
+  `AssistantAnswer`/`AssistantAskInput`/`AssistantAskResponse`) + `LexFlowApi.assistant`.
+- `main/server.ts`, `main/preload.ts`: registrazione handler + namespace `assistant`.
+- `src/routes/Router.tsx` (route `/assistente`), `src/components/layout/Sidebar.tsx` (voce dopo Report).
+- `docs/00-backlog-mvp.md` (S12.1 → FATTO con AC), `docs/01-architecture.md` (modulo orchestratore),
+  `docs/06-ui-ux.md` (sidebar + sezione Assistente).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓.
+**Logica validata sull'ABI Electron reale** (harness bundlato con esbuild + alias
+`better-sqlite3`→`-multiple-ciphers`, eseguito come vera app Electron su **copia** del DB dev, **17
+asserzioni, 0 fail**): routing dei 11 casi d'intento corretto (incluse fasi nominate, «più vecchie»,
+query vuota→help), nessun `NaN`/`undefined`, «Non presente» per importi assenti (concesso=777€ come
+nel report), item con `practiceId` validi, `help` con suggestions e senza items (non inventa). DB dev
+non toccato. **Verifica GUI del giro completo (pagina Assistente, chip, link ai dettagli, temi scuri)
+da completare con l'utente.**
+
 ### 2026-07-22 — Sprint 4 / S15.2: Alert scadenze in Dashboard — **E15 COMPLETA**
 
 Chiude **E15**. Nuova sezione «Scadenze» in Dashboard, distinta dagli alert giorni-da-deposito (S8.2).

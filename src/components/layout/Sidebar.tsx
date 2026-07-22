@@ -9,6 +9,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/pratiche', label: 'Pratiche' },
   { to: '/report', label: 'Report' },
+  { to: '/assistente', label: 'Assistente' },
   { to: '/impostazioni-istanze', label: 'Impostazioni istanze' },
   { to: '/impostazioni-app', label: 'Impostazioni app' },
   { to: '/cestino', label: 'Cestino' }

@@ -100,6 +100,7 @@ export const IPC_CHANNELS = {
   RESET_ARCHIVE: 'reset:archive',
   EXPORT_CSV: 'export:csv',
   REPORT_SUMMARY: 'report:summary',
+  ASSISTANT_ASK: 'assistant:ask',
   SECURITY_GET_STATE: 'security:getState',
   SECURITY_GET_CONFIG: 'security:getConfig',
   SECURITY_UNLOCK: 'security:unlock',
@@ -888,6 +889,42 @@ export interface ReportSummaryResponse {
   documents: ReportDocumentsCoverage
 }
 
+// --- Assistente locale rule-based (S12.1) ---
+// Un solo IPC read-only: la query in linguaggio naturale, la risposta composta
+// nel main riusando gli aggregati esistenti (dashboard/report). Solo dati ATTIVI
+// (i service riusati filtrano già il cestino). L'assistente non inventa: se non
+// riconosce la domanda risponde con `intent='help'` + `suggestions`.
+export type AssistantIntent =
+  | 'phase_counts'
+  | 'stuck'
+  | 'missing_docs'
+  | 'scadenze'
+  | 'totals'
+  | 'help'
+
+// Elemento di risposta che rimanda a una pratica (link al dettaglio). `detail`
+// è una breve nota contestuale (es. «ferma da 45 giorni», «manca decreto»).
+export interface AssistantAnswerItem {
+  practiceId: number
+  codiceIstanza: string
+  nomeIstanza: string
+  detail: string | null
+}
+
+export interface AssistantAnswer {
+  intent: AssistantIntent
+  text: string
+  items: AssistantAnswerItem[]
+  // Domande d'esempio (valorizzate per `intent='help'`): guidano l'utente senza inventare.
+  suggestions: string[]
+}
+
+export interface AssistantAskInput {
+  query: string
+}
+
+export type AssistantAskResponse = AssistantAnswer
+
 // --- Settings (E11) ---
 // Vista esposta all'MVP: tema (S11.1) e percorso dati corrente (S11.2, sola
 // lettura — risolto dal puntatore di bootstrap, non dalla colonna DB). Backup,
@@ -1070,6 +1107,9 @@ export interface LexFlowApi {
   }
   report: {
     summary(): Promise<ReportSummaryResponse>
+  }
+  assistant: {
+    ask(input: AssistantAskInput): Promise<AssistantAskResponse>
   }
   security: {
     getState(): Promise<SecurityStateResponse>

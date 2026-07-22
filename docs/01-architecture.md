@@ -115,6 +115,7 @@ Tipi e costanti condivisi tra renderer e main (es. enum categorie fase, contratt
 - Logging strutturato nel main (level, timestamp, action) per operazioni critiche.
 - I service importano le funzioni del repository direttamente (nessuna DI formale via costruttore). Scelta deliberata di semplicità per un'app desktop mono-utente; si introduce DI solo se serviranno test unitari estesi dei service.
 - Audit trail = `HistoryEvent` (già nel dominio).
+- **Modulo `assistant` (S12.1) — service orchestratore, senza repository.** L'assistente locale rule-based non ha accesso DB proprio: il suo `service.ts` **orchestra** i service esistenti (`dashboard/service`, `report/service`) per comporre le risposte, e il `controller.ts` valida con zod la sola query. È un'eccezione motivata alla struttura tripartita `controller/service/repository`: non introduce query nuove (regola 2 rispettata — l'accesso DB resta confinato ai repository dei moduli riusati). Rule-based e locale; provider AI esterno (S12.2) rinviato a `integrations/`.
 
 ## Pratiche elite scartate (mismatch con mono-utente locale)
 

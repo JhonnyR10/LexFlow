@@ -31,6 +31,9 @@ const api: LexFlowApi = {
   report: {
     summary: () => ipcRenderer.invoke('report:summary')
   },
+  assistant: {
+    ask: (input) => ipcRenderer.invoke('assistant:ask', input)
+  },
   security: {
     getState: () => ipcRenderer.invoke('security:getState'),
     getConfig: () => ipcRenderer.invoke('security:getConfig'),

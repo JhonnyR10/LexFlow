@@ -7,9 +7,10 @@ Interfaccia semplice, minimalista, professionale, usabile da chi non ha competen
 1. Dashboard
 2. Pratiche
 3. Report
-4. Impostazioni istanze
-5. Impostazioni app
-6. Cestino
+4. Assistente
+5. Impostazioni istanze
+6. Impostazioni app
+7. Cestino
 
 (Le anagrafiche Professionisti e Collaboratori vivono come card dentro Impostazioni istanze.)
 
@@ -78,9 +79,11 @@ Sezioni: intestazione (codice, nome, fase corrente, alert), dati generali, sogge
 - Conferma prima di spostare nel cestino (con motivo). Conferma forte e separata per la cancellazione definitiva (irreversibile).
 - Ripristino singolo e multiplo.
 
-## Assistente (post-MVP)
+## Assistente
 
-Pulsante flottante in basso a **sinistra** (per non coprire azioni in basso a destra). Si ritrae/nasconde su modali critiche. Non interferisce con salvataggi/backup/reset/form.
+**Assistente locale rule-based (S12.1).** Pagina «Assistente» nella sidebar: un campo di testo dove l'utente fa domande in linguaggio naturale sui **dati attivi** (cestino escluso) e riceve risposte **deterministiche** costruite riusando gli aggregati già presenti (conteggi per fase, pratiche ferme/anzianità, documenti mancanti, scadenze imminenti/scadute, totali importi). L'assistente **non inventa**: se non riconosce la domanda risponde onestamente elencando le domande che sa gestire (chip cliccabili di esempio). Le risposte con elenco di pratiche mostrano codice istanza + nome come link al dettaglio. Solo lettura: nessuna azione sui dati, nessun `HistoryEvent`. La cronologia domanda/risposta è di sessione (non persistita). Stati loading/empty/error curati.
+
+**Confine:** l'assistente è **rule-based e locale** (nessuna chiamata esterna). La **modalità API opzionale** (S12.2) e il **pulsante flottante** in basso a sinistra (S12.3, che si ritrae/nasconde su modali critiche e non interferisce con salvataggi/backup/reset/form) restano post-MVP: per ora l'assistente vive come pagina dedicata.
 
 ## Responsive / layout
 

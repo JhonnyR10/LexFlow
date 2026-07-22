@@ -158,7 +158,7 @@ Priorità MoSCoW. `MVP` = nel primo rilascio usabile end-to-end.
 
 ### E12 — Assistente (post-MVP)
 
-- **S12.1** Assistente locale rule-based su dati attivi (conteggi, riepiloghi, pratiche ferme, documenti mancanti); non inventa. _(Should, v1.1)_.
+- **S12.1** Assistente locale rule-based su dati attivi (conteggi, riepiloghi, pratiche ferme, documenti mancanti); non inventa. _(Should, v1.1 — FATTO)_. Pagina «Assistente» nella sidebar con un campo domanda; il backend (modulo `assistant`, un solo IPC read-only `assistant:ask`) riconosce l'**intento** della domanda con matching di parole chiave (IT, accent/case-insensitive) e compone la risposta **riusando gli aggregati esistenti** (`dashboard/service` e `report/service`), senza query proprie (nessun repository dedicato, regola 2). Intenti supportati: **conteggi per fase** (totale attive o singola fase), **pratiche ferme** (alert S8.2) / **anzianità** (S8.4), **documenti mancanti** (S8.5), **scadenze** imminenti/scadute (S15.2), **totali importi** (report S9.2). _AC:_ solo dati **attivi** (i service riusati filtrano già `isTrashed=false`); domanda non riconosciuta → risposta di aiuto con esempi (non inventa mai numeri); le risposte con elenco pratiche linkano al dettaglio; cronologia di sessione (non persistita); loading/empty/error; validazione zod (query stringa) renderer+main; nessuna migrazione, nessun `HistoryEvent`. Modalità API (S12.2) e pulsante flottante (S12.3) restano fuori.
 - **S12.2** Modalità API opzionale, spenta di default, nessuna chiamata esterna non richiesta. _(Could)_.
 - **S12.3** Pulsante flottante in basso a sinistra, si ritrae su modali critiche. _(Could)_.
 

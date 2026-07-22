@@ -62,7 +62,7 @@ Priorità indicativa; da concordare dopo gli sprint 1–3.
 | ~~**S11.6** Info app~~ **✅ FATTA** (2026-07-22) | Versione/stato sistema/percorsi in Impostazioni | S | Fatta. Sezione «Info app»: versione, runtime, sistema, percorsi, stato sicurezza, conteggi archivio (IPC `app:getInfo`). |
 | ~~**E15** Scadenzario/termini~~ **✅ FATTA** (2026-07-22) | Entità scadenza per pratica (S15.1, migrazione 0009) + alert dedicati Dashboard (S15.2) | L | Fatta. Tabella `scadenze` + CRUD nel dettaglio; sezione «Scadenze» in Dashboard (scadute rosso / imminenti ≤7g arancione). |
 | ~~**E16** Export PDF scheda~~ **✅ FATTA** (2026-07-22) | PDF della scheda di una singola pratica | M | Fatta. Dependency-free via `printToPDF` in finestra offscreen; pulsante «Esporta PDF» nel dettaglio. |
-| **E12** Assistente locale | Assistente rule-based su dati attivi; API opzionale spenta | L | v1.1+. |
+| **E12** Assistente locale | Assistente rule-based su dati attivi; API opzionale spenta | L | **S12.1 FATTA** (2026-07-22): pagina «Assistente», modulo `assistant` orchestratore (IPC `assistant:ask`), intenti conteggi/ferme/documenti/scadenze/importi, «non inventa». Restano **S12.2** (modalità API) e **S12.3** (pulsante flottante). |
 | Numeri procedimento multipli | Più numeri di procedimento per pratica | M | Post-MVP. |
 | Code signing installer | Firma `.exe` (+ notarizzazione `.app`) | M | Richiede certificato. Vedi `BUILD-WINDOWS.md`. |
 | CI release automatica | Pubblicare l'installer come GitHub Release al tag | S | Estende `build-win.yml`. |
