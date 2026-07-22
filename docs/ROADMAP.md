@@ -56,7 +56,7 @@ Priorità indicativa; da concordare dopo gli sprint 1–3.
 |---|---|---|---|
 | ~~**E14** Protezione dati~~ **✅ FATTA** (2026-07-22) | Lock con password (S14.1) + **cifratura DB a riposo** (S14.2, better-sqlite3-multiple-ciphers) | L | Fatta. Chiave derivata dalla password (PBKDF2), rekey della connessione viva con backup di sicurezza, boot cifrato via unlock. Vincolo: ripristino backup coerente con la stessa password. |
 | **S11.2b** Spostamento percorso dati | Cambio effettivo del percorso dati (swap a freddo + riavvio) | M | Infrastruttura puntatore già pronta (S11.2). |
-| **S9.2** Report aggregati | Riepiloghi per stato/collaboratore/professionista/importi/documenti | M | Should. Pagina Report già predisposta (informativa). |
+| ~~**S9.2** Report aggregati~~ **✅ FATTA** (2026-07-22) | Riepiloghi per stato/collaboratore/professionista/importi/documenti | M | Fatta. Modulo `report` (IPC `report:summary`, aggregazione SQL backend); pagina Report riscritta. |
 | **S9.3** Export Excel | Export `.xlsx` oltre al CSV | M | Could. |
 | **S11.5** Card Alert configurabili | Attiva/disattiva + soglie configurabili | S–M | Should. Config già in `app_settings`. |
 | ~~**S11.6** Info app~~ **✅ FATTA** (2026-07-22) | Versione/stato sistema/percorsi in Impostazioni | S | Fatta. Sezione «Info app»: versione, runtime, sistema, percorsi, stato sicurezza, conteggi archivio (IPC `app:getInfo`). |

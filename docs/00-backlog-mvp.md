@@ -124,7 +124,12 @@ Priorità MoSCoW. `MVP` = nel primo rilascio usabile end-to-end.
 ### E9 — Report (Should; export CSV `MVP`)
 
 - **S9.1** Export CSV pratiche filtrate `MVP`. Pulsante «Esporta CSV» in «Pratiche» che salva (via **dialog nativo** del main, nessuna scrittura file dal renderer) un `.csv` con le pratiche **attualmente filtrate e cercate** (riusa `filterPractices`, la stessa logica della tabella) ed **esclude il cestino** (le query elenco filtrano già `isTrashed=false`). Formato **Excel italiano**: separatore `;`, **BOM** UTF-8, importi con virgola decimale, date `gg/mm/aaaa`, escaping CSV corretto (virgolette per campi con `;`/`"`/newline). Colonne: codice istanza, nome, fase corrente, collaboratore, professionista, data udienza, data deposito, autorità giudiziaria, **importo richiesto/concesso/fatturato/liquidato** (4 importi; la query elenco è estesa con le colonne denormalizzate E6), note. Il contenuto CSV è costruito nel renderer (dati già in cache) e scritto nel main. Nessuna migrazione; nessun `HistoryEvent`. _AC:_ il file contiene solo le righe filtrate (cestino escluso) con header e i 4 importi; si apre in Excel IT con colonne separate, decimali con virgola e accenti corretti; con 0 risultati filtrati il pulsante è disabilitato; annullare il dialog non crea file.
-- **S9.2** Riepiloghi per stato/collaboratore/professionista/importi/documenti _(Should)_.
+- **S9.2** Riepiloghi per stato/collaboratore/professionista/importi/documenti _(Should)_. _FATTO. La pagina Report mostra aggregati delle pratiche **attive** (cestino escluso), via un solo IPC read-only `report:summary` (modulo `report`, aggregazione SQL nel backend — nessuna business logic nel renderer). AC:_
+  - **Totali importi**: somma richiesto/concesso/fatturato/liquidato + n° pratiche attive; null → «Non presente» (mai `NaN`).
+  - **Per stato (fase)**: conteggio pratiche per fase corrente (riuso `findActivePhaseCounts` di dashboard).
+  - **Per collaboratore** e **per professionista**: n° pratiche + somma concesso/liquidato, con bucket «Non assegnato» per le pratiche senza relazione, ordinati per conteggio desc.
+  - **Documenti**: copertura decreto/fattura sulle pratiche attive (quante ne hanno / quante ne sono prive).
+  - Stati loading/empty (archivio senza pratiche attive)/error; leggibile in ogni tema. Nessuna migrazione, nessun `HistoryEvent`. Selettore di periodo ed export Excel restano fuori (S9.3/post-MVP).
 - **S9.3** Export Excel _(Could)_.
 
 ### E10 — Cestino `MVP` (Must)

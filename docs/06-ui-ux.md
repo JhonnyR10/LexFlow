@@ -15,6 +15,8 @@ Interfaccia semplice, minimalista, professionale, usabile da chi non ha competen
 
 **Impostazioni app — sezioni:** Tema · Percorso dati · Password di avvio + cifratura (E14) · Backup e ripristino · Backup automatico · Reset archivio · **Info app** (versione, runtime, sistema, percorsi, stato sicurezza, conteggi archivio — sola lettura, S11.6).
 
+**Report (S9.2):** riepiloghi aggregati delle pratiche **attive** (cestino escluso) — totali importi, conteggi per stato/fase, per collaboratore e per professionista (con bucket «Non assegnato»), copertura documenti (decreto/fattura). Sola lettura; mantiene il rimando all'export CSV in «Pratiche». L'export Excel e i selettori di periodo sono post-MVP.
+
 ## Temi
 
 L'utente sceglie il tema in Impostazioni app (es. chiaro, scuro, pastello, deep dark, grigio senape). Il tema cambia sfondo, card, bordi, testo, accenti, sidebar, input e pulsanti.

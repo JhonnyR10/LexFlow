@@ -90,6 +90,7 @@ export const IPC_CHANNELS = {
   BACKUP_OPEN_FOLDER: 'backup:openFolder',
   RESET_ARCHIVE: 'reset:archive',
   EXPORT_CSV: 'export:csv',
+  REPORT_SUMMARY: 'report:summary',
   SECURITY_GET_STATE: 'security:getState',
   SECURITY_GET_CONFIG: 'security:getConfig',
   SECURITY_UNLOCK: 'security:unlock',
@@ -782,6 +783,46 @@ export interface DashboardMissingDocItem {
 }
 export type DashboardMissingDocumentsResponse = DashboardMissingDocItem[]
 
+// --- Report aggregati (S9.2) ---
+// Fotografia aggregata delle pratiche ATTIVE (cestino escluso). Aggregazione
+// nel backend (modulo report); il renderer si limita a mostrare. Importi con
+// `sum()`: null quando non c'è alcun valore (renderer → «Non presente»).
+export interface ReportTotals {
+  practicesCount: number
+  importoRichiesto: number | null
+  importoConcesso: number | null
+  importoFatturato: number | null
+  importoLiquidato: number | null
+}
+export interface ReportByPhaseItem {
+  phaseId: number
+  displayName: string
+  category: string
+  count: number
+}
+// Aggregato per collaboratore/professionista. `id=null` = bucket «Non assegnato».
+export interface ReportByEntityItem {
+  id: number | null
+  denominazione: string
+  count: number
+  importoConcesso: number | null
+  importoLiquidato: number | null
+}
+export interface ReportDocumentsCoverage {
+  practicesCount: number
+  withDecreto: number
+  withoutDecreto: number
+  withFattura: number
+  withoutFattura: number
+}
+export interface ReportSummaryResponse {
+  totals: ReportTotals
+  byPhase: ReportByPhaseItem[]
+  byCollaboratore: ReportByEntityItem[]
+  byProfessionista: ReportByEntityItem[]
+  documents: ReportDocumentsCoverage
+}
+
 // --- Settings (E11) ---
 // Vista esposta all'MVP: tema (S11.1) e percorso dati corrente (S11.2, sola
 // lettura — risolto dal puntatore di bootstrap, non dalla colonna DB). Backup,
@@ -934,6 +975,9 @@ export interface LexFlowApi {
   }
   export: {
     csv(input: ExportCsvInput): Promise<ExportCsvResponse>
+  }
+  report: {
+    summary(): Promise<ReportSummaryResponse>
   }
   security: {
     getState(): Promise<SecurityStateResponse>

@@ -35,6 +35,7 @@ export function useUploadDocument(
       // Card «documenti mancanti» (S8.5): aggiungere/rimuovere un documento può
       // far comparire o sparire la pratica dalla sezione Dashboard.
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['report'] })
     },
   })
 }
@@ -51,6 +52,7 @@ export function useDeleteDocument(
       // Card «documenti mancanti» (S8.5): aggiungere/rimuovere un documento può
       // far comparire o sparire la pratica dalla sezione Dashboard.
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['report'] })
     },
   })
 }

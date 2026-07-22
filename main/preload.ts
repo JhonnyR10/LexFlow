@@ -25,6 +25,9 @@ const api: LexFlowApi = {
   export: {
     csv: (input) => ipcRenderer.invoke('export:csv', input)
   },
+  report: {
+    summary: () => ipcRenderer.invoke('report:summary')
+  },
   security: {
     getState: () => ipcRenderer.invoke('security:getState'),
     getConfig: () => ipcRenderer.invoke('security:getConfig'),

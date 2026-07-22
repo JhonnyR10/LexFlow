@@ -86,6 +86,37 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-22 — Sprint 4 / S9.2: Report aggregati
+
+Storia media (Should). La pagina **Report** passa da informativa ad **aggregati** delle pratiche
+**attive** (cestino escluso). Aggregazione **nel backend** (nuovo modulo `report`, layer
+controller→service→repository con `GROUP BY`/`sum()`): nessuna business logic nel renderer (regola 2).
+Un solo IPC read-only `report:summary`. **Nessuna migrazione, nessun `HistoryEvent`**.
+
+**Contenuti:** totali importi (richiesto/concesso/fatturato/liquidato + n° pratiche; null → «Non
+presente»); conteggi per fase (riuso `findActivePhaseCounts` di dashboard); per collaboratore e per
+professionista (n° + somma concesso/liquidato, bucket «Non assegnato» per le relazioni nulle, ordinati
+per conteggio desc); copertura documenti (con/senza decreto e fattura sulle pratiche attive).
+
+**File nuovi:** `main/modules/report/{repository,service,controller}.ts`, `src/api/report.ts`,
+`src/features/report/useReport.ts`.
+**File modificati:**
+- `shared/ipc.ts`: canale `REPORT_SUMMARY` + tipi (`ReportSummaryResponse`, `ReportTotals`,
+  `ReportByPhaseItem`, `ReportByEntityItem`, `ReportDocumentsCoverage`) + `LexFlowApi.report`.
+- `main/server.ts`, `main/preload.ts`: registrazione + namespace `report`.
+- `src/pages/ReportPage.tsx`: riscrittura con sezioni (totali/fasi/collaboratori/professionisti/
+  documenti), loading/empty(archivio senza pratiche attive)/error, colori via token; mantiene il
+  rimando a «Pratiche → Esporta CSV».
+- `src/features/practices/usePractices.ts`, `src/features/documents/useDocuments.ts`: invalidazione
+  `['report']` accanto a `['dashboard']` (create/transizione/cestino/ripristino/cancellazione/documenti).
+- `docs/00-backlog-mvp.md` (AC S9.2), `docs/06-ui-ux.md` (Report).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · smoke-test boot ✓.
+**Aggregati validati sull'ABI Electron reale** contro una **copia** del DB di sviluppo (2 pratiche):
+`getReportSummary` reale → totali (concesso=777, altri null→«Non presente»), per-fase, bucket «Non
+assegnato», copertura documenti — tutti coerenti; DB reale non toccato. **Verifica GUI (pagina Report,
+temi scuri, stato vuoto) da completare con l'utente.**
+
 ### 2026-07-22 — Sprint 4 / S11.6: Info app / stato sistema / versione
 
 Storia piccola (Should). Nuova sezione **«Info app»** in *Impostazioni app*: versione, runtime,

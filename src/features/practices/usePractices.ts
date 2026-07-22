@@ -58,6 +58,7 @@ export function useCreatePractice(): UseMutationResult<CreatePracticeResponse, E
       queryClient.invalidateQueries({ queryKey: ['practices'] })
       // I conteggi per fase della Dashboard (S8.1) cambiano con la nuova pratica.
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['report'] })
     },
   })
 }
@@ -94,6 +95,7 @@ export function useMoveToTrash(): UseMutationResult<MoveToTrashResponse, Error, 
       queryClient.invalidateQueries({ queryKey: ['practices'] })
       queryClient.invalidateQueries({ queryKey: ['trash'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['report'] })
       for (const id of variables.ids) {
         queryClient.invalidateQueries({ queryKey: ['practice', id] })
       }
@@ -111,6 +113,7 @@ export function useRestoreFromTrash(): UseMutationResult<RestoreFromTrashRespons
       queryClient.invalidateQueries({ queryKey: ['practices'] })
       queryClient.invalidateQueries({ queryKey: ['trash'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['report'] })
       for (const id of variables.ids) {
         queryClient.invalidateQueries({ queryKey: ['practice', id] })
       }
@@ -129,6 +132,7 @@ export function usePermanentDelete(): UseMutationResult<PermanentDeleteResponse,
       queryClient.invalidateQueries({ queryKey: ['practices'] })
       queryClient.invalidateQueries({ queryKey: ['trash'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['report'] })
       for (const id of variables.ids) {
         queryClient.invalidateQueries({ queryKey: ['practice', id] })
       }
@@ -149,6 +153,7 @@ export function useExecuteTransition(
       queryClient.invalidateQueries({ queryKey: ['practices'] })
       // L'avanzamento sposta la pratica di fase: i conteggi Dashboard (S8.1) cambiano.
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['report'] })
     },
   })
 }
