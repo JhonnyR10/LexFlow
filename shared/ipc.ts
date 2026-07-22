@@ -82,6 +82,8 @@ export const IPC_CHANNELS = {
   SETTINGS_GET: 'settings:get',
   SETTINGS_UPDATE_THEME: 'settings:updateTheme',
   SETTINGS_OPEN_DATA_FOLDER: 'settings:openDataFolder',
+  SETTINGS_GET_ALERT_CONFIG: 'settings:getAlertConfig',
+  SETTINGS_UPDATE_ALERT_CONFIG: 'settings:updateAlertConfig',
   BACKUP_EXPORT: 'backup:export',
   BACKUP_RESTORE: 'backup:restore',
   BACKUP_GET_CONFIG: 'backup:getConfig',
@@ -840,6 +842,23 @@ export interface SettingsOpenDataFolderResponse {
   success: boolean
 }
 
+// Configurazione degli avvisi Dashboard (S11.5). Un livello per severità, con
+// abilitazione e soglia in giorni. Persistita in `app_settings.alertsEnabled`
+// (bool per livello) + `alertThresholds` (giorni per livello). Le chiavi usano
+// la stessa nomenclatura EN di `AlertSeverity`.
+export interface AlertLevelConfig {
+  enabled: boolean
+  thresholdDays: number
+}
+export interface AlertConfig {
+  yellow: AlertLevelConfig
+  orange: AlertLevelConfig
+  red: AlertLevelConfig
+}
+export type SettingsGetAlertConfigResponse = AlertConfig
+export type UpdateAlertConfigInput = AlertConfig
+export type SettingsUpdateAlertConfigResponse = AlertConfig
+
 // --- Sicurezza / lock all'avvio (S14.1) ---
 // Stato usato dal cancello di boot del renderer: `locked=true` → mostra la
 // schermata di sblocco. Lo stato vive nel marker esterno `security.json`
@@ -961,6 +980,8 @@ export interface LexFlowApi {
     get(): Promise<SettingsGetResponse>
     updateTheme(input: UpdateThemeInput): Promise<SettingsUpdateThemeResponse>
     openDataFolder(): Promise<SettingsOpenDataFolderResponse>
+    getAlertConfig(): Promise<SettingsGetAlertConfigResponse>
+    updateAlertConfig(input: UpdateAlertConfigInput): Promise<SettingsUpdateAlertConfigResponse>
   }
   backup: {
     export(): Promise<BackupExportResponse>

@@ -9,7 +9,9 @@ const api: LexFlowApi = {
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     updateTheme: (input) => ipcRenderer.invoke('settings:updateTheme', input),
-    openDataFolder: () => ipcRenderer.invoke('settings:openDataFolder')
+    openDataFolder: () => ipcRenderer.invoke('settings:openDataFolder'),
+    getAlertConfig: () => ipcRenderer.invoke('settings:getAlertConfig'),
+    updateAlertConfig: (input) => ipcRenderer.invoke('settings:updateAlertConfig', input)
   },
   backup: {
     export: () => ipcRenderer.invoke('backup:export'),

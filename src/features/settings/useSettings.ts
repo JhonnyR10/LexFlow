@@ -7,9 +7,12 @@ import {
 } from '@tanstack/react-query'
 import { settingsApi } from '../../api/settings'
 import type {
+  SettingsGetAlertConfigResponse,
   SettingsGetResponse,
   SettingsOpenDataFolderResponse,
+  SettingsUpdateAlertConfigResponse,
   SettingsUpdateThemeResponse,
+  UpdateAlertConfigInput,
   UpdateThemeInput,
 } from '../../../shared/ipc'
 
@@ -45,5 +48,29 @@ export function useOpenDataFolder(): UseMutationResult<
 > {
   return useMutation({
     mutationFn: () => settingsApi.openDataFolder(),
+  })
+}
+
+export function useAlertConfig(): UseQueryResult<SettingsGetAlertConfigResponse, Error> {
+  return useQuery({
+    queryKey: ['alertConfig'],
+    queryFn: () => settingsApi.getAlertConfig(),
+  })
+}
+
+export function useUpdateAlertConfig(): UseMutationResult<
+  SettingsUpdateAlertConfigResponse,
+  Error,
+  UpdateAlertConfigInput,
+  unknown
+> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: UpdateAlertConfigInput) => settingsApi.updateAlertConfig(input),
+    onSuccess: (data) => {
+      queryClient.setQueryData<SettingsGetAlertConfigResponse>(['alertConfig'], data)
+      // Gli avvisi Dashboard dipendono dalle soglie/abilitazioni.
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
   })
 }

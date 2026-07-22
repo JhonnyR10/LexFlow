@@ -86,6 +86,41 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-22 — Sprint 4 / S11.5: Card Alert configurabili
+
+Storia media (Should). Nuova sezione **«Avvisi Dashboard»** in *Impostazioni app*: per ciascun livello
+(giallo/arancione/rosso) toggle di attivazione + soglia in giorni. Gli alert S8.2 leggono la config
+invece delle 30/60/90 hardcoded. **Nessuna migrazione** (colonne `alertsEnabled`/`alertThresholds` già
+a schema), **nessun `HistoryEvent`**.
+
+**Semantica (documentata):** l'alert compare al livello più alto **tra quelli abilitati** la cui soglia
+è superata (confronto stretto). Disabilitare un livello non nasconde una pratica più vecchia: la mostra
+al livello inferiore abilitato. Soglie validate: interi positivi e **strettamente crescenti**
+(giallo < arancione < rosso), zod renderer+main.
+
+**File nuovi:** `src/features/settings/AlertConfigSection.tsx`.
+**File modificati:**
+- `shared/ipc.ts`: canali `SETTINGS_GET_ALERT_CONFIG`/`SETTINGS_UPDATE_ALERT_CONFIG`, tipi
+  `AlertLevelConfig`/`AlertConfig` (chiavi EN come `AlertSeverity`) + `LexFlowApi.settings`.
+- `main/modules/settings/repository.ts`: `getAlertConfig()` (parse robusto, mappa IT del DB → EN,
+  default 30/60/90) e `updateAlertConfig()` (scrive le due colonne).
+- `main/modules/settings/service.ts`: `readAlertConfig`/`saveAlertConfig` (+ `assertAlertConfig`
+  ordine/positività).
+- `main/modules/settings/controller.ts`: 2 handler con zod.
+- `main/modules/dashboard/service.ts`: `severityForDays(days, cfg)` usa soglie/abilitazioni;
+  `getDashboardAlerts` legge `getAlertConfig()` (import da settings/repository, config app-wide).
+- `main/preload.ts`, `src/api/settings.ts`, `src/features/settings/useSettings.ts`: wiring +
+  `useAlertConfig`/`useUpdateAlertConfig` (invalida `['dashboard']` on success).
+- `src/pages/AppSettingsPage.tsx`: monta `<AlertConfigSection/>` (dopo Tema).
+- `docs/00-backlog-mvp.md` (AC S11.5), `docs/06-ui-ux.md` (Avvisi Dashboard configurabili).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · smoke-test boot ✓.
+**Logica validata sull'ABI Electron reale** (harness su copia del DB dev, 6 asserzioni): default→giallo
+a 50g; giallo off + arancione 40 → arancione (fallback verso il basso); soglie oltre 50 → nessun alert;
+round-trip config IT↔EN; validazione rifiuta soglie non crescenti / non positive. **Verifica GUI
+(sezione avvisi, aggiornamento dashboard, temi scuri, colori livelli invariati) da completare con
+l'utente.**
+
 ### 2026-07-22 — Sprint 4 / S9.2: Report aggregati
 
 Storia media (Should). La pagina **Report** passa da informativa ad **aggregati** delle pratiche

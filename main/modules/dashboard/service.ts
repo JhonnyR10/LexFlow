@@ -9,7 +9,9 @@ import type {
   DashboardPhaseCountsResponse,
   DocumentKind,
 } from '../../../shared/ipc'
+import type { AlertConfig } from '../../../shared/ipc'
 import { daysSinceDeposit } from '../../../shared/giorniDeposito'
+import { getAlertConfig } from '../settings/repository'
 import {
   findActiveOpenPracticesWithDeposit,
   findActiveOpenPracticesWithDocFlags,
@@ -32,11 +34,14 @@ export function getDashboardPhaseCounts(): DashboardPhaseCountsResponse {
 
 const SEVERITY_RANK: Record<AlertSeverity, number> = { red: 3, orange: 2, yellow: 1 }
 
-// Soglie 30/60/90, strettamente maggiori. Driver unico della comparsa del box.
-function severityForDays(days: number): AlertSeverity | null {
-  if (days > 90) return 'red'
-  if (days > 60) return 'orange'
-  if (days > 30) return 'yellow'
+// Severità in base a soglie/abilitazioni configurabili (S11.5). L'alert compare
+// al livello più alto TRA QUELLI ABILITATI la cui soglia è superata (confronto
+// stretto). Disabilitare un livello non nasconde una pratica più vecchia: ricade
+// sul livello inferiore abilitato.
+function severityForDays(days: number, cfg: AlertConfig): AlertSeverity | null {
+  if (cfg.red.enabled && days > cfg.red.thresholdDays) return 'red'
+  if (cfg.orange.enabled && days > cfg.orange.thresholdDays) return 'orange'
+  if (cfg.yellow.enabled && days > cfg.yellow.thresholdDays) return 'yellow'
   return null
 }
 
@@ -50,10 +55,10 @@ function buildReasons(days: number, category: string): string[] {
   return reasons
 }
 
-function toAlert(row: OpenPracticeRow): DashboardAlert | null {
+function toAlert(row: OpenPracticeRow, cfg: AlertConfig): DashboardAlert | null {
   const days = daysSinceDeposit(row.dataDeposito)
   if (days === null) return null
-  const severity = severityForDays(days)
+  const severity = severityForDays(days, cfg)
   if (severity === null) return null
   return {
     practiceId:              row.practiceId,
@@ -69,8 +74,9 @@ function toAlert(row: OpenPracticeRow): DashboardAlert | null {
 // Alert aggregato per pratica (S8.2): un box per pratica attiva oltre soglia,
 // ordinato per severità (rosso → arancione → giallo) poi giorni decrescenti.
 export function getDashboardAlerts(): DashboardAlertsResponse {
+  const cfg = getAlertConfig()
   return findActiveOpenPracticesWithDeposit()
-    .map(toAlert)
+    .map((row) => toAlert(row, cfg))
     .filter((a): a is DashboardAlert => a !== null)
     .sort(
       (a, b) =>

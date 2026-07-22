@@ -17,6 +17,8 @@ Interfaccia semplice, minimalista, professionale, usabile da chi non ha competen
 
 **Report (S9.2):** riepiloghi aggregati delle pratiche **attive** (cestino escluso) — totali importi, conteggi per stato/fase, per collaboratore e per professionista (con bucket «Non assegnato»), copertura documenti (decreto/fattura). Sola lettura; mantiene il rimando all'export CSV in «Pratiche». L'export Excel e i selettori di periodo sono post-MVP.
 
+**Avvisi Dashboard configurabili (S11.5):** in *Impostazioni app*, sezione «Avvisi Dashboard» con, per ciascun livello (giallo/arancione/rosso), un toggle di attivazione e la soglia in giorni (default 30/60/90). Regola di severità: l'alert di una pratica compare al **livello più alto tra quelli abilitati** la cui soglia (giorni dalla data deposito) è superata; disabilitare un livello non nasconde una pratica più vecchia, la mostra al livello inferiore abilitato. I colori dei tre livelli restano semantici fissi (regola 8), indipendenti dal tema. Le soglie devono essere strettamente crescenti.
+
 ## Temi
 
 L'utente sceglie il tema in Impostazioni app (es. chiaro, scuro, pastello, deep dark, grigio senape). Il tema cambia sfondo, card, bordi, testo, accenti, sidebar, input e pulsanti.

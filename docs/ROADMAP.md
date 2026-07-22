@@ -58,7 +58,7 @@ Priorità indicativa; da concordare dopo gli sprint 1–3.
 | **S11.2b** Spostamento percorso dati | Cambio effettivo del percorso dati (swap a freddo + riavvio) | M | Infrastruttura puntatore già pronta (S11.2). |
 | ~~**S9.2** Report aggregati~~ **✅ FATTA** (2026-07-22) | Riepiloghi per stato/collaboratore/professionista/importi/documenti | M | Fatta. Modulo `report` (IPC `report:summary`, aggregazione SQL backend); pagina Report riscritta. |
 | **S9.3** Export Excel | Export `.xlsx` oltre al CSV | M | Could. |
-| **S11.5** Card Alert configurabili | Attiva/disattiva + soglie configurabili | S–M | Should. Config già in `app_settings`. |
+| ~~**S11.5** Card Alert configurabili~~ **✅ FATTA** (2026-07-22) | Attiva/disattiva + soglie configurabili | S–M | Fatta. Sezione «Avvisi Dashboard»; gli alert S8.2 leggono `app_settings.alertsEnabled`/`alertThresholds`. Semantica fallback verso il basso. |
 | ~~**S11.6** Info app~~ **✅ FATTA** (2026-07-22) | Versione/stato sistema/percorsi in Impostazioni | S | Fatta. Sezione «Info app»: versione, runtime, sistema, percorsi, stato sicurezza, conteggi archivio (IPC `app:getInfo`). |
 | **E15** Scadenzario/termini | Entità scadenza per pratica + alert dedicati | L | Could. |
 | **E16** Export PDF scheda | PDF della scheda di una singola pratica | M | Could. |
