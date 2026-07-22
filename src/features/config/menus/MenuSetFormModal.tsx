@@ -19,7 +19,7 @@ interface Props {
 const overlayStyle: React.CSSProperties = {
   position: 'fixed',
   inset: 0,
-  background: 'rgba(0,0,0,0.45)',
+  background: 'var(--color-overlay)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -107,7 +107,7 @@ const cancelBtnStyle: React.CSSProperties = {
 const saveBtnStyle: React.CSSProperties = {
   padding: '7px 16px',
   background: 'var(--color-accent)',
-  color: '#fff',
+  color: 'var(--color-on-accent)',
   border: 'none',
   borderRadius: '6px',
   fontSize: '13px',

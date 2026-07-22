@@ -508,7 +508,7 @@ export function DettaglioPraticaPage(): React.JSX.Element {
             type="button"
             onClick={() => { setRestoreError(null); setRestoring(true) }}
             style={{
-              flexShrink: 0, padding: '6px 16px', background: 'var(--color-accent)', color: '#fff',
+              flexShrink: 0, padding: '6px 16px', background: 'var(--color-accent)', color: 'var(--color-on-accent)',
               border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
             }}
           >

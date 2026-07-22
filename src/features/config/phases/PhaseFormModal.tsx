@@ -39,7 +39,7 @@ interface Props {
 const overlayStyle: React.CSSProperties = {
   position: 'fixed',
   inset: 0,
-  background: 'rgba(0,0,0,0.45)',
+  background: 'var(--color-overlay)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -54,7 +54,7 @@ const dialogStyle: React.CSSProperties = {
   maxWidth: '95vw',
   maxHeight: '90vh',
   overflowY: 'auto',
-  boxShadow: '0 8px 32px rgba(0,0,0,0.18)'
+  boxShadow: '0 8px 32px var(--color-shadow)'
 }
 
 const titleStyle: React.CSSProperties = {
@@ -134,7 +134,7 @@ const footerStyle: React.CSSProperties = {
 const btnPrimaryStyle: React.CSSProperties = {
   padding: '8px 18px',
   background: 'var(--color-accent)',
-  color: '#fff',
+  color: 'var(--color-on-accent)',
   border: 'none',
   borderRadius: '6px',
   fontSize: '13px',

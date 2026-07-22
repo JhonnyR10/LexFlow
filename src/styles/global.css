@@ -40,9 +40,16 @@
   --color-destructive-hover: #b91c1c;
   --color-success: #16a34a;
   --color-success-bg: #dcfce7;
+  --color-success-border: #86efac;
+  --color-warning: #b45309;
   --color-warning-yellow: #d97706;
   --color-warning-orange: #ea580c;
   --color-warning-red: #dc2626;
+
+  /* UI fissi (theme-agnostic): contrasto su accent/destructive, scrim e ombra modali */
+  --color-on-accent: #ffffff;
+  --color-overlay: rgba(0, 0, 0, 0.45);
+  --color-shadow: rgba(0, 0, 0, 0.18);
 
   /* Badge */
   --badge-active-bg: #dcfce7;

@@ -86,6 +86,39 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-22 — Sprint 3 / Bonifica colori hardcoded — **SPRINT 3 COMPLETO**
+
+Settima e ultima voce dello **Sprint 3** (qualità/tema). Riduce i colori hardcoded nel renderer da **84 → residui
+intenzionali** (swatch letterali dei temi in `AppSettingsPage` + un bottone distruttivo già commentato «fisso
+regola 8» in `DocumentsSection`). Renderer-only, nessun cambiamento visivo (valori preservati). **Regola 8
+rispettata:** i colori semantici fissi restano in `:root`, non diventano theme-aware.
+
+**Nuovi token fissi in `src/styles/global.css` (`:root`, sezione semantica):**
+- `--color-on-accent: #ffffff` (testo su bottoni accent/destructive), `--color-overlay: rgba(0,0,0,0.45)` (scrim
+  modali), `--color-shadow: rgba(0,0,0,0.18)` (ombra modali).
+- `--color-success-border: #86efac`, `--color-warning: #b45309` (completano set esistenti; stessi valori dei
+  fallback che ora sostituiscono).
+
+**Conversioni:**
+- `#fff` (28×) → `var(--color-on-accent)`; overlay `rgba(0,0,0,0.45)` (16×) → `var(--color-overlay)`; ombra
+  `rgba(0,0,0,0.18)` (14×) → `var(--color-shadow)` (tutti valori identici).
+- Rimossi i fallback ridondanti `var(--token, #hex)` su token definiti (bg-subtle, text-muted, accent-light,
+  success-bg) e su token appena creati (warning, success-border).
+- Titolo sidebar `#f8fafc` → `var(--sidebar-text-active)`; box errore `PraticheTable` → `--color-error*`; badge
+  `FieldsSection` (PEC/condizione) → `--badge-initial-*`/`--badge-custom-*` (token già esistenti).
+
+**Lasciati invariati (motivati):** swatch di anteprima temi (colori letterali dei temi), bottone distruttivo
+`DocumentsSection` (fisso intenzionale, border senza token esatto).
+
+**Pulizia repo:** `.eslintcache` rimosso dall'indice git (era tracciato pur essendo già in `.gitignore`).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · `npm run desktop` ✓ (verifica GUI
+confermata dall'utente: bottoni/modali/badge/box-errore/sidebar invariati; giro sui 5 temi coerente; anteprime temi
+corrette).
+
+**Stato Sprint 3: COMPLETO** — timeline filtri (S5.5), card documenti mancanti (S8.5), icona app/installer, cambio
+`menuSetId`, scan JSON rigoroso, contesto PEC configurabile, bonifica colori.
+
 ### 2026-07-21 — Sprint 3 / Contesto PEC configurabile sul campo `pec`
 
 Sesta voce dello **Sprint 3**. Il `contesto` dei `PecRecipient` non è più solo **derivato dalla fase di

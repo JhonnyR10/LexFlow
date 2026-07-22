@@ -38,7 +38,7 @@ const buttonStyle: React.CSSProperties = {
   borderRadius: '8px', padding: '8px 14px', cursor: 'pointer',
 }
 const primaryButtonStyle: React.CSSProperties = {
-  ...buttonStyle, color: '#fff', background: 'var(--color-accent)', border: 'none',
+  ...buttonStyle, color: 'var(--color-on-accent)', background: 'var(--color-accent)', border: 'none',
 }
 
 interface FormState {

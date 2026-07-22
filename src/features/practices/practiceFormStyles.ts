@@ -4,14 +4,14 @@ import type React from 'react'
 // Estratti da NuovaPraticaModal per evitarne la duplicazione (regola 4).
 
 export const overlayStyle: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+  position: 'fixed', inset: 0, background: 'var(--color-overlay)',
   display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
   zIndex: 1000, paddingTop: '40px', paddingBottom: '40px', overflowY: 'auto'
 }
 export const dialogStyle: React.CSSProperties = {
   background: 'var(--color-surface)', borderRadius: '10px',
   padding: '28px 32px', width: '600px', maxWidth: '95vw',
-  boxShadow: '0 8px 32px rgba(0,0,0,0.18)', flexShrink: 0
+  boxShadow: '0 8px 32px var(--color-shadow)', flexShrink: 0
 }
 export const titleStyle: React.CSSProperties = {
   fontSize: '17px', fontWeight: 600, marginBottom: '24px', color: 'var(--color-text)'
@@ -53,7 +53,7 @@ export const footerStyle: React.CSSProperties = {
   marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--color-border)'
 }
 export const btnPrimaryStyle: React.CSSProperties = {
-  padding: '8px 20px', background: 'var(--color-accent)', color: '#fff',
+  padding: '8px 20px', background: 'var(--color-accent)', color: 'var(--color-on-accent)',
   border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer'
 }
 export const btnSecondaryStyle: React.CSSProperties = {

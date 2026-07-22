@@ -18,7 +18,7 @@ const sectionTitleStyle: React.CSSProperties = {
   fontSize: '15px', fontWeight: 600, color: 'var(--color-text)'
 }
 const btnPrimaryStyle: React.CSSProperties = {
-  padding: '6px 14px', background: 'var(--color-accent)', color: '#fff',
+  padding: '6px 14px', background: 'var(--color-accent)', color: 'var(--color-on-accent)',
   border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer'
 }
 const tableStyle: React.CSSProperties = {

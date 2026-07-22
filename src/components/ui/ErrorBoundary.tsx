@@ -60,7 +60,7 @@ const primaryBtnStyle: React.CSSProperties = {
   borderRadius: '6px',
   border: 'none',
   background: 'var(--color-accent)',
-  color: '#fff',
+  color: 'var(--color-on-accent)',
   fontSize: '14px',
   cursor: 'pointer'
 }

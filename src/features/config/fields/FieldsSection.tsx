@@ -63,7 +63,7 @@ const tabStyle = (active: boolean): React.CSSProperties => ({
   borderRadius: '6px',
   border: active ? '1px solid var(--color-accent)' : '1px solid var(--color-border)',
   background: active ? 'var(--color-accent)' : 'var(--color-surface)',
-  color: active ? '#fff' : 'var(--color-text)',
+  color: active ? 'var(--color-on-accent)' : 'var(--color-text)',
   fontSize: '13px',
   fontWeight: active ? 600 : 400,
   cursor: 'pointer'
@@ -142,7 +142,7 @@ const activateBtnStyle: React.CSSProperties = { ...iconBtnStyle, color: 'var(--c
 const btnPrimaryStyle: React.CSSProperties = {
   padding: '6px 14px',
   background: 'var(--color-accent)',
-  color: '#fff',
+  color: 'var(--color-on-accent)',
   border: 'none',
   borderRadius: '6px',
   fontSize: '13px',
@@ -288,12 +288,12 @@ function FieldsTable({
             </td>
             <td style={tdStyle}>
               {f.type === 'pec' && (
-                <Badge bg="#dbeafe" color="#1d4ed8">
+                <Badge bg="var(--badge-initial-bg)" color="var(--badge-initial-text)">
                   PEC
                 </Badge>
               )}
               {f.conditionalOnFieldId != null && (
-                <Badge bg="#fef3c7" color="#92400e">
+                <Badge bg="var(--badge-custom-bg)" color="var(--badge-custom-text)">
                   se {f.conditionalOnFieldLabel ?? `#${f.conditionalOnFieldId}`} ={' '}
                   {f.conditionalValue}
                 </Badge>

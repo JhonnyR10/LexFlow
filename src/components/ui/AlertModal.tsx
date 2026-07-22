@@ -12,14 +12,14 @@ interface Props {
 }
 
 const overlayStyle: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+  position: 'fixed', inset: 0, background: 'var(--color-overlay)',
   display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
   zIndex: 1000, paddingTop: '80px', paddingBottom: '40px', overflowY: 'auto',
 }
 const dialogStyle: React.CSSProperties = {
   background: 'var(--color-surface)', borderRadius: '10px',
   padding: '24px 28px', width: '420px', maxWidth: '95vw',
-  boxShadow: '0 8px 32px rgba(0,0,0,0.18)', flexShrink: 0,
+  boxShadow: '0 8px 32px var(--color-shadow)', flexShrink: 0,
 }
 const titleStyle: React.CSSProperties = {
   fontSize: '16px', fontWeight: 600, marginBottom: '10px', color: 'var(--color-text)',
@@ -31,7 +31,7 @@ const footerStyle: React.CSSProperties = {
   display: 'flex', justifyContent: 'flex-end',
 }
 const btnStyle: React.CSSProperties = {
-  padding: '8px 20px', background: 'var(--color-accent)', color: '#fff',
+  padding: '8px 20px', background: 'var(--color-accent)', color: 'var(--color-on-accent)',
   border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
 }
 

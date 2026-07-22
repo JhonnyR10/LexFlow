@@ -20,13 +20,13 @@ interface Props {
 }
 
 const overlayStyle: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+  position: 'fixed', inset: 0, background: 'var(--color-overlay)',
   display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
 }
 const dialogStyle: React.CSSProperties = {
   background: 'var(--color-surface)', borderRadius: '10px',
   padding: '28px 32px', width: '480px', maxWidth: '95vw',
-  maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.18)'
+  maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px var(--color-shadow)'
 }
 const titleStyle: React.CSSProperties = {
   fontSize: '16px', fontWeight: 600, marginBottom: '20px', color: 'var(--color-text)'
@@ -66,7 +66,7 @@ const footerStyle: React.CSSProperties = {
   marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--color-border)'
 }
 const btnPrimaryStyle: React.CSSProperties = {
-  padding: '8px 18px', background: 'var(--color-accent)', color: '#fff',
+  padding: '8px 18px', background: 'var(--color-accent)', color: 'var(--color-on-accent)',
   border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer'
 }
 const btnSecondaryStyle: React.CSSProperties = {

@@ -85,7 +85,7 @@ export function PraticheFilters({
       alignItems: 'end',
       padding: '16px',
       marginBottom: '16px',
-      background: 'var(--color-bg-subtle, #f8fafc)',
+      background: 'var(--color-bg-subtle)',
       border: '1px solid var(--color-border)',
       borderRadius: '8px',
     }}>

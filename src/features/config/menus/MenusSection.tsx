@@ -54,7 +54,7 @@ const setItemStyle = (selected: boolean): React.CSSProperties => ({
   padding: '10px 16px',
   cursor: 'pointer',
   borderBottom: '1px solid var(--color-border)',
-  background: selected ? 'var(--color-accent-light, rgba(99,102,241,0.08))' : 'transparent',
+  background: selected ? 'var(--color-accent-light)' : 'transparent',
   borderLeft: selected ? '3px solid var(--color-accent)' : '3px solid transparent'
 })
 
@@ -133,7 +133,7 @@ const actionsCellStyle: React.CSSProperties = {
 const btnPrimaryStyle: React.CSSProperties = {
   padding: '5px 12px',
   background: 'var(--color-accent)',
-  color: '#fff',
+  color: 'var(--color-on-accent)',
   border: 'none',
   borderRadius: '6px',
   fontSize: '12px',

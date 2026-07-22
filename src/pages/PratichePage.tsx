@@ -49,7 +49,7 @@ export function PratichePage(): React.JSX.Element {
         </h1>
         <button
           style={{
-            padding: '8px 18px', background: 'var(--color-accent)', color: '#fff',
+            padding: '8px 18px', background: 'var(--color-accent)', color: 'var(--color-on-accent)',
             border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer'
           }}
           onClick={() => { setLastCreated(null); setModalOpen(true) }}
@@ -60,8 +60,8 @@ export function PratichePage(): React.JSX.Element {
 
       {lastCreated && (
         <div style={{
-          padding: '12px 16px', background: 'var(--color-success-bg, #f0fdf4)',
-          border: '1px solid var(--color-success-border, #86efac)',
+          padding: '12px 16px', background: 'var(--color-success-bg)',
+          border: '1px solid var(--color-success-border)',
           borderRadius: '8px', fontSize: '13px', color: 'var(--color-success)', marginBottom: '20px'
         }}>
           Pratica <strong>{lastCreated.codice}</strong> creata con successo.

@@ -49,7 +49,7 @@ const emptyBoxStyle: React.CSSProperties = {
 const emptyActionStyle: React.CSSProperties = {
   padding: '8px 18px',
   background: 'var(--color-accent)',
-  color: '#fff',
+  color: 'var(--color-on-accent)',
   border: 'none',
   borderRadius: '6px',
   fontSize: '13px',

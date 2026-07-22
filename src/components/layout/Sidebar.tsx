@@ -33,7 +33,7 @@ const logoStyle: React.CSSProperties = {
 const logoTextStyle: React.CSSProperties = {
   fontSize: '17px',
   fontWeight: 700,
-  color: '#f8fafc',
+  color: 'var(--sidebar-text-active)',
   letterSpacing: '-0.3px'
 }
 

@@ -220,7 +220,7 @@ export function CestinoPage(): React.JSX.Element {
             <div style={{
               marginBottom: '12px', padding: '10px 14px', borderRadius: '8px',
               display: 'flex', alignItems: 'center', gap: '14px',
-              background: 'var(--color-bg-subtle, #f8fafc)', border: '1px solid var(--color-border)',
+              background: 'var(--color-bg-subtle)', border: '1px solid var(--color-border)',
             }}>
               <span style={{ fontSize: '13px', color: 'var(--color-text)' }}>
                 {selectedCount} {selectedCount === 1 ? 'pratica selezionata' : 'pratiche selezionate'}
@@ -229,7 +229,7 @@ export function CestinoPage(): React.JSX.Element {
                 type="button"
                 onClick={() => openRestore(effectiveSelected)}
                 style={{
-                  padding: '6px 16px', background: 'var(--color-accent)', color: '#fff',
+                  padding: '6px 16px', background: 'var(--color-accent)', color: 'var(--color-on-accent)',
                   border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
                 }}
               >
@@ -239,7 +239,7 @@ export function CestinoPage(): React.JSX.Element {
                 type="button"
                 onClick={() => openDelete(effectiveSelected)}
                 style={{
-                  padding: '6px 16px', background: 'var(--color-destructive)', color: '#fff',
+                  padding: '6px 16px', background: 'var(--color-destructive)', color: 'var(--color-on-accent)',
                   border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
                 }}
               >
@@ -261,7 +261,7 @@ export function CestinoPage(): React.JSX.Element {
           <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', background: 'var(--color-surface)' }}>
               <thead>
-                <tr style={{ background: 'var(--color-bg-subtle, #f8fafc)' }}>
+                <tr style={{ background: 'var(--color-bg-subtle)' }}>
                   <th style={{ ...thStyle, width: '36px', textAlign: 'center' }}>
                     <input
                       type="checkbox"

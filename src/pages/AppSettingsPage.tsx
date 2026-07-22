@@ -143,7 +143,7 @@ const copiedFeedbackStyle: React.CSSProperties = {
 const dangerButtonStyle: React.CSSProperties = {
   fontSize: '13px',
   fontWeight: 500,
-  color: '#fff',
+  color: 'var(--color-on-accent)',
   background: 'var(--color-destructive)',
   border: 'none',
   borderRadius: '8px',

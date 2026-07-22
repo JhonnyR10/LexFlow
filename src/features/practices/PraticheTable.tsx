@@ -96,8 +96,8 @@ function PhaseBadge({ name }: { name: string | null }): React.JSX.Element {
       borderRadius: '12px',
       fontSize: '12px',
       fontWeight: 500,
-      background: 'var(--color-bg-subtle, #f1f5f9)',
-      color: 'var(--color-text-muted, #64748b)',
+      background: 'var(--color-bg-subtle)',
+      color: 'var(--color-text-muted)',
       whiteSpace: 'nowrap',
     }}>
       {name ?? '—'}
@@ -209,8 +209,8 @@ export function PraticheTable({
   if (isError) {
     return (
       <div style={{
-        padding: '16px', background: '#fef2f2', border: '1px solid #fca5a5',
-        borderRadius: '8px', fontSize: '13px', color: '#dc2626',
+        padding: '16px', background: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)',
+        borderRadius: '8px', fontSize: '13px', color: 'var(--color-error)',
       }}>
         Errore nel caricamento delle pratiche. Riprova.
       </div>
@@ -290,7 +290,7 @@ export function PraticheTable({
         <div style={{
           display: 'flex', alignItems: 'center', gap: '16px',
           padding: '10px 16px', marginBottom: '12px',
-          background: 'var(--color-bg-subtle, #f1f5f9)',
+          background: 'var(--color-bg-subtle)',
           border: '1px solid var(--color-border)', borderRadius: '8px',
           fontSize: '13px', color: 'var(--color-text)',
         }}>
@@ -342,7 +342,7 @@ export function PraticheTable({
       <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', background: 'var(--color-surface)' }}>
           <thead>
-            <tr style={{ background: 'var(--color-bg-subtle, #f8fafc)' }}>
+            <tr style={{ background: 'var(--color-bg-subtle)' }}>
               <th style={{ ...thStyle, textAlign: 'center', width: '36px' }}>
                 <input
                   type="checkbox"
