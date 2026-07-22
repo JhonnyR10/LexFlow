@@ -88,7 +88,13 @@ export const IPC_CHANNELS = {
   BACKUP_CHANGE_FOLDER: 'backup:changeFolder',
   BACKUP_OPEN_FOLDER: 'backup:openFolder',
   RESET_ARCHIVE: 'reset:archive',
-  EXPORT_CSV: 'export:csv'
+  EXPORT_CSV: 'export:csv',
+  SECURITY_GET_STATE: 'security:getState',
+  SECURITY_GET_CONFIG: 'security:getConfig',
+  SECURITY_UNLOCK: 'security:unlock',
+  SECURITY_SET_PASSWORD: 'security:setPassword',
+  SECURITY_CHANGE_PASSWORD: 'security:changePassword',
+  SECURITY_DISABLE_LOCK: 'security:disableLock'
 } as const
 
 export type AppGetVersionResponse = string
@@ -776,6 +782,40 @@ export interface SettingsOpenDataFolderResponse {
   success: boolean
 }
 
+// --- Sicurezza / lock all'avvio (S14.1) ---
+// Stato usato dal cancello di boot del renderer: `locked=true` → mostra la
+// schermata di sblocco. Lo stato vive nel marker esterno `security.json`
+// (fuori dal DB), non in `app_settings`.
+export interface SecurityStateResponse {
+  locked: boolean
+}
+// Config mostrata nelle Impostazioni (sola lettura del marker, nessun DB).
+export interface SecurityConfigResponse {
+  lockEnabled: boolean
+}
+export interface SecurityUnlockInput {
+  password: string
+}
+// `success=false` = password errata (non un errore tecnico). Gli errori reali
+// (es. apertura DB fallita) vengono lanciati come AppError.
+export interface SecurityUnlockResponse {
+  success: boolean
+}
+export interface SecuritySetPasswordInput {
+  password: string
+}
+export interface SecurityChangePasswordInput {
+  currentPassword: string
+  newPassword: string
+}
+export interface SecurityDisableLockInput {
+  currentPassword: string
+}
+// Esito delle mutation su password/lock: nuovo stato del lock.
+export interface SecurityMutationResponse {
+  lockEnabled: boolean
+}
+
 // --- Backup / ripristino (S11.3) ---
 export interface BackupExportResponse {
   canceled: boolean
@@ -861,6 +901,14 @@ export interface LexFlowApi {
   }
   export: {
     csv(input: ExportCsvInput): Promise<ExportCsvResponse>
+  }
+  security: {
+    getState(): Promise<SecurityStateResponse>
+    getConfig(): Promise<SecurityConfigResponse>
+    unlock(input: SecurityUnlockInput): Promise<SecurityUnlockResponse>
+    setPassword(input: SecuritySetPasswordInput): Promise<SecurityMutationResponse>
+    changePassword(input: SecurityChangePasswordInput): Promise<SecurityMutationResponse>
+    disableLock(input: SecurityDisableLockInput): Promise<SecurityMutationResponse>
   }
   config: {
     listPhases(): Promise<ConfigListPhasesResponse>

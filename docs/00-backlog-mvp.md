@@ -160,8 +160,14 @@ Requisiti soddisfatti **storia-per-storia**; S13.* è stato un **audit di chiusu
 
 ### E14 — Protezione dati sensibili (post-MVP)
 
-- **S14.1** Lock dell'app con password all'avvio. _(Should, v1.1)_.
-- **S14.2** Cifratura a riposo del DB (SQLCipher via better-sqlite3-multiple-ciphers), abilitabile da impostazioni con migrazione del DB esistente. _(Should, v1.1)_. _Nota:_ il driver cifrabile è già adottato in E0 con cifratura spenta, quindi nessun cambio di driver.
+- **S14.1** Lock dell'app con password all'avvio. _(Should, v1.1)_. _Criteri:_
+  - Dalle Impostazioni app si può **impostare**, **cambiare** e **rimuovere** una password di sblocco.
+  - Con lock attivo, all'avvio l'app mostra una **schermata di sblocco** e apre il DB **solo** dopo password corretta; password errata → messaggio, nessun accesso ai dati.
+  - Lo stato lock e i parametri di verifica vivono in un **marker esterno** `security.json` in `userData` (fuori dal DB, come il puntatore `config.json` del percorso dati), perché servono **prima** di aprire il DB. La colonna `app_settings.security` resta legacy/visualizzazione.
+  - **Nessuna password in chiaro**: si salva solo `salt` + un `verifier` derivato (PBKDF2, stdlib Node).
+  - Con lock **disattivo** (default) l'avvio è identico a oggi: nessuna regressione.
+  - _Confine:_ S14.1 **non cifra** il file DB (chi ha accesso al filesystem può ancora leggerlo con altri strumenti): la cifratura a riposo è **S14.2**, che riusa la stessa password come chiave. Nessun `HistoryEvent` (operazione di sistema, come tema/backup).
+- **S14.2** Cifratura a riposo del DB (SQLCipher via better-sqlite3-multiple-ciphers), abilitabile da impostazioni con migrazione del DB esistente. _(Should, v1.1)_. _Nota:_ il driver cifrabile è già adottato in E0 con cifratura spenta, quindi nessun cambio di driver. Riusa l'infrastruttura chiave e il cancello di boot di S14.1 (la password di sblocco deriva la chiave SQLCipher).
 
 ### E15 — Scadenzario / termini (post-MVP)
 

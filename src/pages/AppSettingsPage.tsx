@@ -8,6 +8,7 @@ import {
 import { useExportBackup, useRestoreBackup } from '../features/settings/useBackup'
 import { RestoreBackupModal } from '../features/settings/RestoreBackupModal'
 import { AutoBackupSection } from '../features/settings/AutoBackupSection'
+import { SecuritySection } from '../features/settings/SecuritySection'
 import { useResetArchive } from '../features/settings/useReset'
 import { ResetArchiveModal } from '../features/settings/ResetArchiveModal'
 import { ipcErrorMessage } from '../utils/ipcError'
@@ -318,6 +319,8 @@ export function AppSettingsPage(): React.JSX.Element {
           </>
         )}
       </section>
+
+      <SecuritySection />
 
       <section style={dataSectionStyle}>
         <h2 style={sectionTitleStyle}>Backup e ripristino</h2>

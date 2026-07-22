@@ -5,9 +5,9 @@ import { bootstrap } from './server'
 import { validateStartupConfig } from './config/startup'
 import { applyPendingRestore } from './modules/backup/restoreBootstrap'
 import { runOnCloseBackup, startAutoBackupScheduler } from './modules/backup/scheduler'
-import { initDatabase } from './database/connection'
-import { runMigrations } from './database/migrations'
-import { runSeed } from './database/seed'
+import { isDbOpen } from './database/connection'
+import { openAndInitDatabase } from './database/bootstrapDb'
+import { getBootSecurityState } from './config/securityMarker'
 import { logger } from './utils/logger'
 
 let mainWindow: BrowserWindow | null = null
@@ -51,9 +51,6 @@ app.whenReady().then(async () => {
     await validateStartupConfig()
     // Se è in sospeso un ripristino, fai lo swap a freddo PRIMA di aprire il DB (S11.3).
     applyPendingRestore()
-    initDatabase()
-    runMigrations()
-    runSeed()
   } catch (err) {
     logger.error('APP_INIT_FAILED', err instanceof Error ? err.message : String(err))
     app.quit()
@@ -64,8 +61,27 @@ app.whenReady().then(async () => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  // Gli handler IPC (incluso security:*) vanno registrati SEMPRE e per primi:
+  // con lock attivo il renderer deve poter chiamare security:unlock prima che
+  // il DB esista.
   bootstrap()
-  startAutoBackupScheduler()
+
+  if (getBootSecurityState().locked) {
+    // Lock attivo (S14.1): NON aprire il DB né avviare lo scheduler. Il renderer
+    // mostra la schermata di sblocco; l'apertura del DB è differita a
+    // security:unlock (che poi avvia lo scheduler dei backup automatici).
+    logger.info('APP_LOCKED', 'in attesa di sblocco password')
+  } else {
+    try {
+      openAndInitDatabase()
+    } catch (err) {
+      logger.error('APP_INIT_FAILED', err instanceof Error ? err.message : String(err))
+      app.quit()
+      return
+    }
+    startAutoBackupScheduler()
+  }
+
   createWindow()
 
   app.on('activate', () => {
@@ -79,6 +95,9 @@ let onCloseBackupDone = false
 app.on('before-quit', () => {
   if (onCloseBackupDone) return
   onCloseBackupDone = true
+  // Se l'app è stata chiusa mentre era ancora bloccata (DB non aperto), non c'è
+  // nulla da salvare e leggere la config di backup lancerebbe (S14.1).
+  if (!isDbOpen()) return
   runOnCloseBackup()
 })
 

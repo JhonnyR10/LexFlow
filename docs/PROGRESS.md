@@ -86,6 +86,56 @@ Ogni riga: data — decisione — motivo.
 
 Registro cronologico degli interventi rilevanti di Claude Code (cosa è cambiato, dove). Aggiungere una voce a fine storia.
 
+### 2026-07-22 — Sprint 4 / S14.1: Lock dell'app con password all'avvio — **apre E14**
+
+Prima storia post-MVP (Sprint 4, **E14 Protezione dati**). Introduce un **cancello password
+all'avvio**: se attivo, l'app mostra una schermata di sblocco e apre il DB **solo** dopo password
+corretta. Costruisce l'infrastruttura chiave (KDF, verifier, boot condizionale) che **S14.2
+(cifratura a riposo) riuserà**. **Nessuna migrazione** (stato lock in un marker file esterno, non nel
+DB), **nessun `HistoryEvent`** (operazione di sistema, come tema/backup — eccezione già in S13.3),
+**nessuna dipendenza nuova** (KDF con `crypto` stdlib).
+
+**Confine onesto:** S14.1 **non cifra** il file `lexflow.db`: chi ha accesso al filesystem può ancora
+leggerlo con altri strumenti finché non arriva **S14.2**. L'avviso è mostrato in chiaro nella UI.
+
+**Design:**
+- **Fonte di verità fuori dal DB:** marker `security.json` in `userData` (`{ lockEnabled, kdf {salt,
+  iterations, keylen, digest}, verifier }`), come il puntatore `config.json` del percorso dati —
+  necessario **prima** di aprire il DB. Colonna `app_settings.security` → legacy/visualizzazione.
+- **Nessuna password in chiaro:** solo `salt` + `verifier` = PBKDF2-HMAC-SHA512 (210k iter, stdlib).
+  Verifica al boot con `timingSafeEqual`. `derive(pw, salt, context)` separa i domini (`'verify'` ora;
+  `'key'` sarà per S14.2, così il verifier non rivela la chiave).
+- **Boot condizionale (`app.ts`):** `bootstrap()` (handler IPC, incluso `security:*`) registrato
+  **sempre e per primo**, senza DB. Lock **off** (default) → `openAndInitDatabase()` + scheduler subito
+  (identico all'MVP). Lock **on** → DB **non** aperto; il renderer mostra `LockScreen`; apertura DB +
+  scheduler differiti all'handler `security:unlock`. Apertura DB centralizzata in
+  `database/bootstrapDb.ts:openAndInitDatabase()` (idempotente). `before-quit` no-op se DB non aperto.
+
+**File nuovi:**
+- `main/config/securityMarker.ts` — marker + KDF/verifier (read robusta, set/disable, verify, policy).
+- `main/database/bootstrapDb.ts` — `openAndInitDatabase()` (init+migrazioni+seed, idempotente).
+- `main/modules/security/{service,controller}.ts` — 6 canali IPC (`getState`, `getConfig`, `unlock`,
+  `setPassword`, `changePassword`, `disableLock`); zod nel controller; `unlock` apre il DB dopo verifica.
+- `src/api/security.ts`, `src/features/security/useSecurity.ts` — client + hook.
+- `src/features/security/LockScreen.tsx` — schermata di sblocco (token base :root, DB chiuso; loading/error).
+- `src/features/settings/SecuritySection.tsx` — imposta/cambia/rimuovi password (zod renderer, avviso S14.2).
+
+**File modificati:**
+- `main/database/connection.ts` — `isDbOpen()`.
+- `main/app.ts` — boot condizionale + guardia `before-quit`.
+- `main/server.ts`, `main/preload.ts` — registrazione handler + namespace `security`.
+- `shared/ipc.ts` — 6 canali, tipi `Security*`, `LexFlowApi.security`.
+- `src/App.tsx` — cancello: `useSecurityState` → `LockScreen` se bloccato, altrimenti Router (+invalida query allo sblocco).
+- `src/pages/AppSettingsPage.tsx` — monta `<SecuritySection/>`.
+- `docs/02-data-model.md` (marker security), `docs/01-architecture.md` (boot condizionale),
+  `docs/00-backlog-mvp.md` (AC S14.1).
+
+**Verifiche:** `npm run typecheck` ✓ · `npm run lint` ✓ · `npm run build` ✓ · smoke-test boot
+default ✓ (log: `APP_START → DB_OPEN → migrazioni → seed → DONE`, nessun `APP_LOCKED`/`APP_INIT_FAILED`).
+**Verifica GUI interattiva del flusso lock da completare con l'utente** (imposta password → riavvio →
+LockScreen → password errata bloccata / corretta apre → cambia → rimuovi → riavvio senza lock; temi
+scuri sulla LockScreen).
+
 ### 2026-07-22 — Sprint 3 / Bonifica colori hardcoded — **SPRINT 3 COMPLETO**
 
 Settima e ultima voce dello **Sprint 3** (qualità/tema). Riduce i colori hardcoded nel renderer da **84 → residui

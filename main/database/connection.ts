@@ -44,3 +44,10 @@ export function getDb(): BetterSQLite3Database<DbSchema> {
   if (!db) throw new Error('Database non inizializzato. Chiamare initDatabase() prima.')
   return db
 }
+
+// True se il DB è già aperto. Serve al boot condizionale con lock (S14.1): finché
+// l'app è bloccata il DB non è aperto, quindi scheduler e backup-alla-chiusura
+// devono diventare no-op invece di lanciare "Database non inizializzato".
+export function isDbOpen(): boolean {
+  return db !== null
+}

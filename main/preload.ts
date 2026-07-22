@@ -24,6 +24,14 @@ const api: LexFlowApi = {
   export: {
     csv: (input) => ipcRenderer.invoke('export:csv', input)
   },
+  security: {
+    getState: () => ipcRenderer.invoke('security:getState'),
+    getConfig: () => ipcRenderer.invoke('security:getConfig'),
+    unlock: (input) => ipcRenderer.invoke('security:unlock', input),
+    setPassword: (input) => ipcRenderer.invoke('security:setPassword', input),
+    changePassword: (input) => ipcRenderer.invoke('security:changePassword', input),
+    disableLock: (input) => ipcRenderer.invoke('security:disableLock', input)
+  },
   practices: {
     generateCodiceIstanza: (input) =>
       ipcRenderer.invoke('practices:generateCodiceIstanza', input),
